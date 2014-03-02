@@ -43,7 +43,9 @@ fetch() {
     fi
     for s in $servers; do
 	verbose "fetching from $s"
-	file=`fileEscape $sdir/$s.txt`
+	dir=`fileEscape $sdir/$s`
+	test -d "$dir" ||  mkdir -p "$dir"
+	file=`fileEscape $sdir/$s/authorized_keys`
 	# Remember the server for furture reference
 	add "$s"
 	ssh "$s" cat .ssh/authorized_keys > $file
@@ -56,16 +58,35 @@ show() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
 	verbose "$s:"
-	file=`fileEscape $sdir/$s.txt`
-#	perl -n -e 'print "$1\n" if /^ssh-(\w+)/'  "$file"
-	showKeys "$file"
+	file=`fileEscape $sdir/$s/authorized_keys`
+	if [ -f $file ] ; then
+	    showKeys "$file"
+	fi
+    done
+}
+
+add-key() {
+    if [ $# -lt 1 ] ; then
+	echo "You must specifiy a key to add"
+	exit 1
+    fi
+
+    key=`findKey $1`
+
+    sdir=`ensureConfigDir servers`
+    for s in ${*:-`list`}; do
+	verbose "Adding to $s:"
+	file=`fileEscape $sdir/$s/pending-additions.txt`
+	echo "$key" >> $file
+	resortKeyfile $file
+	if [ -f $file ] ; then
+	    showKeys "$file"
+	fi
     done
 }
 
 
 source `dirname $0`/locksmith-common
-ServersFile=`ensureConfigDir`/servers.txt
-test -f "$ServersFile" || touch "$ServersFile"
 
 mainloop list "$@" 
 

@@ -6,13 +6,29 @@ enroll() {
     enrollKey "$@"
 }
 
-show() {
+list() {
     showKeys "$KeysFile" "$@"
+}
+
+show() {
+    list "$@"
+}
+
+expired() { 
+    if [ "$#" -lt 1 ] ; then
+	showKeys "$ExpiredKeysFile"
+	return
+    fi
+}
+
+expiredre() { 
+    getExpiredKeysRegexp
 }
 
 expire() { 
     if [ "$#" -lt 1 ] ; then
-	echo "Expire must specify a key"
+	echo "You must specify a key to expire (perhaps you wanted 'expired'?)"
+	return
     fi
 
     grep "$1" "$KeysFile" | while read key ; do
@@ -24,7 +40,5 @@ expire() {
 }
 
 source `dirname $0`/locksmith-common
-KeysFile=`ensureConfigDir`/keys.txt
-ExpiredKeysFile=`ensureConfigDir`/expired.txt
 
 mainloop list "$@"

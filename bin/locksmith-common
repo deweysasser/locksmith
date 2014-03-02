@@ -1,6 +1,7 @@
 #!/bin/bash
 # Purpose:  common functions for locksmith programs.  Not exectuable itself.
 
+
 getConfigDir() {
     echo $HOME/.locksmith
 }
@@ -74,7 +75,12 @@ resortKeyfile() {
     keysort "$file.bak" > "$file"
 }
 
+getExpiredKeysRegexp() {
+    perl -n -e '@k=split(/\s+/); push(@keys, quotemeta $k[2]); END: { print "(" . join("|", @keys) . ")" }' "$ExpiredKeysFile"
+}
+
 showKeys() {
+    expired=`getExpiredKeysRegexp`
     (
 	if [ -f "$1" ] ; then
 	    file="$1"; shift
@@ -86,5 +92,19 @@ showKeys() {
 	else 
 	    echo "$@"
 	fi
-    ) | keysort | perl -n -e 'print "($2) $3 ...$4 $5\n" if /^((\d+) )?ssh-(\w+) [^\s]+([^\s]{12}) (.*)/'  
+    ) | keysort | perl -n -e "BEGIN: {\$re= '$expired'}"  \
+	-e 'print "EXPIRED! " if /$re/ ;' \
+	-e 'print "($2) $3 ...$4 $5" if /^((\d+) )?ssh-(\w+) [^\s]+([^\s]{12}) (.*)/;'  \
+	-e 'print "\n";'
+    
 }
+
+
+
+# Variables
+
+ServersFile=`ensureConfigDir`/servers.txt
+KeysFile=`ensureConfigDir`/keys.txt
+ExpiredKeysFile=`ensureConfigDir`/expired.txt
+test -f "$ServersFile" || touch "$ServersFile"
+
