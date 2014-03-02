@@ -1,0 +1,12 @@
+#!/bin/bash
+# Purpose:  common functions for locksmith programs.  Not exectuable itself.
+
+getConfigDir() {
+    echo $HOME/.locksmith
+}
+
+ensureConfigDir() {
+    dir=`getConfigDir`
+    test -d "$dir" || mkdir -p "$dir"
+    echo $dir
+}

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Purpose:  manage keys on remote servers
+
+# this is the main shell script that really only serves to launch some
+#  subshells.  Eventually I'll port this to something like python.  For
+#  now it serves as a scratch space in bash.
+
+help() {
+       cat<<EOF
+usage: $0 COMMAND options
+EOF
+}
+
+if [ "$#" -lt 1 ] ; then
+   help
+   exit 1
+fi
+
+command=$1
+shift
+
+exec locksmith-$command "$@"
+
+   

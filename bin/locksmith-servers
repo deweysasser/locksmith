@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Purpose:  manage the servers list
+
+help() {
+       cat<<EOF
+usage: locksmith servers COMMAND options
+EOF
+}
+
+add() {
+    cp "$ServersFile" "$ServersFile.bak"
+    ( 
+	for s in "$@" ; do
+	    echo "$s"
+	done
+	cat "$ServersFile.bak"
+    ) | sort -u > "$ServersFile"
+}
+
+list() {
+    test -f "$ServersFile" && cat "$ServersFile"
+}
+
+rm() {
+    for s in "$@" ;do 
+	cp "$ServersFile" "$ServersFile.bak"
+	egrep -v "^$s\$" "$ServersFile.bak" | sort -u > "$ServersFile"
+    done
+}
+
+if [ "$#" -lt 1 ] ; then
+    command="list"
+else
+    command=$1
+    shift
+fi
+
+
+source `dirname $0`/locksmith-common
+
+ServersFile=`ensureConfigDir`/servers.txt
+
+
+case $command in 
+    add) add "$@";;
+    list) list "$@" ;; 
+    rm) rm "$@";;
+    *) help; exit 1;;
+esac
+
+
+   
