@@ -98,12 +98,24 @@ update() {
 
 	expired=`getExpiredKeysRegexp`
 
+	expiredCount=`showKeys "$auth" | grep EXPIRED | wc -l`
+	addCount=0
+	test -f "$add" && addCount=`cat "$add" | wc -l`
+
+	if [ $expiredCount -gt 0 ] ; then
+	    echo "Removing $expiredCount keys"
+	fi
+	if [ $addCount -gt 0 ] ; then
+	    echo "Adding $addCount keys"
+	fi
+
+
 	(
 	    cat "$auth"
 	    test -f "$add" && cat "$add"
 	) | perl -n -e "print unless /$expired/" > $newauth
 
-	scp $newauth $s:.ssh/authorized_keys && (mv -f $newauth $auth; rm -f $add; echo "$s updated") || echo "$s update failed"
+	scp -q $newauth $s:.ssh/authorized_keys && (mv -f $newauth $auth; rm -f $add; echo "$s updated") || echo "$s update failed"
 
 	echo "New keys are:"
 	if [ -f $file ] ; then
