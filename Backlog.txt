@@ -3,6 +3,8 @@ Backlog of features
 * Make "keys show <KEY>" filter correctly (might be a bug)
 * Remember global (group?) key additions so that they can apply to
   servers added later.
+* Do not add a key to the server if it already exists in the authorized_keys
+* allow specification of servers by substring rather than exact match
 * allow removing a key from a server without expiring it
 * Allow un-enrolling (forgetting) a key
 * automagically expand local hostname to fqdn
@@ -16,4 +18,6 @@ Backlog of features
 * allow specification of username with e.g. -l flag
 * Make sure we work with command= prefix specified authorized_keys lines
 * Do some better date tracking on keys and server connection times
-
+* Allow fetching on only servers which are outdated (e.g. we have no
+  keys, but since a certain date would be nice, too).
+* rewrite in python
