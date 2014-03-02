@@ -8,7 +8,7 @@ testdir=`dirname $testbindir`
 
 server="$1"
 
-mockdir="$testdir/mock-servers/$server"
+mockdir="$testdir/output/mock-servers/$server"
 
 test -d "$mockdir/.ssh" || mkdir -p "$mockdir/.ssh"
 

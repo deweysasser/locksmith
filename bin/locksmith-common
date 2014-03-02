@@ -24,6 +24,7 @@ verbose() {
 }
 
 mainloop() {
+    maincommand="$1" ; shift
     defaultCommand="$1"; shift
 
 if [ "$#" -lt 1 ] ; then
@@ -33,7 +34,16 @@ else
     shift
 fi
 
-command_$command "$@"
+if type command_$command >/dev/null 2>&1; then
+    command_$command "$@"
+else
+    locksmith help $maincommand
+fi
+    
+}
+
+serverList() {
+    test -f "$ServersFile" && cat "$ServersFile"
 }
 
 ######################################################################

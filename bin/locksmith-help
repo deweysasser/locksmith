@@ -13,11 +13,13 @@ subcommandHelp() {
 
 commandHelp() {
     dir="$1"
-    perl -n -e '$p=1 if /^# COMMAND HELP:/; next unless $p; $p=0 unless /^#/; print if $p' $file
+    echo "locksmith COMMAND"
+    echo "  command is one of..."
+ 
+    perl -n -e '$p=1 if /^# COMMAND HELP:/; next unless $p; $p=0 unless /^#/; s/^# COMMAND HELP://g; s/^# //g; print if $p' $dir/locksmith-*
 }
 
 dir=`dirname $0`
-
 
 if [ -n "$1" ] ; then
    if [ -f "$dir/locksmith-$1" ] ; then

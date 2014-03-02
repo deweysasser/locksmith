@@ -56,4 +56,4 @@ command_expire() {
 
 source `dirname $0`/locksmith-common
 
-mainloop list "$@"
+mainloop keys list "$@"

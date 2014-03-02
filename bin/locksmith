@@ -20,6 +20,11 @@ fi
 command=$1
 shift
 
-exec locksmith-$command "$@"
+if type -p locksmith-$command >/dev/null 2>&1 ; then
+    exec locksmith-$command "$@"
+else
+    locksmith-help
+    exit 1
+fi
 
    

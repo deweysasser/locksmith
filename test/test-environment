@@ -3,9 +3,14 @@
 # a sourcable setup for the test environment
 
 setup() {
-mydir=$1
-export PATH=$mydir/bin:`dirname $mydir`/bin:$PATH
-export HOME=$mydir/output/home
-mkdir -p $HOME
-PS1="testing$ "
+    if [[ $1 =~ ^/ ]] ; then
+	mydir=$1
+    else
+	mydir=`pwd`/$1
+    fi
+    mydir=$1
+    export PATH=$mydir/bin:`dirname $mydir`/bin:$PATH
+    export HOME=$mydir/output/home
+    mkdir -p $HOME
+    PS1="testing$ "
 }

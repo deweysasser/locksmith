@@ -5,7 +5,7 @@
 locksmith servers fetch root@server1
 locksmith servers fetch root@server1
 
-locksmith keys enroll keys/key1.pub
+locksmith keys enroll test/keys/key1.pub
 
 locksmith servers add-key key1
 
