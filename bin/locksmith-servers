@@ -8,6 +8,7 @@ usage: locksmith servers COMMAND options
 EOF
 }
 
+# command add:  add a server to the list
 add() {
     cp "$ServersFile" "$ServersFile.bak"
     ( 
@@ -18,14 +19,43 @@ add() {
     ) | sort -u > "$ServersFile"
 }
 
+
+# command list:  show the servers in the list
 list() {
     test -f "$ServersFile" && cat "$ServersFile"
 }
 
+# command rm:  remove a server from the list
 rm() {
     for s in "$@" ;do 
 	cp "$ServersFile" "$ServersFile.bak"
 	egrep -v "^$s\$" "$ServersFile.bak" | sort -u > "$ServersFile"
+    done
+}
+
+# command fetch:  fetch the keys from a server or servers
+fetch() {
+    sdir=`ensureConfigDir servers`
+    if [ $# -lt 1 ] ; then
+	servers=`list`
+    else
+	servers="$*"
+    fi
+    for s in $servers; do
+	file=`fileEscape $sdir/$s.txt`
+	# Remember the server for furture reference
+	add "$s"
+	ssh "$s" cat .ssh/authorized_keys > $file
+	show "$s"
+    done
+}
+
+show() {
+    sdir=`ensureConfigDir servers`
+    for s in ${*:-`list`}; do
+	file=`fileEscape $sdir/$s.txt`
+#	perl -n -e 'print "$1\n" if /^ssh-(\w+)/'  "$file"
+	perl -n -e 'print "$1 ...$2 $3\n" if /^ssh-(\w+) [^\s]+([^\s]{12}) (.*)/'  "$file"
     done
 }
 
@@ -46,7 +76,8 @@ case $command in
     add) add "$@";;
     list) list "$@" ;; 
     rm) rm "$@";;
-    *) help; exit 1;;
+    # a catch-all placeholder for now
+    *) $command "$@";;
 esac
 
 

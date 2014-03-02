@@ -6,7 +6,12 @@ getConfigDir() {
 }
 
 ensureConfigDir() {
+    path="$1"
     dir=`getConfigDir`
-    test -d "$dir" || mkdir -p "$dir"
-    echo $dir
+    test -d "$dir/$path" || mkdir -p "$dir/$path"
+    echo "$dir/$path"
+}
+
+fileEscape() {
+    echo "$@" | tr '@' '_'
 }
