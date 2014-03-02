@@ -76,7 +76,22 @@ resortKeyfile() {
 }
 
 getExpiredKeysRegexp() {
-    perl -n -e '@k=split(/\s+/); push(@keys, quotemeta $k[2]); END: { print "(" . join("|", @keys) . ")" }' "$ExpiredKeysFile"
+    if [ ! -f "$ExpiredKeysFile" ] ; then
+	echo "__no-expired-keys__"
+	return
+    fi
+
+    perl -n -e '@k=split(/\s+/); push(@keys, quotemeta $k[2]); END { print "(" . join("|", @keys) . ")" }' "$ExpiredKeysFile"
+}
+
+hasExpiredKeys() {
+#    expired=`getExpiredKeysRegexp`
+#    perl -n -e "exit 0 if /$expired/; END {exit 1}" "$@"
+    showKeys "$@" | grep EXPIRED > /dev/null
+}
+
+findKey() {
+    grep "$1" "$KeysFile" | perl -n -e '@k=split; shift @k; print join(" ", @k) . "\n";'
 }
 
 showKeys() {
