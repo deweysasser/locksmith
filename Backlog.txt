@@ -1,13 +1,19 @@
 Backlog of features
 
-* Perform server operations in parallel
+* Make "keys show <KEY>" filter correctly (might be a bug)
+* Remember global (group?) key additions so that they can apply to
+  servers added later.
 * allow removing a key from a server without expiring it
 * Allow un-enrolling (forgetting) a key
-* When listing keys, show on what servers they are in use
-* use nmap to scan for hosts
-* allow specification of username with e.g. -l flag
 * automagically expand local hostname to fqdn
 * define server sets on which to operate
 * make domain an implicit set
-
+* deal with servers that cannot be reached
+* Perform server operations in parallel
+* When listing keys, show on what servers they are in use
+* use nmap to scan for hosts
+  - have to deal with duplicate hosts somehow, yes?
+* allow specification of username with e.g. -l flag
+* Make sure we work with command= prefix specified authorized_keys lines
+* Do some better date tracking on keys and server connection times
 
