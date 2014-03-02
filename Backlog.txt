@@ -1,0 +1,3 @@
+Backlog of features
+
+* When listing keys, show on what servers they are in use
