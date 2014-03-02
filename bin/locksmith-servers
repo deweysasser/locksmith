@@ -5,13 +5,13 @@
 
 help() {
        cat<<EOF
-usage: locksmith servers COMMAND options
+usage: locksmith servers COMMANDK options
 EOF
 }
 
 # HELP:  add SERVER...
 #    add SERVER to the list of managed servers
-add() {
+command_add() {
     cp "$ServersFile" "$ServersFile.bak"
     ( 
 	for s in "$@" ; do
@@ -24,7 +24,7 @@ add() {
 
 # HELP:  list 
 #    show the servers in the list
-list() {
+command_list() {
     test -f "$ServersFile" && cat "$ServersFile"
 }
 
@@ -32,7 +32,7 @@ list() {
 #    fetch the keys from a server or servers.  This implicitly adds
 #    the server to the list of managed servers.
 
-fetch() {
+command_fetch() {
     sdir=`ensureConfigDir servers`
     if [ $# -lt 1 ] ; then
 	servers=`list`
@@ -54,7 +54,7 @@ fetch() {
 
 # HELP:  show
 #    show the keys on all specified servers
-show() {
+command_show() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
 	verbose "$s:"
@@ -82,7 +82,7 @@ serversThatNeedUpdate() {
 #    show the status of each specified servers (or all servers if none
 #    are specified).  This lists expired and added keys for each
 #    server.
-status() {
+command_status() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
 	echo "$s:"
@@ -102,7 +102,7 @@ status() {
 #    update the given servers or all servers that need update if none
 #    are given.
 
-update() {
+command_update() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`serversThatNeedUpdate`}; do
 	verbose "$s:"
@@ -146,7 +146,7 @@ update() {
 #     which case the key will be enrolled before being added to the
 #     given servers.
 
-add-key() {
+command_add-key() {
     if [ $# -lt 1 ] ; then
 	echo "You must specifiy a key to add"
 	exit 1
@@ -177,7 +177,7 @@ add-key() {
 #    remove the server from the list of managed servers.  Note that
 #    this does NOT forget about the keys -- those are still enrolled.
 
-remove() {
+command_remove() {
     for s in "$@"; do
 	sdir=`ensureConfigDir servers`
 	serverdir=`fileEscape $sdir/$s`

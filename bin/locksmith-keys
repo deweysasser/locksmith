@@ -9,38 +9,38 @@
 #       This does NOT add it to any server.  See locksmith servers add-key
 #       for that.
 
-enroll() {
+command_enroll() {
     enrollKey "$@"
 }
 
 # HELP:  list [STRING]
 #    -- list keys matching STRING or all keys if not STRING is given
-list() {
+command_list() {
     showKeys "$KeysFile" "$@"
 }
 
 # HELP:  show 
 #    -- an alias for list
-show() {
+command_show() {
     list "$@"
 }
 
 # HELP:  expired
 #    -- show a list of all expired keys
-expired() { 
+command_expired() { 
     if [ "$#" -lt 1 ] ; then
 	showKeys "$ExpiredKeysFile"
 	return
     fi
 }
 
-expiredre() { 
+command_expiredre() { 
     getExpiredKeysRegexp
 }
 
 # HELP:  expire KEY...
 #    -- expire the given key
-expire() { 
+command_expire() { 
     if [ "$#" -lt 1 ] ; then
 	echo "You must specify a key to expire (perhaps you wanted 'expired'?)"
 	return
