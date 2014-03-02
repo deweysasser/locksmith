@@ -21,3 +21,4 @@ Backlog of features
 * Allow fetching on only servers which are outdated (e.g. we have no
   keys, but since a certain date would be nice, too).
 * rewrite in python
+* avoid use of ssh -- use only scp for greatest standardization

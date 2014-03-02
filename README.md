@@ -1,7 +1,7 @@
 locksmith 
 =========
 
-A tool for managing SSH keys on remote servers.
+A tool for managing SSH public keys on man remote servers.
 
 Status
 ======
@@ -25,6 +25,27 @@ Locksmith is designed to manage keys on remote servers for you.  It
 will track what keys are on what servers, track the date where it
 first saw a key, track expired keys, allow you to mark keys for
 additions on some (or all) servers and update the servers in bulk.
+
+Features
+========
+
+* Manage SSH public keys across many servers
+* Track date of public keys (by remembering when they were first seen)
+* Track state of SSH keys on servers and perform minimal updates
+* Allow expiration of public keys which will automatically remove them
+  from all servers at next update.
+* Allow addition of public keys to all servers in bulk
+* Storge local tracking information in plain text (i.e. SCM friendly)
+  formats.  It my intention to make these formats automatically deal
+  with merge conflict markers as well.
+
+Future Features
+===============
+
+* Define hierarchal groups of servers
+* Add/remove keys to servers based on group membership
+* access servers in parallel
+* intergrate with nmap to find servers
 
 Basic Usage
 ===========
