@@ -2,8 +2,14 @@ Backlog of features
 
 In priority order:
 
-* Do not add a key to the server if it already exists in the authorized_keys
+* Implement a "whereis key" function
+* Some kind of cache time control so we don't re-query servers on
+  fetch within a certain time window (but make sure we *DO* requery
+  when updating keys).
 * Make "keys show <KEY>" filter correctly (might be a bug)
+* rewrite in python
+* Implement "key replacement" to expire a key and substiatute a new
+  key whenever the old one is found.
 * Remember global (group?) key additions so that they can apply to
   servers added later.
 * allow specification of servers by substring rather than exact match
@@ -14,7 +20,6 @@ In priority order:
 * make domain an implicit set
 * deal with servers that cannot be reached
 * Perform server operations in parallel
-* When listing keys, show on what servers they are in use
 * use nmap to scan for hosts
   - have to deal with duplicate hosts somehow, yes?
 * allow specification of username with e.g. -l flag
@@ -22,16 +27,9 @@ In priority order:
 * Do some better date tracking on keys and server connection times
 * Allow fetching on only servers which are outdated (e.g. we have no
   keys, but since a certain date would be nice, too).
-* rewrite in python
-
-Unordered:
 * avoid use of ssh -- use only scp for greatest standardization
 * Opportunistically harvest key origin dates from file modification dates.
-* Implement "key replacement" to expire a key and substiatute a new
-  key whenever the old one is found.
-* Implement a "whereis key" function
+
+Unordered:
 * Handle passwords for ssh users for bootstrapping purposes (e.g. a
   common root password).
-* Some kind of cache time control so we don't re-query servers on
-  fetch within a certain time window (but make sure we *DO* requery
-  when updating keys).

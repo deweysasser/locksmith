@@ -163,10 +163,14 @@ command_add-key() {
 
     sdir=`ensureConfigDir servers`
     for s in ${*:-`serverList`}; do
+	if keyExists "$s" "$key"; then
+	    echo "Key already exists on $s"
+	else
 	verbose "Adding to $s:"
 	file=`fileEscape $sdir/$s/pending-additions.txt`
 	echo "$key" >> $file
 	resortKeyfile $file
+	fi
 	if [ -f $file ] ; then
 	    showKeys "$file"
 	fi
