@@ -1,5 +1,13 @@
 Backlog of features
 
+* Perform server operations in parallel
 * allow removing a key from a server without expiring it
 * Allow un-enrolling (forgetting) a key
 * When listing keys, show on what servers they are in use
+* use nmap to scan for hosts
+* allow specification of username with e.g. -l flag
+* automagically expand local hostname to fqdn
+* define server sets on which to operate
+* make domain an implicit set
+
+
