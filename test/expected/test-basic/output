@@ -1,0 +1,26 @@
+fetching from root@server1
+root@server1:
+
+() rsa ...3WNlX+4dWw== key1
+fetching from root@server1
+root@server1:
+
+() rsa ...3WNlX+4dWw== key1
+Adding to root@server1:
+
+() rsa ...3WNlX+4dWw== key1
+root@server1:
+keys to add:
+
+() rsa ...3WNlX+4dWw== key1
+root@server1:
+fetching from root@server1
+root@server1:
+
+() rsa ...3WNlX+4dWw== key1
+Adding 2 keys
+cp test/output/home/.locksmith/servers/root_server1/authorized_keys.new test/mock-servers/root@server1/.ssh/authorized_keys
+root@server1 updated
+New keys are:
+
+() rsa ...3WNlX+4dWw== key1

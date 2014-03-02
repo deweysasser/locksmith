@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Purpose:  a mock SSH command
+
+
+testbindir=`dirname $0`
+testdir=`dirname $testbindir`
+
+for a in "$@"; do
+    if [ "x$a" !=  "x-q" ] ; then
+        na=`echo $a | perl -p -e "BEGIN { \\$t='$testdir' }" -e 's#(\w+\@\w+):#$t/mock-servers/$1/#g'`
+	args[${#args[*]}]="$na"
+    fi	
+done
+
+shift
+
+# simulate the command
+#echo cp ${args[@]}
+cp ${args[@]}
