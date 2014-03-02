@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# COMMAND HELP:  servers -- manage and manipulate servers, fetch and update keys
 # Purpose:  manage the servers list
 
 help() {

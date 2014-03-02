@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# COMMAND HELP:  help -- show this screen
+
+# Purpose:  print help for locksmith commands
+
+dir=`dirname $0`
+
+egrep -h "^# COMMAND HELP: " $dir/locksmith-* | sed -e "s/# COMMAND HELP://g"

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# COMMAND HELP:  keys -- manage and manipulate keys
+
 # purpose:  manage keys
 
 enroll() {
