@@ -2,10 +2,10 @@ Backlog of features
 
 In priority order:
 
+* Do not add a key to the server if it already exists in the authorized_keys
 * Make "keys show <KEY>" filter correctly (might be a bug)
 * Remember global (group?) key additions so that they can apply to
   servers added later.
-* Do not add a key to the server if it already exists in the authorized_keys
 * allow specification of servers by substring rather than exact match
 * allow removing a key from a server without expiring it
 * Allow un-enrolling (forgetting) a key
@@ -29,3 +29,9 @@ Unordered:
 * Opportunistically harvest key origin dates from file modification dates.
 * Implement "key replacement" to expire a key and substiatute a new
   key whenever the old one is found.
+* Implement a "whereis key" function
+* Handle passwords for ssh users for bootstrapping purposes (e.g. a
+  common root password).
+* Some kind of cache time control so we don't re-query servers on
+  fetch within a certain time window (but make sure we *DO* requery
+  when updating keys).
