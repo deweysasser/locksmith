@@ -42,10 +42,12 @@ fetch() {
 	servers="$*"
     fi
     for s in $servers; do
+	verbose "fetching from $s"
 	file=`fileEscape $sdir/$s.txt`
 	# Remember the server for furture reference
 	add "$s"
 	ssh "$s" cat .ssh/authorized_keys > $file
+	enrollKey "$file"
 	show "$s"
     done
 }
@@ -53,32 +55,19 @@ fetch() {
 show() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
+	verbose "$s:"
 	file=`fileEscape $sdir/$s.txt`
 #	perl -n -e 'print "$1\n" if /^ssh-(\w+)/'  "$file"
-	perl -n -e 'print "$1 ...$2 $3\n" if /^ssh-(\w+) [^\s]+([^\s]{12}) (.*)/'  "$file"
+	showKeys "$file"
     done
 }
 
-if [ "$#" -lt 1 ] ; then
-    command="list"
-else
-    command=$1
-    shift
-fi
-
 
 source `dirname $0`/locksmith-common
-
 ServersFile=`ensureConfigDir`/servers.txt
+test -f "$ServersFile" || touch "$ServersFile"
 
-
-case $command in 
-    add) add "$@";;
-    list) list "$@" ;; 
-    rm) rm "$@";;
-    # a catch-all placeholder for now
-    *) $command "$@";;
-esac
+mainloop list "$@" 
 
 
    

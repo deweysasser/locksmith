@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# purpose:  manage keys
+
+enroll() {
+    enrollKey "$@"
+}
+
+show() {
+    showKeys "$KeysFile" "$@"
+}
+
+expire() { 
+    if [ "$#" -lt 1 ] ; then
+	echo "Expire must specify a key"
+    fi
+
+    grep "$1" "$KeysFile" | while read key ; do
+	echo -n  "Expiring " ; showKeys $key
+	echo $key >> "$ExpiredKeysFile"
+    done
+}
+
+source `dirname $0`/locksmith-common
+KeysFile=`ensureConfigDir`/keys.txt
+ExpiredKeysFile=`ensureConfigDir`/expired.txt
+
+mainloop list "$@"
