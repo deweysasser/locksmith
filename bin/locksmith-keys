@@ -4,18 +4,29 @@
 
 # purpose:  manage keys
 
+# HELP: enroll KEY... 
+#    -- enroll a key into the locksmith key list.
+#       This does NOT add it to any server.  See locksmith servers add-key
+#       for that.
+
 enroll() {
     enrollKey "$@"
 }
 
+# HELP:  list [STRING]
+#    -- list keys matching STRING or all keys if not STRING is given
 list() {
     showKeys "$KeysFile" "$@"
 }
 
+# HELP:  show 
+#    -- an alias for list
 show() {
     list "$@"
 }
 
+# HELP:  expired
+#    -- show a list of all expired keys
 expired() { 
     if [ "$#" -lt 1 ] ; then
 	showKeys "$ExpiredKeysFile"
@@ -27,6 +38,8 @@ expiredre() {
     getExpiredKeysRegexp
 }
 
+# HELP:  expire KEY...
+#    -- expire the given key
 expire() { 
     if [ "$#" -lt 1 ] ; then
 	echo "You must specify a key to expire (perhaps you wanted 'expired'?)"

@@ -4,6 +4,25 @@
 
 # Purpose:  print help for locksmith commands
 
+
+subcommandHelp() {
+    file="$1"
+
+    perl -n -e '$p=1 if /^# HELP:/; next unless $p; $p=0 unless /^#/; s/^# HELP:\s*//g;s/^# //g; print if $p' $file
+}
+
+commandHelp() {
+    dir="$1"
+    perl -n -e '$p=1 if /^# COMMAND HELP:/; next unless $p; $p=0 unless /^#/; print if $p' $file
+}
+
 dir=`dirname $0`
 
-egrep -h "^# COMMAND HELP: " $dir/locksmith-* | sed -e "s/# COMMAND HELP://g"
+
+if [ -n "$1" ] ; then
+   if [ -f "$dir/locksmith-$1" ] ; then
+       subcommandHelp "$dir/locksmith-$1"
+   fi
+else
+    commandHelp "$dir"
+fi

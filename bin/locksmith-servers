@@ -9,7 +9,8 @@ usage: locksmith servers COMMAND options
 EOF
 }
 
-# command add:  add a server to the list
+# HELP:  add SERVER...
+#    add SERVER to the list of managed servers
 add() {
     cp "$ServersFile" "$ServersFile.bak"
     ( 
@@ -21,12 +22,16 @@ add() {
 }
 
 
-# command list:  show the servers in the list
+# HELP:  list 
+#    show the servers in the list
 list() {
     test -f "$ServersFile" && cat "$ServersFile"
 }
 
-# command fetch:  fetch the keys from a server or servers
+# HELP: fetch
+#    fetch the keys from a server or servers.  This implicitly adds
+#    the server to the list of managed servers.
+
 fetch() {
     sdir=`ensureConfigDir servers`
     if [ $# -lt 1 ] ; then
@@ -47,6 +52,8 @@ fetch() {
     done
 }
 
+# HELP:  show
+#    show the keys on all specified servers
 show() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
@@ -71,7 +78,10 @@ serversThatNeedUpdate() {
     done
 }
 
-
+# HELP:  status SERVER...
+#    show the status of each specified servers (or all servers if none
+#    are specified).  This lists expired and added keys for each
+#    server.
 status() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
@@ -87,6 +97,10 @@ status() {
 	
     done
 }
+
+# HELP:  update SERVER
+#    update the given servers or all servers that need update if none
+#    are given.
 
 update() {
     sdir=`ensureConfigDir servers`
@@ -125,6 +139,13 @@ update() {
     done
 }
 
+# HELP:  add-key KEY SERVER...
+#     add the KEY to the specified SERVER or all servers if none are
+#     specified.  Key can be a known key (something shown by
+#     'locksmith keys') or a file in OpenSSH public key format, in
+#     which case the key will be enrolled before being added to the
+#     given servers.
+
 add-key() {
     if [ $# -lt 1 ] ; then
 	echo "You must specifiy a key to add"
@@ -152,7 +173,10 @@ add-key() {
     done
 }
 
-# command removem:  remove a server from the list
+# HELP:  remove SERVER
+#    remove the server from the list of managed servers.  Note that
+#    this does NOT forget about the keys -- those are still enrolled.
+
 remove() {
     for s in "$@"; do
 	sdir=`ensureConfigDir servers`
