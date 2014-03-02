@@ -22,7 +22,7 @@ command_list() {
 # HELP:  show 
 #    -- an alias for list
 command_show() {
-    list "$@"
+    command_list "$@"
 }
 
 # HELP:  expired
