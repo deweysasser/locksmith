@@ -1,7 +1,7 @@
 locksmith 
 =========
 
-A tool for managing SSH public keys on man remote servers.
+A tool for managing SSH public keys on remote servers.
 
 Overview
 ========
