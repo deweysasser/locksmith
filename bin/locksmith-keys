@@ -25,6 +25,23 @@ command_show() {
     command_list "$@"
 }
 
+# HELP:  whereis KEY [KEY...]
+#    -- list the servers on which KEY(s) are found
+
+command_whereis() {
+
+    if [ $# -lt 1 ] ; then
+	locksmith help keys
+	exit 1
+    fi
+
+    servers=`getConfigDir`/servers
+    for k in "$@"; do
+	echo "$k:"
+	grep -l $k $servers/*/authorized_keys | perl -n -e 'if (/([\w-]+)\/authorized_keys/) { $s=$1; $s =~ s/_/@/; push(@k,$s);} END { print "  " . join(", ", @k) . "\n" }'
+    done
+}
+
 # HELP:  expired
 #    -- show a list of all expired keys
 command_expired() { 

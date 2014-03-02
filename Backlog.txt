@@ -2,7 +2,6 @@ Backlog of features
 
 In priority order:
 
-* Implement a "whereis key" function
 * Some kind of cache time control so we don't re-query servers on
   fetch within a certain time window (but make sure we *DO* requery
   when updating keys).
