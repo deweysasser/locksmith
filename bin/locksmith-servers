@@ -184,9 +184,9 @@ command_remove() {
 	if [ -d "$serverdir" ] ; then
 	    echo "Removing $s"
 	    rm -rf "$serverdir"
-	    cp "$ServersFile" "$ServersFile.bak"
-	    grep -v $s "$ServersFile.bak" > "$ServersFile"
 	fi
+	cp "$ServersFile" "$ServersFile.bak"
+	grep -v $s "$ServersFile.bak" > "$ServersFile"
     done
 }
 
