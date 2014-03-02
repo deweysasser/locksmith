@@ -1,3 +1,5 @@
 Backlog of features
 
+* allow removing a key from a server without expiring it
+* Allow un-enrolling (forgetting) a key
 * When listing keys, show on what servers they are in use
