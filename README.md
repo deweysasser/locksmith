@@ -3,10 +3,19 @@ locksmith
 
 A tool for managing SSH public keys on man remote servers.
 
+Overview
+========
+
+Locksmith is designed to manage OpenSSH keys on remote servers for
+you.  It will track what keys are on what servers, track the date
+where it first saw a key, track expired keys, allow you to mark keys
+for additions on some (or all) servers and update the servers in bulk.
+
+
 Status
 ======
 
-THIS IS ALPHA CODE.
+		       THIS IS PROTOTYPE CODE.
 
 It's hot off of my fingers.  I'm using it in 2 environments but I
 guarantee there are bugs.
@@ -17,14 +26,19 @@ your servers.
 That being said, please try it out and report bugs to via
 https://github.com/dmsasser/locksmith.
 
+You should consider this a functional, potentially useful PROTOTYPE.
+That allows for investigation of workflows, functionality and command
+line convenience.  Once it evolves a bit I will re-write it pretty
+much entirely.  In the meantime, it's a *prototype* so feedback is not
+only welcome, it's encouraged.  I'll take feedback in any area from
+functionality to command line syntax to deployment issues.
 
-Overview
-========
+Note that it's written in BASH.  This is not the final target
+language, this was a rapid prototype language.  It will be
+re-implemented in Python.  If you'd like to submit patches to the
+prototype that's great but be aware that it will all be rewritten
+eventually.
 
-Locksmith is designed to manage keys on remote servers for you.  It
-will track what keys are on what servers, track the date where it
-first saw a key, track expired keys, allow you to mark keys for
-additions on some (or all) servers and update the servers in bulk.
 
 Features
 ========
@@ -34,7 +48,7 @@ Features
 * Track state of SSH keys on servers and perform minimal updates
 * Allow expiration of public keys which will automatically remove them
   from all servers at next update.
-* Allow addition of public keys to all servers in bulk
+* Allow addition of public keys to some or all servers in bulk
 * Storge local tracking information in plain text (i.e. SCM friendly)
   formats.  It my intention to make these formats automatically deal
   with merge conflict markers as well.
@@ -46,6 +60,18 @@ Future Features
 * Add/remove keys to servers based on group membership
 * access servers in parallel
 * intergrate with nmap to find servers
+
+Limitations
+===========
+
+* Cannot handle command= prefixed keys (or any kind of line that
+  doesn't start with "ssh-" in authorized_keys file.
+
+Help
+====
+
+Run "locksmith help", "locksmith help servers" and "locksmith help
+keys".
 
 Basic Usage
 ===========

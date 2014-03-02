@@ -1,5 +1,7 @@
 Backlog of features
 
+In priority order:
+
 * Make "keys show <KEY>" filter correctly (might be a bug)
 * Remember global (group?) key additions so that they can apply to
   servers added later.
@@ -21,4 +23,9 @@ Backlog of features
 * Allow fetching on only servers which are outdated (e.g. we have no
   keys, but since a certain date would be nice, too).
 * rewrite in python
+
+Unordered:
 * avoid use of ssh -- use only scp for greatest standardization
+* Opportunistically harvest key origin dates from file modification dates.
+* Implement "key replacement" to expire a key and substiatute a new
+  key whenever the old one is found.
