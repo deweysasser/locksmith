@@ -25,14 +25,6 @@ list() {
     test -f "$ServersFile" && cat "$ServersFile"
 }
 
-# command rm:  remove a server from the list
-rm() {
-    for s in "$@" ;do 
-	cp "$ServersFile" "$ServersFile.bak"
-	egrep -v "^$s\$" "$ServersFile.bak" | sort -u > "$ServersFile"
-    done
-}
-
 # command fetch:  fetch the keys from a server or servers
 fetch() {
     sdir=`ensureConfigDir servers`
@@ -137,6 +129,20 @@ add-key() {
 	resortKeyfile $file
 	if [ -f $file ] ; then
 	    showKeys "$file"
+	fi
+    done
+}
+
+# command removem:  remove a server from the list
+remove() {
+    for s in "$@"; do
+	sdir=`ensureConfigDir servers`
+	serverdir=`fileEscape $sdir/$s`
+	if [ -d "$serverdir" ] ; then
+	    echo "Removing $s"
+	    rm -rf "$serverdir"
+	    cp "$ServersFile" "$ServersFile.bak"
+	    grep -v $s "$ServersFile.bak" > "$ServersFile"
 	fi
     done
 }
