@@ -118,7 +118,13 @@ add-key() {
 	exit 1
     fi
 
-    key=`findKey $1`
+    if [ -f "$1" ] ; then
+	enrollKey "$1"
+	key=`cat $1`
+    else
+	key=`findKey "$1"`
+    fi
+
     shift
 
     sdir=`ensureConfigDir servers`
