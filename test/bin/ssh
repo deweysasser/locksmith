@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Purpose:  a mock SSH command
+
+
+testbindir=`dirname $0`
+testdir=`dirname $testbindir`
+
+server="$1"
+
+mockdir="$testdir/mock-servers/$server"
+
+test -d "$mockdir/.ssh" || mkdir -p "$mockdir/.ssh"
+
+shift
+
+# simulate the command
+(cd $mockdir && "$@")

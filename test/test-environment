@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# a sourcable setup for the test environment
+
+setup() {
+mydir=$1
+export PATH=$mydir/bin:`dirname $mydir`/bin:$PATH
+export HOME=$mydir/output/home
+mkdir -p $HOME
+PS1="testing$ "
+}
