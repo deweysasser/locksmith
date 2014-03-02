@@ -14,7 +14,8 @@ guarantee there are bugs.
 The worst this code can do is zorch your authorized keys files on all
 your servers.
 
-That being said, please try it out and report bugs to dewey@sasser.com
+That being said, please try it out and report bugs to via
+https://github.com/dmsasser/locksmith.
 
 
 Overview
