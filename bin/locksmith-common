@@ -90,6 +90,7 @@ hasExpiredKeys() {
     showKeys "$@" | grep EXPIRED > /dev/null
 }
 
+
 findKey() {
     grep "$1" "$KeysFile" | perl -n -e '@k=split; shift @k; print join(" ", @k) . "\n";'
 }

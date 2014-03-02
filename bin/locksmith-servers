@@ -65,6 +65,20 @@ show() {
     done
 }
 
+serversThatNeedUpdate() {
+    sdir=`ensureConfigDir servers`
+    for s in ${*:-`list`}; do
+	auth=`fileEscape $sdir/$s/authorized_keys`
+	add=`fileEscape $sdir/$s/pending-additions.txt`
+	if showKeys $auth | grep EXPIRED >/dev/null; then
+	    echo $s
+	elif [ -f "$add" ] ; then
+	    echo $s
+	fi
+    done
+}
+
+
 status() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`list`}; do
@@ -83,19 +97,23 @@ status() {
 
 update() {
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`list`}; do
+    for s in ${*:-`serversThatNeedUpdate`}; do
 	verbose "$s:"
-	fetch
+	fetch $s
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	newauth=`fileEscape $sdir/$s/authorized_keys.new`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
 
 	expired=`getExpiredKeysRegexp`
 
-	cat "$auth" "$add" | perl -n -e "print unless /$expired/" > $newauth
+	(
+	    cat "$auth"
+	    test -f "$add" && cat "$add"
+	) | perl -n -e "print unless /$expired/" > $newauth
 
 	scp $newauth $s:.ssh/authorized_keys && (mv -f $newauth $auth; rm -f $add; echo "$s updated") || echo "$s update failed"
 
+	echo "New keys are:"
 	if [ -f $file ] ; then
 	    showKeys "$auth"
 	fi
