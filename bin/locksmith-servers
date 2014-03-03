@@ -181,6 +181,25 @@ command_add-key() {
     done
 }
 
+# HELP:  remove-unfetched
+#    Remove all servers that have not yet been fetched.  This allows
+#    you to add a large list of servers (e.g. from nmap), fetch all
+#    that you can, then cull the list to eliminate the ones for which
+#    e.g. you do not have keys or passwords.
+
+command_remove-unfetched() {
+    sdir=`ensureConfigDir servers`
+    count=0
+    for s in `serverList`; do
+	auth=`fileEscape $sdir/$s/authorized_keys`
+	if [ ! -f "$auth" ] ; then
+	    count=$(( $count + 1 ))
+	    command_remove "$s"
+	fi
+    done
+    echo "Removed $count servers"
+}
+
 # HELP:  remove SERVER
 #    remove the server from the list of managed servers.  Note that
 #    this does NOT forget about the keys -- those are still enrolled.
