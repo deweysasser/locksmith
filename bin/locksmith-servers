@@ -182,14 +182,14 @@ command_add-key() {
 
     sdir=`ensureConfigDir servers`
     for s in ${*:-`serverList`}; do
-	mkdir -p "$sdir/$s"
 	if keyExists "$s" "$key"; then
 	    echo "Key already exists on $s"
 	else
 	verbose "Adding to $s:"
 	file=`fileEscape $sdir/$s/pending-additions.txt`
-	echo "$key" >> $file
-	resortKeyfile $file
+	mkdir -p `dirname $file`
+	echo "$key" >> "$file"
+	resortKeyfile "$file"
 	fi
 	if [ -f $file ] ; then
 	    showKeys "$file"
@@ -221,11 +221,12 @@ command_remove-key() {
 	mkdir -p "$sdir/$s"
 	if keyExists "$s" "$key"; then
 	    verbose "Removing from $s:"
-	    del=`fileEscape $sdir/$s/pending-deletions.txt`
-	    echo "$key" >> $del
-	    resortKeyfile $del
-	    if [ -f $del ] ; then
-		showKeys "$del"
+	    file=`fileEscape $sdir/$s/pending-deletions.txt`
+	    mkdir -p `dirname $file`
+	    echo "$key" >> $file
+	    resortKeyfile $file
+	    if [ -f $file ] ; then
+		showKeys "$file"
 	    fi
 	else
 	    echo "Key not on $s"

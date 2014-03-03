@@ -143,6 +143,10 @@ keyExists() {
 
     auth=`fileEscape $sdir/$s/authorized_keys`
 
+    if [ ! -r "$auth" ] ; then
+	return 1
+    fi
+
     grep -q  "$key" "$auth"
 }
 
