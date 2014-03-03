@@ -37,8 +37,7 @@ command_whereis() {
 
     servers=`getConfigDir`/servers
     for k in "$@"; do
-	echo "$k:"
-	grep -l $k $servers/*/authorized_keys | perl -n -e 'if (/([\w-]+)\/authorized_keys/) { $s=$1; $s =~ s/_/@/; push(@k,$s);} END { print "  " . join(", ", @k) . "\n" }'
+	grep -l $k $servers/*/authorized_keys | perl -n -e 'if (/([\w-]+)\/authorized_keys/) { $s=$1; $s =~ s/_/@/; push(@k,$s);} END { print join("\n", @k) . "\n" }'
     done
 }
 
