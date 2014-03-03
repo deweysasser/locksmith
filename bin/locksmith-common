@@ -64,9 +64,8 @@ serverList() {
 ######################################################################
 
 enrollKey() {
-
     if [ -f "$1" ] ; then
-	cat "$1" | while read LINE; do
+	cat "$@" | while read LINE; do
 	    enrollKey $LINE
 	done
 	return;
