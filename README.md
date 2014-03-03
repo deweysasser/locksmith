@@ -174,3 +174,72 @@ let's verify that it did the right thing
     () rsa ...qWHj8ONgYw== key2
     () rsa ...T61oyZhZqw== key3
     $
+
+Command Set
+===========
+
+locksmith command help
+
+    locksmith COMMAND
+      command is one of...
+      help -- show this screen or "help COMMAND" to show
+              help on the specific command.
+      keys -- manage and manipulate keys
+      servers -- manage and manipulate servers, fetch and update keys
+
+help for 'servers'
+
+    add SERVER...
+       add SERVER to the list of managed servers
+    list 
+       show the servers in the list
+    fetch
+       fetch the keys from a server or servers.  This implicitly adds
+       the server to the list of managed servers.
+    show
+       show the keys on all specified servers
+    status SERVER...
+       show the status of each specified servers (or all servers if none
+       are specified).  This lists expired and added keys for each
+       server.
+    update SERVER
+       update the given servers or all servers that need update if none
+       are given.
+    add-key KEY SERVER...
+        add the KEY to the specified SERVER or all servers if none are
+        specified.  Key can be a known key (something shown by
+        'locksmith keys') or a file in OpenSSH public key format, in
+        which case the key will be enrolled before being added to the
+        given servers.
+    remove-key KEY [SERVERS]
+       Remove the given key from the servers specified or all servers if
+       none are specified
+    remove-unfetched
+       Remove all servers that have not yet been fetched.  This allows
+       you to add a large list of servers (e.g. from nmap), fetch all
+       that you can, then cull the list to eliminate the ones for which
+       e.g. you do not have keys or passwords.
+    remove SERVER
+       remove the server from the list of managed servers.  Note that
+       this does NOT forget about the keys -- those are still enrolled.
+    with-key KEY [KEY...]
+       Show the list of servers with any of the keys given
+    without-key KEY [KEY...]
+       Show the list of servers that do not have at least one of the keys given
+    enroll KEY... 
+       -- enroll a key into the locksmith key list.
+          This does NOT add it to any server.  See locksmith servers add-key
+          for that.
+
+Help for 'keys'
+
+    list [STRING]
+       -- list keys matching STRING or all keys if not STRING is given
+    show 
+       -- an alias for list
+    whereis KEY [KEY...]
+       -- list the servers on which KEY(s) are found
+    expired
+       -- show a list of all expired keys
+    expire KEY...
+       -- expire the given key
