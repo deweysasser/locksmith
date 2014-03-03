@@ -182,6 +182,28 @@ We should see the changes now
     () rsa ...T61oyZhZqw== key3
     $
 
+Solutions to common problems
+============================
+
+This assumes that you've already given locksmith a list of your servers, so...
+
+Get rid of the keys for a departed collegue
+-------------------------------------------
+
+    locksmith servers fetch
+    locksmith keys expire GuyWhoLeft
+    locksmith servers update
+
+Rotate my keys
+--------------
+
+    locksmith servers fetch
+    servers=`locksmith keys whereis $LOGNAME`
+    locksmith keys expire $LOGNAME
+    locksmith servers add-key ~/.ssh/my-new-key.pub $servers
+    locksmith servers update
+
+
 Command Set
 ===========
 
