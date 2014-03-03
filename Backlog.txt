@@ -32,6 +32,8 @@ In priority order:
 Unordered:
 * Handle passwords for ssh users for bootstrapping purposes (e.g. a
   common root password).
+* Be able to coelsce accounts which are aliases (through multiple DNS
+  names) for each other.  Should we preserve each alias?
 
 
 Some thoughts on syntax:
