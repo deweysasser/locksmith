@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# COMMAND HELP:  help -- show this screen
+# COMMAND HELP:  help -- show this screen or "help COMMAND" to show
+#           help on the specific command.
 
 # Purpose:  print help for locksmith commands
 
