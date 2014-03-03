@@ -79,7 +79,7 @@ Basic Usage
 This is a shell example of using locksmith to manage keys in bulk on 2
 servers.  It's as easy to do this on 20 servers as 2
 
-First we give it some servers and fetch their keys
+## Give it some servers and fetch their keys
 
     $ locksmith servers add root@server1
     $ locksmith servers add root@server2
@@ -93,14 +93,14 @@ First we give it some servers and fetch their keys
     root@server2:
     () rsa ...qWHj8ONgYw== key2
 
-We can list all the keys
+## List all known keys
 
     $ locksmith keys
     
     (20140302001203) rsa ...qWHj8ONgYw== key2
     (20140302001105) rsa ...3WNlX+4dWw== key1
 
-And add a new key to the locksmith, but not (yet) to the servers
+## And add a new key to the locksmith, but not (yet) to the servers
 
     $ locksmith keys enroll test/keys/key3.pub 
     $ locksmith keys
@@ -109,7 +109,7 @@ And add a new key to the locksmith, but not (yet) to the servers
     (20140302001718) rsa ...3WNlX+4dWw== key1
     (20140302001725) rsa ...T61oyZhZqw== key3
 
-Now let's update the servers.  First, what do they have?
+## Check the keys that exist on the servers
 
 
     $ locksmith servers show
@@ -120,8 +120,13 @@ Now let's update the servers.  First, what do they have?
     root@server2:
     () rsa ...qWHj8ONgYw== key2
 
-OK, I'd like key3 on server2 and let's expire key1 (which will take it
-out whever it might be found during update)
+## Add and expire keys
+
+Expiring a key will remove it from all servers on which it is found.
+Adding (or removing) a key adds (or removes) it on the specific
+server(s) only.
+
+Nothing is actually changed until we run an update
 
 
     $ locksmith servers add-key key3 root@server2
@@ -131,7 +136,7 @@ out whever it might be found during update)
     Expiring 
     Expiring EXPIRED! (20140302001718) rsa ...3WNlX+4dWw== key1
 
-But this hasn't yet updated the servers -- as we can see
+## Check the update status of all servers
 
     $ locksmith servers status
     root@server1:
@@ -140,7 +145,7 @@ But this hasn't yet updated the servers -- as we can see
     keys to add:
     () rsa ...T61oyZhZqw== key3
 
-So let's do the updates:
+## Update all servers with pending changes
 
     $ locksmith servers update
     root@server1:
@@ -164,7 +169,9 @@ So let's do the updates:
     () rsa ...qWHj8ONgYw== key2
     () rsa ...T61oyZhZqw== key3
 
-let's verify that it did the right thing
+## List all known keys
+
+We should see the changes now
 
     $ locksmith servers show
     root@server1:
@@ -179,6 +186,7 @@ Command Set
 ===========
 
 locksmith command help
+----------------------
 
     locksmith COMMAND
       command is one of...
@@ -188,6 +196,7 @@ locksmith command help
       servers -- manage and manipulate servers, fetch and update keys
 
 help for 'servers'
+------------------
 
     add SERVER...
        add SERVER to the list of managed servers
@@ -232,6 +241,7 @@ help for 'servers'
           for that.
 
 Help for 'keys'
+---------------
 
     list [STRING]
        -- list keys matching STRING or all keys if not STRING is given
