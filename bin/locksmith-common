@@ -43,7 +43,20 @@ fi
 }
 
 serverList() {
-    test -f "$ServersFile" && cat "$ServersFile"
+    if [ ! -f "$ServersFile" ] ; then
+	return 0
+    fi
+
+    if [ -n "$*" ] ; then
+	grep "$@" "$ServersFile" > $tmp/listing.txt
+	if [ -s $tmp/listing.txt ] ; then
+	    cat $tmp/listing.txt
+	else
+	    echo "$@" | tr ' ' '\n'
+	fi
+    else
+	cat "$ServersFile"
+    fi
 }
 
 ######################################################################

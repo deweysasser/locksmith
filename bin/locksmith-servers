@@ -25,7 +25,7 @@ command_add() {
 # HELP:  list 
 #    show the servers in the list
 command_list() {
-    serverList
+    serverList "$@"
 }
 
 # HELP: fetch
@@ -34,11 +34,7 @@ command_list() {
 
 command_fetch() {
     sdir=`ensureConfigDir servers`
-    if [ $# -lt 1 ] ; then
-	servers=`serverList`
-    else
-	servers="$*"
-    fi
+    servers=`serverList "$@"`
     for s in $servers; do
 	verbose "fetching from $s"
 	dir=`fileEscape $sdir/$s`
@@ -56,7 +52,7 @@ command_fetch() {
 #    show the keys on all specified servers
 command_show() {
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`serverList`}; do
+    for s in `serverList "$@"`; do
 	verbose "$s:"
 	file=`fileEscape $sdir/$s/authorized_keys`
 	if [ -f $file ] ; then
@@ -67,7 +63,7 @@ command_show() {
 
 serversThatNeedUpdate() {
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`serverList`}; do
+    for s in `serverList "$@"`; do
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
 	del=`fileEscape $sdir/$s/pending-deletions.txt`
@@ -88,7 +84,7 @@ serversThatNeedUpdate() {
 command_status() {
     sdir=`ensureConfigDir servers`
     count=0
-    for s in ${*:-`serverList`}; do
+    for s in `serverList "$@"`; do
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
 	del=`fileEscape $sdir/$s/pending-deletions.txt`
@@ -119,7 +115,7 @@ command_status() {
 
 command_update() {
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`serversThatNeedUpdate`}; do
+    for s in `serversThatNeedUpdate "$@"`; do
 	command_fetch $s > /dev/null
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	newauth=`fileEscape $sdir/$s/authorized_keys.new`
@@ -181,7 +177,7 @@ command_add-key() {
     shift
 
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`serverList`}; do
+    for s in `serverList "$@"`; do
 	if keyExists "$s" "$key"; then
 	    echo "Key already exists on $s"
 	else
@@ -217,7 +213,7 @@ command_remove-key() {
     shift
 
     sdir=`ensureConfigDir servers`
-    for s in ${*:-`serverList`}; do
+    for s in `serverList "$@"`; do
 	mkdir -p "$sdir/$s"
 	if keyExists "$s" "$key"; then
 	    verbose "Removing from $s:"
