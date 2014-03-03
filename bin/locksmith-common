@@ -94,6 +94,17 @@ getExpiredKeysRegexp() {
     perl -n -e '@k=split(/\s+/); push(@keys, quotemeta $k[2]); END { print "(" . join("|", @keys) . ")" }' "$ExpiredKeysFile"
 }
 
+getRemoveKeysRegexp() {
+    file="$1"
+
+    if [ ! -f "$file" ] ; then
+	echo "__no-removed-keys__"
+	return
+    fi
+
+    perl -n -e '@k=split(/\s+/); push(@keys, quotemeta $k[1]); END { print "(" . join("|", @keys) . ")" }' "$file"
+}
+
 hasExpiredKeys() {
 #    expired=`getExpiredKeysRegexp`
 #    perl -n -e "exit 0 if /$expired/; END {exit 1}" "$@"

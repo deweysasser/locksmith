@@ -70,9 +70,12 @@ serversThatNeedUpdate() {
     for s in ${*:-`serverList`}; do
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
+	del=`fileEscape $sdir/$s/pending-deletions.txt`
 	if showKeys $auth | grep EXPIRED >/dev/null; then
 	    echo $s
 	elif [ -f "$add" ] ; then
+	    echo $s
+	elif [ -f "$del" ] ; then
 	    echo $s
 	fi
     done
@@ -88,12 +91,16 @@ command_status() {
     for s in ${*:-`serverList`}; do
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
+	del=`fileEscape $sdir/$s/pending-deletions.txt`
 	showKeys $auth | grep EXPIRED > $tmp/expired
 
-	if [ -f "$add" -o -s $tmp/expired ] ; then
+	if [ -f "$add" -o -f "$del" -o -s $tmp/expired ] ; then
 	    echo "$s:"
 	    if [ -f "$add" ] ; then
-		showKeys $add | perl -n -e 'print "  add: $_"'
+		showKeys "$add" | perl -n -e 'print "  add: $_"'
+	    fi
+	    if [ -f "$del" ] ; then
+		showKeys "$del" | perl -n -e 'print "  remove: $_"'
 	    fi
 	    if [ -s $tmp/expired ] ; then
 		cat $tmp/expired | perl -n -e 'print "  remove: $_"'
@@ -113,33 +120,41 @@ command_status() {
 command_update() {
     sdir=`ensureConfigDir servers`
     for s in ${*:-`serversThatNeedUpdate`}; do
-	command_fetch $s
+	command_fetch $s > /dev/null
 	auth=`fileEscape $sdir/$s/authorized_keys`
 	newauth=`fileEscape $sdir/$s/authorized_keys.new`
 	add=`fileEscape $sdir/$s/pending-additions.txt`
+	del=`fileEscape $sdir/$s/pending-deletions.txt`
 
 	expired=`getExpiredKeysRegexp`
-
+	removed=`getRemoveKeysRegexp "$del"`
 	expiredCount=`showKeys "$auth" | grep EXPIRED | wc -l`
+
 	addCount=0
+	delCount=0
+
 	test -f "$add" && addCount=`cat "$add" | wc -l`
+	test -f "$del" && delCount=`cat "$del" | wc -l`
 
-	if [ $expiredCount -gt 0 ] ; then
-	    echo "Removing $expiredCount keys"
-	fi
-	if [ $addCount -gt 0 ] ; then
-	    echo "Adding $addCount keys"
-	fi
+#	if [ $expiredCount -gt 0 ] ; then
+#	    echo "Removing $expiredCount expired keys"
+#	fi
+#	if [ $delCount -gt 0 ] ; then
+#	    echo "Removing $delCount non-expired keys"
+#	fi
+#	if [ $addCount -gt 0 ] ; then
+#	    echo "Adding $addCount keys"
+#	fi
 
-	verbose "$s:  adding $addCount removing $expiredCount"
+	verbose "$s:  adding $addCount removing $(( $delCount + $expiredCount ))"
 
 
 	(
 	    cat "$auth"
 	    test -f "$add" && cat "$add"
-	) | perl -n -e "print unless /$expired/" > $newauth
+	) | perl -n -e "print unless (/$expired/ || /$removed/)" > $newauth
 
-	scp -q $newauth $s:.ssh/authorized_keys && (mv -f $newauth $auth; rm -f $add; echo "$s updated") || echo "$s update failed"
+	scp -q $newauth $s:.ssh/authorized_keys && (mv -f $newauth $auth; rm -f "$add" "$del") || echo "$s update failed"
     done
 }
 
@@ -167,6 +182,7 @@ command_add-key() {
 
     sdir=`ensureConfigDir servers`
     for s in ${*:-`serverList`}; do
+	mkdir -p "$sdir/$s"
 	if keyExists "$s" "$key"; then
 	    echo "Key already exists on $s"
 	else
@@ -177,6 +193,42 @@ command_add-key() {
 	fi
 	if [ -f $file ] ; then
 	    showKeys "$file"
+	fi
+    done
+}
+
+# HELP:  remove-key KEY [SERVERS]
+#    Remove the given key from the servers specified or all servers if
+#    none are specified
+
+command_remove-key() {
+    if [ $# -lt 1 ] ; then
+	echo "You must specifiy a key to remove"
+	exit 1
+    fi
+
+    if [ -f "$1" ] ; then
+	enrollKey "$1"
+	key=`cat $1`
+    else
+	key=`findKey "$1"`
+    fi
+
+    shift
+
+    sdir=`ensureConfigDir servers`
+    for s in ${*:-`serverList`}; do
+	mkdir -p "$sdir/$s"
+	if keyExists "$s" "$key"; then
+	    verbose "Removing from $s:"
+	    del=`fileEscape $sdir/$s/pending-deletions.txt`
+	    echo "$key" >> $del
+	    resortKeyfile $del
+	    if [ -f $del ] ; then
+		showKeys "$del"
+	    fi
+	else
+	    echo "Key not on $s"
 	fi
     done
 }

@@ -12,7 +12,6 @@ In priority order:
 * Remember global (group?) key additions so that they can apply to
   servers added later.
 * allow specification of servers by substring rather than exact match
-* allow removing a key from a server without expiring it
 * Allow un-enrolling (forgetting) a key
 * automagically expand local hostname to fqdn
 * define server sets on which to operate

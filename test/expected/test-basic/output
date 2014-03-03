@@ -7,8 +7,4 @@ Adding to root@server1:
 root@server1:
   add: () rsa ...3WNlX+4dWw== key1
 0 servers with no changes
-fetching from root@server1
-root@server1:
-Adding 1 keys
 root@server1:  adding 1 removing 0
-root@server1 updated
