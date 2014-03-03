@@ -34,6 +34,16 @@ Unordered:
 * Be able to coelsce accounts which are aliases (through multiple DNS
   names) for each other.  Should we preserve each alias?
 * Test suite should support assertions
+* Persistent "change key" command which expires a key, adds a new key
+  all the places the old key was, and sets things up so this happens
+  to all future servers as they're added as well.
+* Use root level access to find other accounts and manage those keys
+  through the root access. (e.g. "ssh user@host" becomes "ssh
+  root@host sudo -u user").  This implies that we cut-out scp.  It
+  also implies we abstract our connection method and add a discovery
+  method.
+* Can I do some kind of "lastlog" or log file grepping to see when the
+  key was used last?
 
 
 
@@ -43,6 +53,8 @@ Some thoughts on syntax:
 * get rid of the subcommand/action paradigm and just use commands.  
 * Perhaps list should list servers and keys (and there should be
   separate options or subcommands for just one or the other).
+* use #tags for grouping?  e.g. locksmith servers add #mykeys
+  #bunchoservers
 
 locksmith accounts -with-key foo
 locksmith accounts -without-key foo
