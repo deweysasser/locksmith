@@ -32,3 +32,14 @@ In priority order:
 Unordered:
 * Handle passwords for ssh users for bootstrapping purposes (e.g. a
   common root password).
+
+
+Some thoughts on syntax:
+
+* rename "servers" to "accounts"
+* get rid of the subcommand/action paradigm and just use commands.  
+* Perhaps list should list servers and keys (and there should be
+  separate options or subcommands for just one or the other).
+
+locksmith accounts -with-key foo
+locksmith accounts -without-key foo
