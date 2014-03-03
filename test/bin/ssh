@@ -8,11 +8,12 @@ testdir=`dirname $testbindir`
 
 server="$1"
 
-mockdir="$testdir/output/mock-servers/$server"
+mockdir="${MOCKSERVERS:-/tmp/mock-servers}"
+serverdir="$mockdir/$server"
 
-test -d "$mockdir/.ssh" || mkdir -p "$mockdir/.ssh"
+test -d "$serverdir/.ssh" || mkdir -p "$serverdir/.ssh"
 
 shift
 
 # simulate the command
-(cd $mockdir && "$@")
+(cd $serverdir && "$@")

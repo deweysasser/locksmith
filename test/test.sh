@@ -12,10 +12,14 @@ rm -rf $HOME/.locksmith
 
 for f in $mydir/tests/test*.sh; do
     echo -n "$f..."
-    out=$mydir/output/`basename $f .sh`
-    expect=$mydir/expected/`basename $f .sh`
-    mkdir -p $out
-    bash -c $f > $out/output 2>$out/error
+    testname=`basename $f .sh`
+    out=$mydir/output/$testname/output
+    expect=$mydir/expected/$testname
+
+    export HOME=$mydir/output/$testname/home
+    export MOCKSERVERS=$mydir/output/$testname/mock-servers
+    mkdir -p $HOME $out
+    bash -c $f > $out/stdout.txt 2>$out/stderr.txt
     result=$?
     echo $result > $out/status
 
