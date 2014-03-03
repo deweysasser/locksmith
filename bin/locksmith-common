@@ -9,6 +9,11 @@ getConfigDir() {
 ensureConfigDir() {
     path="$1"
     dir=`getConfigDir`
+    if [ ! -f "$dir/.gitignore" ] ; then
+	mkdir -p "$dir"
+	echo "*.bak" >> "$dir/.gitignore"
+    fi
+
     test -d "$dir/$path" || mkdir -p "$dir/$path"
     echo "$dir/$path"
 }
