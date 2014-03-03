@@ -33,6 +33,8 @@ Unordered:
   common root password).
 * Be able to coelsce accounts which are aliases (through multiple DNS
   names) for each other.  Should we preserve each alias?
+* Test suite should support assertions
+
 
 
 Some thoughts on syntax:

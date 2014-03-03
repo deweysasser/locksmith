@@ -1,0 +1,15 @@
+fetching from root@server1
+root@server1:
+fetching from root@server2
+root@server2:
+Adding to root@server1:
+() rsa ...3WNlX+4dWw== key1
+Adding to root@server2:
+() rsa ...3WNlX+4dWw== key1
+root@server1:
+  add: () rsa ...3WNlX+4dWw== key1
+root@server2:
+  add: () rsa ...3WNlX+4dWw== key1
+0 servers with no changes
+root@server1:  adding 1 removing 0
+root@server2:  adding 1 removing 0

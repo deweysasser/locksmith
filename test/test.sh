@@ -19,11 +19,11 @@ for f in $mydir/tests/test*.sh; do
     export HOME=$mydir/output/$testname/home
     export MOCKSERVERS=$mydir/output/$testname/mock-servers
     mkdir -p $HOME $out
-    bash -c $f > $out/stdout.txt 2>$out/stderr.txt
+    bash $f > $out/stdout.txt 2>$out/stderr.txt
     result=$?
     echo $result > $out/status
 
-    if diff -r "$expect" "$out" ; then
+    if diff -I "(20" -r "$expect" "$out" ; then
 	echo SUCCESS
     else
 	echo FAILED

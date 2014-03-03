@@ -10,7 +10,8 @@ setup() {
     fi
     mydir=$1
     export PATH=$mydir/bin:`dirname $mydir`/bin:$PATH
-    export HOME=$mydir/output/home
+    export HOME=$mydir/output/interactive/home
+    export MOCKSERVERS=$mydir/output/interactive/mock-servers
     mkdir -p $HOME
     PS1="testing$ "
 }

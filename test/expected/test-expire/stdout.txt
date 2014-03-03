@@ -1,0 +1,25 @@
+fetching from root@server1
+root@server1:
+fetching from root@server2
+root@server2:
+Adding to root@server1:
+() rsa ...3WNlX+4dWw== key1
+Adding to root@server2:
+() rsa ...qWHj8ONgYw== key2
+root@server1:  adding 1 removing 0
+root@server2:  adding 1 removing 0
+root@server1
+root@server2
+Expiring (20140302225418) rsa ...3WNlX+4dWw== key1
+Adding to root@server1:
+() rsa ...T61oyZhZqw== key3
+Adding to root@server2:
+() rsa ...T61oyZhZqw== key3
+root@server1:
+  add: () rsa ...T61oyZhZqw== key3
+  remove: EXPIRED! () rsa ...3WNlX+4dWw== key1
+root@server2:
+  add: () rsa ...T61oyZhZqw== key3
+0 servers with no changes
+root@server1:  adding 1 removing 1
+root@server2:  adding 1 removing 0
