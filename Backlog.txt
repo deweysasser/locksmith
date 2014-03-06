@@ -44,6 +44,12 @@ Unordered:
   method.
 * Can I do some kind of "lastlog" or log file grepping to see when the
   key was used last?
+* Track on which network a system can be found so we can handle
+  multiple networks
+* use connection proxies? (e.g. ssh gateway "ssh system")
+* Support for version control (git)
+* Deal with git conflict markers/conflict resolution in files automagically
+
 
 
 
@@ -55,6 +61,10 @@ Some thoughts on syntax:
   separate options or subcommands for just one or the other).
 * use #tags for grouping?  e.g. locksmith servers add #mykeys
   #bunchoservers
+* "keys update" to update the comment on a key but preserve the first
+  seen date
+* is there some generic way of dealing with key constraints?  It
+  really is a different "key" but the same #
 
 locksmith accounts -with-key foo
 locksmith accounts -without-key foo
