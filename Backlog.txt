@@ -69,3 +69,9 @@ Some thoughts on syntax:
 
 locksmith accounts -with-key foo
 locksmith accounts -without-key foo
+
+
+Making it more useful:
+* Handle management/expiration/rotation of *host* keys
+  - What can we do to update the known_hosts file
+  - schedule updates at a certain time (use cron, atd)
