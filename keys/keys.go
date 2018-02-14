@@ -21,6 +21,10 @@ func Read(path string) Key {
 	return New(string(bytes))
 }
 
+func ReadMany(path string) []Key {
+     return nil
+}
+
 // Create a new key from the given content
 func New(content string) Key {
 	switch {
