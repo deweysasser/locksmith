@@ -18,12 +18,6 @@ func check(reason string, e error) {
 	}
 }
 	
-func (k *KeyLib) IngestFile(path string) keys.Key {
-	key := keys.Read(path)
-	fmt.Printf("Ingested %s", key)
-	return key
-}
-
 func (kl *KeyLib) keypath() string {
 	keypath := kl.Path + "/keys"
 	_, err := os.Stat(keypath)
@@ -36,6 +30,11 @@ func (kl *KeyLib) keypath() string {
 	return keypath
 }
 
+
+func (k *KeyLib) IngestFile(path string) (keys.Key, error) {
+	key := keys.Read(path)
+	return k.Ingest(key)
+}
 
 func (kl *KeyLib) Ingest(key keys.Key) (keys.Key, error) {
 	re, err := regexp.Compile("[^a-zA-Z0-9]")

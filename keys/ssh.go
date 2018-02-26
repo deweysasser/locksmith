@@ -38,7 +38,11 @@ func parseSshPublicKey(content string) Key {
 	}
 
 	slice := strings.SplitN(content, " ", 3)
-	return &SSHPublicKey{slice[0], slice[1], slice[2], command}
+	if len(slice) > 2 {
+		return &SSHPublicKey{slice[0], slice[1], slice[2], command}
+	} else {
+		return &SSHPublicKey{slice[0], slice[1], "", command}
+	}
 }
 
 func SSHLoadJson(s []byte) Key {

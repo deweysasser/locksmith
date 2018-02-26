@@ -3,11 +3,17 @@ package keys
 import (
 	"bufio"
 //	"golang.org/x/crypto/ssh"
-//	"io/ioutil"
+	"io/ioutil"
 	"os"
 //	"fmt"
 	"testing"
 )
+
+func checke(t *testing.T, e error) {
+	if e != nil {
+		t.Error(e)
+	}
+}
 
 func assertStringsEquals(t *testing.T, s1, s2 string) {
 	if s1 != s2 {
@@ -16,11 +22,27 @@ func assertStringsEquals(t *testing.T, s1, s2 string) {
 	}
 }
 
+func TestSSHPublicKeyParsing(t *testing.T) {
+	path := "test-data/public-keys"
+	keys, err := ioutil.ReadDir(path)
+	checke(t, err)
+
+	for _, key := range(keys) {
+		kp := path + "/" + key.Name()
+		t.Run(key.Name(), func(t *testing.T) {
+			k := Read(kp)
+			if k == nil {
+				t.Error("Failed to parse " + kp)
+			}
+		})
+	}
+}
+
 func TestSSHPublicKeyParse(t *testing.T) {
 	t.Run("RSA", func(t *testing.T) {
 		key := Read("test-data/rsa.pub")
 		if key == nil {
-			t.Fatal("Failed to parse RSA")
+			t.Error("Failed to parse RSA")
 		}
 		rsa := key.(*SSHPublicKey)
 		assertStringsEquals(t, "ssh-rsa", rsa.Type)
@@ -31,7 +53,7 @@ func TestSSHPublicKeyParse(t *testing.T) {
 	t.Run("DSS", func(t *testing.T) {
 		key := Read("test-data/dss.pub")
 		if key == nil {
-			t.Fatal("Failed to parse DSS")
+			t.Error("Failed to parse DSS")
 		}
 		dss := key.(*SSHPublicKey)
 		assertStringsEquals(t, "ssh-dss", dss.Type)
@@ -42,7 +64,7 @@ func TestSSHPublicKeyParse(t *testing.T) {
 
 func TestReadAuthorizedKeys(t *testing.T) {
 	file, err := os.Open("test-data/authorized_keys")
-	check(err)
+	checke(t, err)
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -54,7 +76,7 @@ func TestReadAuthorizedKeys(t *testing.T) {
 	key := New(text)
 
 	if key == nil {
-		t.Fatalf("Key is nil")
+		t.Errorf("Key is nil")
 	}
 
 	sshkey := key.(*SSHPublicKey)
@@ -74,13 +96,13 @@ func TestSSHJSon(t *testing.T) {
 	key := Read("test-data/rsa.pub")
 
 	json, error := key.Json()
-	check(error)
+	checke(t, error)
 	assertStringsEquals(t, `{"Type":"ssh-rsa","Content":"AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5","Comment":"dewey@FlynnRyder","Constraints":""}`, string(json))
 
-	newkey := LoadJson(json)
+	newkey := ReadJson(json)
 
 	if key.Id() != newkey.Id() {
-		t.Fatalf("Failed to load JSON")
+		t.Errorf("Failed to load JSON")
 	}
 }
 
