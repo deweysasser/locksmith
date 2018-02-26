@@ -3,7 +3,10 @@ package keys
 import "io/ioutil"
 import "strings"
 
-type Key interface{}
+type Key interface {
+	Json() ([]byte, error)
+	Id() string
+}
 
 type GenericKeyImpl struct {
 	Value string
@@ -13,16 +16,25 @@ type SshKeyImpl struct {
 	Type, KeyValue, Comment string
 }
 
+// Load the key from the given JSON 
+func ReadJson(json []byte) Key {
+	// For now, SSH key is the only kind
+	return SSHLoadJson(json)
+}
+
+func LoadJsonFile(path string) Key {
+	json, e := ioutil.ReadFile(path)
+	check(e)
+
+	return SSHLoadJson(json)
+}
+
 // Create a new key from the given path
 func Read(path string) Key {
 	bytes, err := ioutil.ReadFile(path)
 	check(err)
 
 	return New(string(bytes))
-}
-
-func ReadMany(path string) []Key {
-     return nil
 }
 
 // Create a new key from the given content
