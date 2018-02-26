@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/urfave/cli"
 	"github.com/deweysasser/locksmith/keylib"
+	"github.com/urfave/cli"
 	// "golang.org/x/crypto/ssh"
 	"os"
 )

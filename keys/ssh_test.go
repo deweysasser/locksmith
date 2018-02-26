@@ -2,10 +2,10 @@ package keys
 
 import (
 	"bufio"
-//	"golang.org/x/crypto/ssh"
+	//	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
-//	"fmt"
+	//	"fmt"
 	"testing"
 )
 
@@ -27,7 +27,7 @@ func TestSSHPublicKeyParsing(t *testing.T) {
 	keys, err := ioutil.ReadDir(path)
 	checke(t, err)
 
-	for _, key := range(keys) {
+	for _, key := range keys {
 		kp := path + "/" + key.Name()
 		t.Run(key.Name(), func(t *testing.T) {
 			k := Read(kp)
@@ -91,7 +91,7 @@ func TestReadAuthorizedKeys(t *testing.T) {
 	assertStringsEquals(t, "ssh-rsa", sshkey.Type)
 	assertStringsEquals(t, "AAAAB3NzaC1yc2EAAAADAQABAAABAQCpVaCpLlQ8Wf4KgcRwsIvXCvf0Onkp9hZ2Sov5s2ZiIqJne8Rk9kx3CoSHGMpCSCBuGybs8k/8ga7g/l6+bKDc3aDGWw52+7ClBGz4xjL5C9HXub2iKRdxIesDtkQtQMawFobBTi9hiW92SoK1H/AmLhHDxicfidXPaOcNY57PWZDqEmR2PWo0k4oNn0zxQO3UJmfiKNoR6ozJ3JDWGCu2SMh/YobKwNSlge6YsVKO4zpxR3wBbHS9CYL2xE6QMyN1KnJ+ACoeZF8tkXThOAgH5VERoM+KawAHK0Hqpqh8d85jQU7ul9ernFCip2zVAC/hsobORmHGyvGd9aWDXZTB", sshkey.PublicKeyString)
 	assertStringsEquals(t, "constrained key", sshkey.Comments[0])
-//	assertStringsEquals(t, "command=\"/bin/ps -ef\",no-port-forwarding,no-X11-forwarding,no-pty", sshkey.Constraints)
+	//	assertStringsEquals(t, "command=\"/bin/ps -ef\",no-port-forwarding,no-X11-forwarding,no-pty", sshkey.Constraints)
 }
 
 func TestSSHId(t *testing.T) {
@@ -112,5 +112,3 @@ func TestSSHJSon(t *testing.T) {
 		t.Errorf("Failed to load JSON")
 	}
 }
-
-

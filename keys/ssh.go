@@ -1,15 +1,15 @@
 package keys
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"encoding/base64"
 )
 
 type SSHPublicKey struct {
 	Type, PublicKeyString, PrivateKeyString string
-	Comments, Options []string
+	Comments, Options                       []string
 }
 
 func (key *SSHPublicKey) Json() ([]byte, error) {

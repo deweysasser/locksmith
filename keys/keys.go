@@ -16,7 +16,7 @@ type SshKeyImpl struct {
 	Type, KeyValue, Comment string
 }
 
-// Load the key from the given JSON 
+// Load the key from the given JSON
 func ReadJson(json []byte) Key {
 	// For now, SSH key is the only kind
 	return SSHLoadJson(json)

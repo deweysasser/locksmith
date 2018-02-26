@@ -2,10 +2,10 @@ package keylib
 
 import (
 	"fmt"
-	"io/ioutil"
-	"regexp"
-	"os"
 	"github.com/deweysasser/locksmith/keys"
+	"io/ioutil"
+	"os"
+	"regexp"
 )
 
 type KeyLib struct {
@@ -17,11 +17,11 @@ func check(reason string, e error) {
 		panic(fmt.Sprintf("%s: %s", reason, e))
 	}
 }
-	
+
 func (kl *KeyLib) keypath() string {
 	keypath := kl.Path + "/keys"
 	_, err := os.Stat(keypath)
-	
+
 	if err != nil {
 		e := os.MkdirAll(keypath, 755)
 		check("Failed to create dir", e)
@@ -29,7 +29,6 @@ func (kl *KeyLib) keypath() string {
 
 	return keypath
 }
-
 
 func (k *KeyLib) IngestFile(path string) (keys.Key, error) {
 	key := keys.Read(path)
@@ -39,7 +38,7 @@ func (k *KeyLib) IngestFile(path string) (keys.Key, error) {
 func (kl *KeyLib) Ingest(key keys.Key) (keys.Key, error) {
 	re, err := regexp.Compile("[^a-zA-Z0-9]")
 	check("Regexp failure", err)
-	
+
 	id := string(re.ReplaceAll([]byte(key.Id()), []byte("")))
 
 	keyfile := kl.keypath() + "/" + id + ".json"
@@ -63,8 +62,7 @@ func (kl *KeyLib) Keys() ([]keys.Key, error) {
 		return nil, error
 	}
 
-
-	for _, path := range(files) {
+	for _, path := range files {
 		readpath := keydir + "/" + path.Name()
 		keylist = append(keylist, keys.LoadJsonFile(readpath))
 	}

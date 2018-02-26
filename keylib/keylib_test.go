@@ -1,10 +1,10 @@
 package keylib
 
 import (
-	"github.com/deweysasser/locksmith/keys"
-	"testing"
-	"os"
 	"fmt"
+	"github.com/deweysasser/locksmith/keys"
+	"os"
+	"testing"
 )
 
 func checke(message string, t *testing.T, e error) {
@@ -15,7 +15,7 @@ func checke(message string, t *testing.T, e error) {
 
 func TestKeyIngest(t *testing.T) {
 	os.RemoveAll("test-output/locksmith")
-	
+
 	lib := KeyLib{"test-output/locksmith"}
 
 	key := keys.Read("../keys/test-data/rsa.pub")
