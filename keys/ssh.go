@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"strings"
+	"encoding/base64"
 )
 
 type SSHPublicKey struct {
-	Type, Content, Comment, Constraints string
+	Type, PublicKeyString, PrivateKeyString string
+	Comments, Options []string
 }
 
 func (key *SSHPublicKey) Json() ([]byte, error) {
@@ -16,7 +17,7 @@ func (key *SSHPublicKey) Json() ([]byte, error) {
 }
 
 func (key *SSHPublicKey) PublicKey() ssh.PublicKey {
-	line := fmt.Sprintf("%s %s %s", key.Type, key.Content, key.Comment)
+	line := fmt.Sprintf("%s %s", key.Type, key.PublicKeyString)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
 	check(err)
 	return pubkey
@@ -26,23 +27,17 @@ func (key *SSHPublicKey) Id() string {
 	return ssh.FingerprintSHA256(key.PublicKey())
 }
 
+func parseSshPrivateKey(content string) Key {
+	signer, err := ssh.ParsePrivateKey([]byte(content))
+	check(err)
+	pub := signer.PublicKey()
+	return &SSHPublicKey{pub.Type(), base64.StdEncoding.EncodeToString(pub.Marshal()), "", []string{}, []string{}}
+}
+
 func parseSshPublicKey(content string) Key {
-	content = strings.Trim(content, " \t\n")
-	command := ""
-
-	if strings.HasPrefix(strings.ToLower(content), "command") {
-		i := strings.Index(content, " ssh-")
-
-		command = content[:i]
-		content = strings.Trim(content[i:], " \t\n")
-	}
-
-	slice := strings.SplitN(content, " ", 3)
-	if len(slice) > 2 {
-		return &SSHPublicKey{slice[0], slice[1], slice[2], command}
-	} else {
-		return &SSHPublicKey{slice[0], slice[1], "", command}
-	}
+	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
+	check(err)
+	return &SSHPublicKey{pub.Type(), base64.StdEncoding.EncodeToString(pub.Marshal()), "", []string{comment}, options}
 }
 
 func SSHLoadJson(s []byte) Key {

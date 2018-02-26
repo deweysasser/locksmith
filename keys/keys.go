@@ -42,6 +42,8 @@ func New(content string) Key {
 	switch {
 	case strings.Contains(content, "ssh-"):
 		return parseSshPublicKey(content)
+	case strings.Contains(content, "PRIVATE KEY"):
+		return parseSshPrivateKey(content)
 	default:
 		return nil
 	}
