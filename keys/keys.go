@@ -6,6 +6,10 @@ import "strings"
 type Key interface {
 	Json() ([]byte, error)
 	Id() string
+	Ids() []string
+	GetNames() []string
+	IsDeprecated() bool
+	Replacement() string
 }
 
 type GenericKeyImpl struct {
