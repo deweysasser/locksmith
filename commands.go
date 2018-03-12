@@ -24,15 +24,27 @@ var Commands = []cli.Command{
 		Flags:  []cli.Flag{},
 	},
 	{
-		Name:   "pull",
+		Name:   "refresh",
 		Usage:  "",
-		Action: command.CmdPull,
+		Action: command.CmdRefresh,
 		Flags:  []cli.Flag{},
 	},
 	{
-		Name:   "push",
+		Name:   "deploy",
 		Usage:  "",
-		Action: command.CmdPush,
+		Action: command.CmdDeploy,
+		Flags:  []cli.Flag{},
+	},
+	{
+		Name:   "deprecate",
+		Usage:  "",
+		Action: command.CmdDeprecate,
+		Flags:  []cli.Flag{},
+	},
+	{
+		Name:   "forget",
+		Usage:  "",
+		Action: command.CmdForget,
 		Flags:  []cli.Flag{},
 	},
 }
