@@ -4,12 +4,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"golang.org/x/crypto/ssh"
 )
 
 type SSHPublicKey struct {
 	Type, PublicKeyString, PrivateKeyString string
 	Comments, Options                       []string
+}
+
+func (key *SSHPublicKey) String() string {
+	return fmt.Sprintf("%s %s %s", key.Type, key.Id(), strings.Join(key.Comments, ", "))
 }
 
 func (key *SSHPublicKey) Json() ([]byte, error) {
@@ -46,3 +51,4 @@ func SSHLoadJson(s []byte) Key {
 
 	return &key
 }
+
