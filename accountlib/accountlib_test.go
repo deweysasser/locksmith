@@ -22,6 +22,15 @@ func failError(t *testing.T, msg string, e error) {
 	}
 }
 
+func TestEmptyAccountlib(t *testing.T) {
+	lib := New("test-output-missing")
+	accounts, err  := lib.GetAccounts()
+
+	failError(t, "Failed to read accounts", err)
+
+	assertIntsEqual(t, 0, len(accounts))
+}
+
 func TestAccountlibBasic(t *testing.T) {
 	lib := New("test-output")
 

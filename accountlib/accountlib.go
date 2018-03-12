@@ -40,14 +40,22 @@ func (lib *Accountlib) EnsureAccount(name string) *Account {
 }
 
 func (lib *Accountlib) GetAccounts() ([]Account, error) {
-	files, error := ioutil.ReadDir(lib.Path)
+	adir := lib.Path + "/accounts"
+
+	_, error := os.Stat(adir)
+
+	if error != nil {
+		return []Account{}, nil
+	}
+	
+	files, error := ioutil.ReadDir(lib.Path + "/accounts")
 
 	fmt.Println("Reading files in ", lib.Path)
 
 	check("Failed to read accounts dir", error)
 
 	for _, f := range(files) {
-		dir := lib.Path + "/" + f.Name() + "/SSH"
+		dir := lib.Path + "/accounts/" + f.Name()
 
 		fmt.Println("Reading", dir)
 
