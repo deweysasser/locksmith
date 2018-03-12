@@ -38,13 +38,14 @@ func (lib *Accountlib) EnsureAccount(name string) *Account {
 	return a
 }
 
-func (account *Account) SetKeys(keys []keys.Key) {
+func (account *Account) SetKeys(keylist []keys.Key) {
 	bindings := make([]KeyBinding, 0)
-	for _, k := range(keys) {
+	for _, k := range(keylist) {
+		sk := k.(*keys.SSHPublicKey)
 		bindings = append(bindings,
-			KeyBinding{Id: k.Id()})
-//				Options: k.Options,
-//				Comment: k.Comments[0]})
+			KeyBinding{Id: k.Id(),
+				Options: sk.Options,
+				Comment: sk.Comments[0]})
 	}
 	account.Keys = bindings
 	account.Save()

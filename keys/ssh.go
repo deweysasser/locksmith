@@ -18,7 +18,7 @@ func (key *SSHPublicKey) String() string {
 }
 
 func (key *SSHPublicKey) Json() ([]byte, error) {
-	return json.Marshal(key)
+	return json.MarshalIndent(key, "", "  ")
 }
 
 func (key *SSHPublicKey) PublicKey() ssh.PublicKey {
