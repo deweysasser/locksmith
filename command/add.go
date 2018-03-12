@@ -5,13 +5,12 @@ import (
 	"github.com/deweysasser/locksmith/keys"
 	"github.com/deweysasser/locksmith/remote"
 	"github.com/urfave/cli"
-	"fmt"
 	"os"
 	"sync"
 )
 
 func CmdAdd(c *cli.Context) error {
-	lib := keylib.KeyLib{datadir()}
+	lib := keylib.New(datadir())
 
 	kchan := make(chan keys.Key)
 
@@ -20,29 +19,27 @@ func CmdAdd(c *cli.Context) error {
 	wg := sync.WaitGroup{}
 
 	for _, a := range c.Args() {
+		wg.Add(1)
 		if info, _ := os.Stat(a); info != nil {
-			kchan <- keys.Read(a)
-		} else  {
-			fmt.Println("+1")
-			wg.Add(1)
-			go func () {
-				remote.RetrieveKeys(a, kchan)
-				fmt.Println("Done retrieving keys")
-				fmt.Println("-1")
+			go func() {
+				kchan <- keys.Read(a)
 				wg.Done()
 			}()
+		} else  {
+			go func (server string) {
+				remote.RetrieveKeys(server, kchan)
+				wg.Done()
+			}(a)
 		}
 	}
 
 	go func() {
-		fmt.Println("Waiting")
 		wg.Wait()
 		close(kchan)
 	}()
 
 	// Ingest the keys
 	for k := range(kchan) {
-		fmt.Println("Ingesting key", k)
 		lib.Ingest(k)
 	}
 

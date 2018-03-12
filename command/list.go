@@ -8,7 +8,7 @@ import (
 )
 
 func CmdList(c *cli.Context) error {
-	lib := keylib.KeyLib{datadir()}
+	lib := keylib.New(datadir())
 
 	keys, _ := lib.Keys()
 

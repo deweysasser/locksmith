@@ -10,6 +10,11 @@ import (
 
 type KeyLib struct {
 	Path string
+	keys []keys.Key
+}
+
+func New(path string) *KeyLib {
+	return &KeyLib{path, nil}
 }
 
 func check(reason string, e error) {
@@ -53,6 +58,10 @@ func (kl *KeyLib) Ingest(key keys.Key) (keys.Key, error) {
 }
 
 func (kl *KeyLib) Keys() ([]keys.Key, error) {
+	if kl.keys != nil {
+		return kl.keys, nil
+	}
+	
 	keydir := kl.keypath()
 	files, error := ioutil.ReadDir(keydir)
 
@@ -67,5 +76,7 @@ func (kl *KeyLib) Keys() ([]keys.Key, error) {
 		keylist = append(keylist, keys.LoadJsonFile(readpath))
 	}
 
+	kl.keys = keylist
+	
 	return keylist, nil
 }
