@@ -13,7 +13,7 @@ func CmdList(c *cli.Context) error {
 	accountlib := accountlib.New(datadir())
 
 	keys, _ := lib.Keys()
-	accounts, _ := accountlib.Accounts()
+	accounts, _ := accountlib.GetAccounts()
 
 	filter := func(a string) bool {
 		return true

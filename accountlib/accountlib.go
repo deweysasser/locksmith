@@ -11,6 +11,7 @@ import (
 
 type Accountlib struct {
 	Path string
+	Accounts []Account
 }
 
 type KeyBinding struct {
@@ -27,7 +28,7 @@ type Account struct {
 }
 
 func New(path string) *Accountlib {
-	return &Accountlib{path}
+	return &Accountlib{path, []Account{}}
 }
 
 func (lib *Accountlib) EnsureAccount(name string) *Account {
@@ -38,9 +39,40 @@ func (lib *Accountlib) EnsureAccount(name string) *Account {
 	return a
 }
 
-func (lib *Accountlib) Accounts() ([]Account, error) {
-	return []Account{}, nil
+func (lib *Accountlib) GetAccounts() ([]Account, error) {
+	files, error := ioutil.ReadDir(lib.Path)
+
+	fmt.Println("Reading files in ", lib.Path)
+
+	check("Failed to read accounts dir", error)
+
+	for _, f := range(files) {
+		dir := lib.Path + "/" + f.Name() + "/SSH"
+
+		fmt.Println("Reading", dir)
+
+		acctfiles, error := ioutil.ReadDir(dir)
+		check("Failed to read TYPE dir", error)
+
+		for _, f2 := range(acctfiles) {
+			lib.Read(dir +  "/" + f2.Name())
+		}
+	}
+
+	return lib.Accounts, nil
 }
+
+func (lib *Accountlib) Read(file string) {
+	data, e := ioutil.ReadFile(file)
+
+	check("Failed to read account file " + file, e)
+	
+	var acc Account
+	json.Unmarshal(data, &acc)
+
+	lib.Accounts = append(lib.Accounts, acc)
+}
+
 
 func (account *Account) SetKeys(keylist []keys.Key) {
 	bindings := make([]KeyBinding, 0)
@@ -96,5 +128,6 @@ func (lib *Accountlib) accountpath() string {
 
 	return accountpath
 }
+
 
 
