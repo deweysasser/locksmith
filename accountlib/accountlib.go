@@ -38,6 +38,10 @@ func (lib *Accountlib) EnsureAccount(name string) *Account {
 	return a
 }
 
+func (lib *Accountlib) Accounts() ([]Account, error) {
+	return []Account{}, nil
+}
+
 func (account *Account) SetKeys(keylist []keys.Key) {
 	bindings := make([]KeyBinding, 0)
 	for _, k := range(keylist) {
@@ -51,6 +55,7 @@ func (account *Account) SetKeys(keylist []keys.Key) {
 	account.Save()
 	return
 }
+
 
 func (account *Account) Save() {
 	path := fmt.Sprintf("%s/%s", account.lib.accountpath(),
