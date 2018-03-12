@@ -3,7 +3,8 @@ package accountlib
 import (
 	"fmt"
 	"github.com/deweysasser/locksmith/keys"
-//	"io/ioutil"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 //	"regexp"
 )
@@ -12,8 +13,17 @@ type Accountlib struct {
 	Path string
 }
 
+type KeyBinding struct {
+	Id string
+	Options []string
+	Comment string
+}
+
 type Account struct {
+	Name string
 	Type string
+	Keys []KeyBinding
+	lib *Accountlib
 }
 
 func New(path string) *Accountlib {
@@ -21,11 +31,45 @@ func New(path string) *Accountlib {
 }
 
 func (lib *Accountlib) EnsureAccount(name string) *Account {
-	return &Account{"ssh"}
+	a := &Account{Name: name, Type: "SSH"}
+
+	a.lib = lib
+
+	return a
 }
 
-func (account *Account) SetKeys([]keys.Key) {
+func (account *Account) SetKeys(keys []keys.Key) {
+	bindings := make([]KeyBinding, 0)
+	for _, k := range(keys) {
+		bindings = append(bindings,
+			KeyBinding{Id: k.Id()})
+//				Options: k.Options,
+//				Comment: k.Comments[0]})
+	}
+	account.Keys = bindings
+	account.Save()
 	return
+}
+
+func (account *Account) Save() {
+	path := fmt.Sprintf("%s/%s", account.lib.accountpath(),
+		account.Type)
+
+	_, err := os.Stat(path)
+
+	if err != nil {
+		e := os.MkdirAll(path, 755)
+		check("Failed to create dir", e)
+	}
+
+	file := fmt.Sprintf("%s/%s.json", path, account.Name)
+
+	json, err := json.MarshalIndent(account, "", "  ")
+
+	check("Failed to marshal account", err)
+
+	ioutil.WriteFile(file, json, 0644)
+
 }
 
 func check(reason string, e error) {
