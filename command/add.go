@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/deweysasser/locksmith/keylib"
-//	"github.com/deweysasser/locksmith/accountlib"
+	"github.com/deweysasser/locksmith/accountlib"
 	"github.com/deweysasser/locksmith/keys"
 	"github.com/deweysasser/locksmith/remote"
 	"github.com/urfave/cli"
@@ -13,7 +13,7 @@ import (
 
 func CmdAdd(c *cli.Context) error {
 	lib := keylib.New(datadir())
-//	accounts := accountlib.New(datadir())
+	accounts := accountlib.New(datadir())
 
 	kchan := make(chan keys.Key)
 
@@ -33,8 +33,9 @@ func CmdAdd(c *cli.Context) error {
 			go func (server string) {
 				fmt.Printf("Retrieving from %s\n", server)
 
-//				a =: accounts.EnsureAccount(server)
+				a := accounts.EnsureAccount(server)
 				keys := remote.RetrieveKeys(server)
+				a.SetKeys(keys)
 				for _, k:= range(keys) {
 					kchan <- k
 				}
