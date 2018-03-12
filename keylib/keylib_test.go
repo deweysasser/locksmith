@@ -16,7 +16,7 @@ func checke(message string, t *testing.T, e error) {
 func TestKeyIngest(t *testing.T) {
 	os.RemoveAll("test-output/locksmith")
 
-	lib := KeyLib{"test-output/locksmith"}
+	lib := KeyLib{"test-output/locksmith", nil}
 
 	key := keys.Read("../keys/test-data/rsa.pub")
 
@@ -32,7 +32,7 @@ func TestKeyIngest(t *testing.T) {
 
 	checke("Did not create directory", t, error)
 
-	lib2 := KeyLib{"test-output/locksmith"}
+	lib2 := KeyLib{"test-output/locksmith", nil}
 
 	keys, e := lib2.Keys()
 
