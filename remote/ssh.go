@@ -8,9 +8,7 @@ import (
 )
 
 
-func RetrieveKeys(server string, kchan chan keys.Key) {
-	fmt.Printf("Retrieving from %s\n", server)
-
+func RetrieveKeys(server string) []keys.Key {
 	cmd := exec.Command("ssh",
 		server,
 		"cat",
@@ -19,23 +17,28 @@ func RetrieveKeys(server string, kchan chan keys.Key) {
 	out, err := cmd.Output();
 	
 	if err != nil {
-		fmt.Printf("Failed to connect to %s: %s", server, err)
+		fmt.Printf("Failed to connect to %s: %s\n", server, err)
 	}
 
-	for _, line := range strings.Split(string(out), "\n") {
-		fmt.Println("Found line", line)
-		parseAuthorizedKey(line, kchan)
+	lines := strings.Split(string(out), "\n")
+
+	keys := make([]keys.Key,0)
+
+
+	for _, line := range lines {
+		key := parseAuthorizedKey(line)
+		if key != nil {
+			keys = append(keys, key)
+		}
 	}
 
+	return keys
 }
 
-func parseAuthorizedKey(line string, kchan chan keys.Key) {
-	fmt.Println("Parsing key")
+func parseAuthorizedKey(line string) keys.Key {
 	key := keys.New(line)
-	fmt.Println("Parsed key.  queuing")
 	if key != nil {
-		kchan <- key
-	} else {
-		fmt.Println("Key was nil")
+		return key
 	}
+	return nil
 }
