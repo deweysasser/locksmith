@@ -3,21 +3,23 @@ package keys
 import "io/ioutil"
 import "strings"
 
+type KeyID string
+
+type keyImpl struct {
+	Type        string
+	Ids         []KeyID
+	Names       []string
+	Deprecated  bool
+	Replacement KeyID
+}
+
 type Key interface {
 	Json() ([]byte, error)
-	Id() string
+	Id() KeyID
 	Ids() []string
 	GetNames() []string
 	IsDeprecated() bool
-	Replacement() string
-}
-
-type GenericKeyImpl struct {
-	Value string
-}
-
-type SshKeyImpl struct {
-	Type, KeyValue, Comment string
+	Replacement() KeyID
 }
 
 // Load the key from the given JSON
