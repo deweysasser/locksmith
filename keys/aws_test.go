@@ -10,6 +10,6 @@ func TestBasic(t *testing.T) {
 	var key Key
 	key = impl
 
-	assertStringsEquals(t, "12345", key.Id())
+	assertStringsEquals(t, "12345", string(key.Id()))
 
 }

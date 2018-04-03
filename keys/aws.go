@@ -11,15 +11,20 @@ type AWSKey struct {
 }
 
 func NewAwsKey(id string, secret string) *AWSKey {
-	return &AWSKey{keyImpl{"AWSKey",[]KeyID{KeyID(id)}, []string{}, false, ""}, id, "", true}
+	return &AWSKey{
+		keyImpl: keyImpl{
+			Type: "AWSKey",
+			Ids: []KeyID{KeyID(id)},
+			Names: []string{},
+			Deprecated: false,
+			Replacement: ""},
+		AwsKeyId: id,
+		AwsSecretKey: "",
+		Active: true}
 }
 
 func (key *AWSKey) GetNames() []string {
 	return key.Names
-}
-
-func (key *AWSKey) Id() string {
-	return key.AwsKeyId
 }
 
 func (key *AWSKey) Ids() []string {

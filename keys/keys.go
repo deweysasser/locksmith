@@ -16,10 +16,23 @@ type keyImpl struct {
 type Key interface {
 	Json() ([]byte, error)
 	Id() KeyID
-	Ids() []string
+	Identifiers() []KeyID
 	GetNames() []string
 	IsDeprecated() bool
-	Replacement() KeyID
+	ReplacementID() KeyID
+}
+
+func (key *keyImpl) Id() KeyID {
+	return key.Ids[0]
+}
+
+
+func (key *keyImpl) Identifiers() []KeyID {
+	return key.Ids
+}
+
+func (key *keyImpl) ReplacementID() KeyID {
+	return key.Replacement
 }
 
 // Load the key from the given JSON
