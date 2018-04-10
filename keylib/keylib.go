@@ -64,7 +64,7 @@ func (kl *KeyLib) Keys() ([]keys.Key, error) {
 	
 	keydir := kl.keypath()
 	files, error := ioutil.ReadDir(keydir)
-	fmt.Println("Reading", keydir)
+//	fmt.Println("Reading", keydir)
 
 	keylist := make([]keys.Key, 0)
 

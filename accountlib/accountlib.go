@@ -15,8 +15,8 @@ type Accountlib struct {
 }
 
 type KeyBinding struct {
-	Id string
-	Options []string
+	Id keys.KeyID
+//	Options []string
 	Comment string
 }
 
@@ -85,10 +85,10 @@ func (lib *Accountlib) Read(file string) {
 func (account *Account) SetKeys(keylist []keys.Key) {
 	bindings := make([]KeyBinding, 0)
 	for _, k := range(keylist) {
-		sk := k.(*keys.SSHPublicKey)
+		sk := k.(*keys.SSHKey)
 		bindings = append(bindings,
 			KeyBinding{Id: k.Id(),
-				Options: sk.Options,
+//				Options: sk.Options,
 				Comment: sk.Comments[0]})
 	}
 	account.Keys = bindings

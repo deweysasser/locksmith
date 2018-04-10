@@ -49,7 +49,7 @@ func CmdAdd(c *cli.Context) error {
 		close(kchan)
 	}()
 
-	count := make(map[string]keys.Key)
+	count := make(map[keys.KeyID]keys.Key)
 	
 	// Ingest the keys
 	for k := range(kchan) {
