@@ -8,10 +8,20 @@ import (
 	"strings"
 )
 
+/** An SSH key, public and (optionally) private
+*/
 type SSHKey struct {
 	keyImpl
 	PublicKey ssh.PublicKey
 	Comments []string
+}
+
+/* Use of a public key, e.g. in an authorized_keys file
+*/
+type SSHBinding struct {
+	Id KeyID
+	Comment string
+	Options []string
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
@@ -20,6 +30,10 @@ func NewSshKey(pub ssh.PublicKey) *SSHKey {
 
 func (key *SSHKey) String() string {
 	return fmt.Sprintf("%s %s %s", key.Type, key.Id(), strings.Join(key.Comments, ", "))
+}
+
+func (key *SSHKey) KeyType() string {
+	return key.PublicKey.Type()
 }
 
 func (key *SSHKey) Json() ([]byte, error) {
@@ -42,7 +56,7 @@ func publicKey(keytype, pub string) ssh.PublicKey {
 }
 
 func (key *SSHKey) PublicKeyString() string {
-	return ""
+	return string(ssh.MarshalAuthorizedKey(key.PublicKey))
 }
 
 func getId(pub ssh.PublicKey) KeyID {
