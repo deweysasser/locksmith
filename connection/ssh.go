@@ -2,29 +2,39 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/keys"
+	"github.com/deweysasser/locksmith/lib"
 	"fmt"
 	"strings"
 	"os/exec"
 )
 
-type SSHRemote struct {
-	server string
+
+type SSHHostConnection struct {
+	connection string
 }
 
-func NewSSHRemote(server string) *SSHRemote{
-	return &SSHRemote{server}
+func (c *SSHHostConnection) 	Fetch(alib *lib.Accountlib, klib *lib.KeyLib) {
+	fmt.Printf("Retrieving from %s\n", c.connection)
+
+	a := alib.EnsureAccount(c.connection)
+	keys := c.RetrieveKeys()
+	a.SetKeys(keys)
+	for _, k:= range(keys) {
+		klib.Ingest(k)
+	}
 }
 
-func (remote *SSHRemote) RetrieveKeys() []keys.Key {
+
+func (remote *SSHHostConnection) RetrieveKeys() []keys.Key {
 	cmd := exec.Command("ssh",
-		remote.server,
+		remote.connection,
 		"cat",
 		"~/.ssh/authorized_keys")
 
 	out, err := cmd.Output();
 	
 	if err != nil {
-		fmt.Printf("Failed to connect to %s: %s\n", remote.server, err)
+		fmt.Printf("Failed to connect to %s: %s\n", remote.connection, err)
 	}
 
 	lines := strings.Split(string(out), "\n")

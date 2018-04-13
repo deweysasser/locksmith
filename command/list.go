@@ -11,7 +11,7 @@ func CmdList(c *cli.Context) error {
 	keylib := lib.NewKeylib(datadir())
 	accountlib := lib.NewAccountlib(datadir())
 
-	keys, _ := keylib.Keys()
+	keys, _ := keylib.AllKeys()
 	accounts, _ := accountlib.GetAccounts()
 
 	filter := func(a string) bool {
@@ -31,7 +31,7 @@ func CmdList(c *cli.Context) error {
 		}
 	}
 
-	for _, key := range keys {
+	for key := range keys {
 		s := fmt.Sprintf("%s", key)
 		if filter(s) {
 			fmt.Println(s)

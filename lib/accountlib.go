@@ -10,7 +10,7 @@ import (
 )
 
 type Accountlib struct {
-	Path string
+	library
 	Accounts []Account
 }
 
@@ -21,14 +21,14 @@ type KeyBinding struct {
 }
 
 type Account struct {
-	Name string
 	Type string
+	Name string
 	Keys []KeyBinding
 	lib *Accountlib
 }
 
 func NewAccountlib(path string) *Accountlib {
-	return &Accountlib{path, []Account{}}
+	return &Accountlib{library{path}, []Account{}}
 }
 
 func (lib *Accountlib) EnsureAccount(name string) *Account {

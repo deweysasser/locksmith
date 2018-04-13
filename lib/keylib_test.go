@@ -14,9 +14,9 @@ func checke(message string, t *testing.T, e error) {
 }
 
 func TestKeyIngest(t *testing.T) {
-	os.RemoveAll("test-output/locksmith")
+	os.RemoveAll("test-output/keys")
 
-	lib := KeyLib{"test-output/locksmith", nil}
+	lib := NewKeylib("test-output/keys")
 
 	key := keys.Read("../keys/test-data/rsa.pub")
 
@@ -28,17 +28,29 @@ func TestKeyIngest(t *testing.T) {
 		t.Fatalf("Missing ingested key")
 	}
 
-	_, error := os.Stat("test-output/locksmith/keys/")
+	// TODO:  this should return an error code
+	lib.Save()
+
+//	checke("Error saving keys", t, e)
+
+	_, error := os.Stat("test-output/keys/")
 
 	checke("Did not create directory", t, error)
 
-	lib2 := KeyLib{"test-output/locksmith", nil}
+	lib2 := NewKeylib("test-output/keys")
 
-	keys, e := lib2.Keys()
+	keys, e := lib2.AllKeys()
 
 	checke("Failed to list keys", t, e)
 
-	if len(keys) != 1 {
+	var count int
+	for k := range(keys) {
+		if &k != nil{
+			count++
+		}
+	}
+
+	if count != 1 {
 		t.Fatalf(fmt.Sprintf("Expected 1 key, found %d keys", len(keys)))
 	}
 
