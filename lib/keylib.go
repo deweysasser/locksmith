@@ -1,7 +1,6 @@
-package keylib
+package lib
 
 import (
-	"fmt"
 	"github.com/deweysasser/locksmith/keys"
 	"io/ioutil"
 	"os"
@@ -13,15 +12,10 @@ type KeyLib struct {
 	keys []keys.Key
 }
 
-func New(path string) *KeyLib {
+func NewKeylib(path string) *KeyLib {
 	return &KeyLib{path, nil}
 }
 
-func check(reason string, e error) {
-	if e != nil {
-		panic(fmt.Sprintf("%s: %s", reason, e))
-	}
-}
 
 func (kl *KeyLib) keypath() string {
 	keypath := kl.Path + "/keys"

@@ -1,8 +1,7 @@
 package command
 
 import (
-	"github.com/deweysasser/locksmith/keylib"
-	"github.com/deweysasser/locksmith/accountlib"
+	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/keys"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/urfave/cli"
@@ -12,8 +11,8 @@ import (
 )
 
 func CmdAdd(c *cli.Context) error {
-	lib := keylib.New(datadir())
-	accounts := accountlib.New(datadir())
+	keylib := lib.NewKeylib(datadir())
+	accounts := lib.NewAccountlib(datadir())
 
 	kchan := make(chan keys.Key)
 
@@ -54,7 +53,7 @@ func CmdAdd(c *cli.Context) error {
 	// Ingest the keys
 	for k := range(kchan) {
 		count[k.Id()]=k
-		lib.Ingest(k)
+		keylib.Ingest(k)
 	}
 
 	fmt.Println(len(count), "keys found")

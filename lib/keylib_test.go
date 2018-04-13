@@ -1,4 +1,4 @@
-package keylib
+package lib
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package accountlib
+package lib
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type Account struct {
 	lib *Accountlib
 }
 
-func New(path string) *Accountlib {
+func NewAccountlib(path string) *Accountlib {
 	return &Accountlib{path, []Account{}}
 }
 
@@ -117,13 +117,6 @@ func (account *Account) Save() {
 	ioutil.WriteFile(file, json, 0644)
 
 }
-
-func check(reason string, e error) {
-	if e != nil {
-		panic(fmt.Sprintf("%s: %s", reason, e))
-	}
-}
-
 
 func (lib *Accountlib) accountpath() string {
 	accountpath := lib.Path + "/accounts"

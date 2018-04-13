@@ -1,4 +1,4 @@
-package accountlib
+package lib
 
 import (
 	"github.com/deweysasser/locksmith/keys"
@@ -23,7 +23,7 @@ func failError(t *testing.T, msg string, e error) {
 }
 
 func TestEmptyAccountlib(t *testing.T) {
-	lib := New("test-output-missing")
+	lib := NewAccountlib("test-output-missing")
 	accounts, err  := lib.GetAccounts()
 
 	failError(t, "Failed to read accounts", err)
@@ -32,7 +32,7 @@ func TestEmptyAccountlib(t *testing.T) {
 }
 
 func TestAccountlibBasic(t *testing.T) {
-	lib := New("test-output")
+	lib := NewAccountlib("test-output")
 
 	acc := lib.EnsureAccount("testing.example.com")
 
@@ -45,7 +45,7 @@ func TestAccountlibBasic(t *testing.T) {
 		t.Error("Falied to save file")
 	}
 
-	lib2 := New("test-output")
+	lib2 := NewAccountlib("test-output")
 
 	accounts, err := lib2.GetAccounts()
 
