@@ -1,4 +1,4 @@
-package remote
+package connection
 
 import (
 	"github.com/deweysasser/locksmith/keys"
@@ -7,17 +7,24 @@ import (
 	"os/exec"
 )
 
+type SSHRemote struct {
+	server string
+}
 
-func RetrieveKeys(server string) []keys.Key {
+func NewSSHRemote(server string) *SSHRemote{
+	return &SSHRemote{server}
+}
+
+func (remote *SSHRemote) RetrieveKeys() []keys.Key {
 	cmd := exec.Command("ssh",
-		server,
+		remote.server,
 		"cat",
 		"~/.ssh/authorized_keys")
 
 	out, err := cmd.Output();
 	
 	if err != nil {
-		fmt.Printf("Failed to connect to %s: %s\n", server, err)
+		fmt.Printf("Failed to connect to %s: %s\n", remote.server, err)
 	}
 
 	lines := strings.Split(string(out), "\n")

@@ -4,7 +4,7 @@ import (
 	"github.com/deweysasser/locksmith/keylib"
 	"github.com/deweysasser/locksmith/accountlib"
 	"github.com/deweysasser/locksmith/keys"
-	"github.com/deweysasser/locksmith/remote"
+	"github.com/deweysasser/locksmith/connection"
 	"github.com/urfave/cli"
 	"os"
 	"fmt"
@@ -16,7 +16,6 @@ func CmdAdd(c *cli.Context) error {
 	accounts := accountlib.New(datadir())
 
 	kchan := make(chan keys.Key)
-
 
 
 	wg := sync.WaitGroup{}
@@ -33,8 +32,9 @@ func CmdAdd(c *cli.Context) error {
 			go func (server string) {
 				fmt.Printf("Retrieving from %s\n", server)
 
+				rsystem := connection.NewSSHRemote(server)
 				a := accounts.EnsureAccount(server)
-				keys := remote.RetrieveKeys(server)
+				keys := rsystem.RetrieveKeys()
 				a.SetKeys(keys)
 				for _, k:= range(keys) {
 					kchan <- k

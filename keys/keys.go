@@ -1,7 +1,10 @@
 package keys
 
-import "io/ioutil"
-import "strings"
+import (
+	"encoding/json"
+	"io/ioutil"
+	"strings"
+)
 
 type KeyID string
 
@@ -26,6 +29,10 @@ func (key *keyImpl) Id() KeyID {
 	return key.Ids[0]
 }
 
+func (key *keyImpl) GetNames() []string {
+	return key.Names
+}
+
 
 func (key *keyImpl) Identifiers() []KeyID {
 	return key.Ids
@@ -35,10 +42,18 @@ func (key *keyImpl) ReplacementID() KeyID {
 	return key.Replacement
 }
 
+
 // Load the key from the given JSON
-func ReadJson(json []byte) Key {
+func ReadJson(bytes []byte) Key {
+	var key keyImpl
+	json.Unmarshal(bytes, &key)
+	
+	switch key.Type {
 	// For now, SSH key is the only kind
-	return SSHLoadJson(json)
+	case "SSHKey":
+		return SSHLoadJson(bytes)
+	}
+	return nil
 }
 
 func LoadJsonFile(path string) Key {
