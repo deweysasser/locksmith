@@ -1,8 +1,8 @@
 package connection
 
 import (
-	"github.com/deweysasser/locksmith/keys"
-	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"strings"
 	"os/exec"
@@ -13,7 +13,7 @@ type SSHHostConnection struct {
 	connection string
 }
 
-func (c *SSHHostConnection) 	Fetch(alib *lib.Accountlib, klib *lib.KeyLib) {
+func (c *SSHHostConnection) 	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib) {
 	fmt.Printf("Retrieving from %s\n", c.connection)
 
 	a := alib.EnsureAccount(c.connection)
@@ -25,7 +25,7 @@ func (c *SSHHostConnection) 	Fetch(alib *lib.Accountlib, klib *lib.KeyLib) {
 }
 
 
-func (remote *SSHHostConnection) RetrieveKeys() []keys.Key {
+func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	cmd := exec.Command("ssh",
 		remote.connection,
 		"cat",
@@ -39,7 +39,7 @@ func (remote *SSHHostConnection) RetrieveKeys() []keys.Key {
 
 	lines := strings.Split(string(out), "\n")
 
-	keys := make([]keys.Key,0)
+	keys := make([]data.Key,0)
 
 
 	for _, line := range lines {
@@ -52,8 +52,8 @@ func (remote *SSHHostConnection) RetrieveKeys() []keys.Key {
 	return keys
 }
 
-func parseAuthorizedKey(line string) keys.Key {
-	key := keys.New(line)
+func parseAuthorizedKey(line string) data.Key {
+	key := data.New(line)
 	if key != nil {
 		return key
 	}

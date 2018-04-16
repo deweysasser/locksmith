@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/oldlib"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/urfave/cli"
 //	"os"
@@ -10,7 +10,7 @@ import (
 )
 
 func CmdAdd(c *cli.Context) error {
-	library := lib.NewLibrary(datadir())
+	library := oldlib.NewLibrary(datadir())
 	keylib := library.Keylib()
 	accounts := library.Accountlib()
 

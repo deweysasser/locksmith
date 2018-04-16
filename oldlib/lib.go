@@ -1,4 +1,4 @@
-package lib
+package oldlib
 
 import (
 	"sync"

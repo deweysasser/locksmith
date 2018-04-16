@@ -1,9 +1,9 @@
 package connection
 
 import (
-	"github.com/deweysasser/locksmith/keys"
+	"github.com/deweysasser/locksmith/data"
 )
 
 type Remote interface {
-	RetrieveKeys() []keys.Key
+	RetrieveKeys() []data.Key
 }

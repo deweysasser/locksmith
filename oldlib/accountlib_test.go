@@ -1,7 +1,7 @@
-package lib
+package oldlib
 
 import (
-	"github.com/deweysasser/locksmith/keys"
+	"github.com/deweysasser/locksmith/data"
 	"os"
 	"testing"
 )
@@ -36,9 +36,9 @@ func TestAccountlibBasic(t *testing.T) {
 
 	acc := lib.EnsureAccount("testing.example.com")
 
-	key := keys.Read("../keys/test-data/rsa.pub")
+	key := data.Read("../data/test-data/rsa.pub")
 
-	acc.SetKeys([]keys.Key{key})
+	acc.SetKeys([]data.Key{key})
 
 	_, err := os.Stat("test-output/accounts/SSH/testing.example.com.json")
 	if err != nil {

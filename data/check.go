@@ -1,4 +1,4 @@
-package keys
+package data
 
 func check(e error) {
 	if e != nil {

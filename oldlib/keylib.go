@@ -1,7 +1,7 @@
-package lib
+package oldlib
 
 import (
-	"github.com/deweysasser/locksmith/keys"
+	"github.com/deweysasser/locksmith/data"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -10,17 +10,17 @@ import (
 
 type KeyLib struct {
 	library
-	keys map[keys.KeyID]keys.Key
+	keys map[data.KeyID]data.Key
 	lock sync.Mutex
 }
 
 func NewKeylib(path string) *KeyLib {
-	return &KeyLib{library{path}, make(map[keys.KeyID]keys.Key), sync.Mutex{}}
+	return &KeyLib{library{path}, make(map[data.KeyID]data.Key), sync.Mutex{}}
 }
 
 
 func (kl *KeyLib) keypath() string {
-	keypath := kl.Path + "/keys"
+	keypath := kl.Path + "/data"
 	_, err := os.Stat(keypath)
 
 	if err != nil {
@@ -31,12 +31,12 @@ func (kl *KeyLib) keypath() string {
 	return keypath
 }
 
-func (k *KeyLib) IngestFile(path string) (keys.Key, error) {
-	key := keys.Read(path)
+func (k *KeyLib) IngestFile(path string) (data.Key, error) {
+	key := data.Read(path)
 	return k.Ingest(key)
 }
 
-func (kl *KeyLib) Ingest(key keys.Key) (keys.Key, error) {
+func (kl *KeyLib) Ingest(key data.Key) (data.Key, error) {
 	kl.keys[key.Id()]=key
 	return key, nil
 }
@@ -51,7 +51,7 @@ func (kl *KeyLib) Save() {
 	}
 }
 
-func saveKey(k keys.Key, keyfile string) (keys.Key, error) {
+func saveKey(k data.Key, keyfile string) (data.Key, error) {
 	json, error := k.Json()
 	if error != nil {
 		return nil, error
@@ -61,8 +61,8 @@ func saveKey(k keys.Key, keyfile string) (keys.Key, error) {
 	return k, nil
 }
 
-func (kl *KeyLib) AllKeys() (chan keys.Key, error) {
-	c:= make(chan keys.Key)
+func (kl *KeyLib) AllKeys() (chan data.Key, error) {
+	c:= make(chan data.Key)
 	
 	keydir := kl.keypath()
 	files, error := ioutil.ReadDir(keydir)
@@ -75,7 +75,7 @@ func (kl *KeyLib) AllKeys() (chan keys.Key, error) {
 	go func() {
 		for _, path := range files {
 			readpath := keydir + "/" + path.Name()
-			c <- keys.LoadJsonFile(readpath)
+			c <- data.LoadJsonFile(readpath)
 		}
 		close(c)
 	}()

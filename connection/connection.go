@@ -1,8 +1,8 @@
 package connection
 
 import (
-	"github.com/deweysasser/locksmith/keys"
-	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"os"
 )
@@ -11,15 +11,15 @@ type SSHFileConnection struct {
 	path string
 }
 
-func (c *SSHFileConnection) Fetch(alib *lib.Accountlib, klib *lib.KeyLib){
+func (c *SSHFileConnection) Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib){
 	fmt.Println("Reading", c.path)
-	k := keys.Read(c.path)
+	k := data.Read(c.path)
 	klib.Ingest(k)
 }
 
 
 type Connection interface {
-	Fetch(alib *lib.Accountlib, klib *lib.KeyLib)
+	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib)
 }
 
 func Create(a string) Connection {

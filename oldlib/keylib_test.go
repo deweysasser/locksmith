@@ -1,8 +1,8 @@
-package lib
+package oldlib
 
 import (
 	"fmt"
-	"github.com/deweysasser/locksmith/keys"
+	"github.com/deweysasser/locksmith/data"
 	"os"
 	"testing"
 )
@@ -14,11 +14,11 @@ func checke(message string, t *testing.T, e error) {
 }
 
 func TestKeyIngest(t *testing.T) {
-	os.RemoveAll("test-output/keys")
+	os.RemoveAll("test-output/data")
 
-	lib := NewKeylib("test-output/keys")
+	lib := NewKeylib("test-output/data")
 
-	key := keys.Read("../keys/test-data/rsa.pub")
+	key := data.Read("../data/test-data/rsa.pub")
 
 	k, e := lib.Ingest(key)
 
@@ -31,17 +31,17 @@ func TestKeyIngest(t *testing.T) {
 	// TODO:  this should return an error code
 	lib.Save()
 
-//	checke("Error saving keys", t, e)
+//	checke("Error saving data", t, e)
 
-	_, error := os.Stat("test-output/keys/")
+	_, error := os.Stat("test-output/data/")
 
 	checke("Did not create directory", t, error)
 
-	lib2 := NewKeylib("test-output/keys")
+	lib2 := NewKeylib("test-output/data")
 
 	keys, e := lib2.AllKeys()
 
-	checke("Failed to list keys", t, e)
+	checke("Failed to list data", t, e)
 
 	var count int
 	for k := range(keys) {
@@ -51,7 +51,7 @@ func TestKeyIngest(t *testing.T) {
 	}
 
 	if count != 1 {
-		t.Fatalf(fmt.Sprintf("Expected 1 key, found %d keys", len(keys)))
+		t.Fatalf(fmt.Sprintf("Expected 1 key, found %d data", len(keys)))
 	}
 
 }

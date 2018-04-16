@@ -1,8 +1,7 @@
-package lib
+package oldlib
 
 import (
 	"fmt"
-	"github.com/deweysasser/locksmith/keys"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -14,29 +13,17 @@ type Accountlib struct {
 	Accounts []Account
 }
 
-type KeyBinding struct {
-	Id keys.KeyID
-//	Options []string
-	Comment string
-}
-
-type Account struct {
-	Type string
-	Name string
-	Keys []KeyBinding
-	lib *Accountlib
-}
 
 func NewAccountlib(path string) *Accountlib {
 	return &Accountlib{library{path}, []Account{}}
 }
 
 func (lib *Accountlib) EnsureAccount(name string) *Account {
-	a := &Account{Name: name, Type: "SSH"}
+	a := Account{Name: name, Type: "SSH"}
 
-	a.lib = lib
+	lib.Accounts = append(lib.Accounts, a)
 
-	return a
+	return &a
 }
 
 func (lib *Accountlib) GetAccounts() ([]Account, error) {
@@ -81,42 +68,6 @@ func (lib *Accountlib) Read(file string) {
 	lib.Accounts = append(lib.Accounts, acc)
 }
 
-
-func (account *Account) SetKeys(keylist []keys.Key) {
-	bindings := make([]KeyBinding, 0)
-	for _, k := range(keylist) {
-		sk := k.(*keys.SSHKey)
-		bindings = append(bindings,
-			KeyBinding{Id: k.Id(),
-//				Options: sk.Options,
-				Comment: sk.Comments[0]})
-	}
-	account.Keys = bindings
-	account.Save()
-	return
-}
-
-
-func (account *Account) Save() {
-	path := fmt.Sprintf("%s/%s", account.lib.accountpath(),
-		account.Type)
-
-	_, err := os.Stat(path)
-
-	if err != nil {
-		e := os.MkdirAll(path, 755)
-		check("Failed to create dir", e)
-	}
-
-	file := fmt.Sprintf("%s/%s.json", path, account.Name)
-
-	json, err := json.MarshalIndent(account, "", "  ")
-
-	check("Failed to marshal account", err)
-
-	ioutil.WriteFile(file, json, 0644)
-
-}
 
 func (lib *Accountlib) accountpath() string {
 	accountpath := lib.Path + "/accounts"

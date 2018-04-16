@@ -2,14 +2,14 @@ package command
 
 import (
 	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/lib"	
+	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"strings"
 )
 
 func CmdList(c *cli.Context) error {
-	keylib := lib.NewKeylib(datadir())
-	accountlib := lib.NewAccountlib(datadir())
+	keylib := oldlib.NewKeylib(datadir())
+	accountlib := oldlib.NewAccountlib(datadir())
 
 	keys, _ := keylib.AllKeys()
 	accounts, _ := accountlib.GetAccounts()
