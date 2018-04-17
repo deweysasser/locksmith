@@ -14,7 +14,7 @@ func (e *entry) IdString() string{
 	return e.Id
 }
 
-func createEntry(id string, bytes []byte) (Storable, error) {
+func createEntry(id string, bytes []byte) (interface{}, error) {
 	e := new(entry)
 	err := json.Unmarshal(bytes, &e)
 
@@ -45,16 +45,16 @@ func checkStringEquals(t *testing.T, message, s1, s2 string) {
 func TestLibrary(t *testing.T)  {
 	lib := new(library)
 	lib.Path = testdir
-	lib.deserialize = createEntry
+	lib.deserializer = createEntry
 
 	e := entry{"id1", "testing1"}
 
-	lib.store(&e)
+	lib.Store(&e)
 
 	_, err := os.Stat(testdir + "/id1.json")
 	check(t, err, "File does not exist")
 
-	e2, err := lib.fetch("id1")
+	e2, err := lib.Fetch("id1")
 
 	check(t, err, "Failed to restore")
 
@@ -64,38 +64,35 @@ func TestLibrary(t *testing.T)  {
 
 func TestSave(t *testing.T)  {
 	lib := new(library)
-	lib.Path = testdir
-	lib.deserialize = createEntry
+	lib.Init(testdir, nil, createEntry)
 
 	e := entry{"id1", "testing1"}
 
-	lib.store(&e)
+	lib.Store(&e)
 
 	_, err := os.Stat(testdir + "/id1.json")
 	check(t, err, "File does not exist")
 
 	lib2 := new(library)
-	lib2.Path = testdir
-	lib2.deserialize = createEntry
+	lib2.Init(testdir, nil, createEntry)
 
-
-	e2, err := lib2.fetch("id1")
+	e2, err := lib2.Fetch("id1")
 
 	check(t, err, "Failed to restore")
 
 	checkStringEquals(t, "Failed to restore correct content", e.Content, e2.(*entry).Content)
 
-	_, err2 := lib.fetch("id2")
+	_, err2 := lib.Fetch("id2")
 	if err2 == nil {
 		t.Error("Should have failed to find")
 	}
 
-	s, err2 := lib.ensure("id2")
+	s, err2 := lib.Ensure("id2")
 
 	check(t, err2, "Ensure errored")
 
-	if s.IdString() != "id2" {
-		t.Error("Wrong ID: " + s.IdString())
+	if s.(*entry).IdString() != "id2" {
+		t.Error("Wrong ID: " + s.(*entry).IdString())
 	}
 
 	if s.(*entry).Content != "" {
