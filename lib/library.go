@@ -33,7 +33,7 @@ type Library interface {
 	// Ensure that the object exists
 	Ensure(id string) (interface{}, error)
 	// Delete the object with the given ID from the disk
-	Delete(id string)
+	Delete(id string) error
 }
 
 func (l *library) Init(path string, ider Ider, deserializer Deserializer) {

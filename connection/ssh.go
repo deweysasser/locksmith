@@ -10,13 +10,14 @@ import (
 
 
 type SSHHostConnection struct {
-	connection string
+	Type       string
+	Connection string
 }
 
 func (c *SSHHostConnection) 	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib) {
-	fmt.Printf("Retrieving from %s\n", c.connection)
+	fmt.Printf("Retrieving from %s\n", c.Connection)
 
-	a := alib.EnsureAccount(c.connection)
+	a := alib.EnsureAccount(c.Connection)
 	keys := c.RetrieveKeys()
 	a.SetKeys(keys)
 	for _, k:= range(keys) {
@@ -27,14 +28,14 @@ func (c *SSHHostConnection) 	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib)
 
 func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	cmd := exec.Command("ssh",
-		remote.connection,
+		remote.Connection,
 		"cat",
 		"~/.ssh/authorized_keys")
 
 	out, err := cmd.Output();
 	
 	if err != nil {
-		fmt.Printf("Failed to connect to %s: %s\n", remote.connection, err)
+		fmt.Printf("Failed to connect to %s: %s\n", remote.Connection, err)
 	}
 
 	lines := strings.Split(string(out), "\n")
