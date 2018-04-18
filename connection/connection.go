@@ -12,6 +12,10 @@ type SSHFileConnection struct {
 	Path string
 }
 
+func (c *SSHFileConnection) String() string {
+	return "file://" + c.Path
+}
+
 func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account){
 	fmt.Println("Reading", c.Path)
 	k := data.Read(c.Path)

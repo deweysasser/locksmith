@@ -13,6 +13,10 @@ type SSHHostConnection struct {
 	Connection string
 }
 
+func (c *SSHHostConnection) String() string {
+	return "ssh://" + c.Connection
+}
+
 func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account) {
 	fmt.Printf("Retrieving from %s\n", c.Connection)
 
