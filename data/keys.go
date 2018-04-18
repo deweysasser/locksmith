@@ -16,6 +16,20 @@ type keyImpl struct {
 	Replacement KeyID
 }
 
+type BindingType int
+
+const(
+	EXISTS BindingType = iota
+	PENDING_ADD BindingType = iota
+	PENDING_DELETE BindingType = iota
+)
+
+type KeyBinding struct {
+	KeyID KeyID
+	AccountID ID
+	Type BindingType
+}
+
 type Key interface {
 	Json() ([]byte, error)
 	Id() KeyID

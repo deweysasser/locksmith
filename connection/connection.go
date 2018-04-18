@@ -22,9 +22,13 @@ func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account
 	keys <- k
 }
 
+func (c *SSHFileConnection) Id() data.ID {
+	return data.IdFromString(c.Path)
+}
 
 type Connection interface {
 	Fetch(keys chan data.Key, accounts chan data.Account)
+	Id() data.ID
 }
 
 func Create(a string) Connection {

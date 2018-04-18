@@ -13,6 +13,10 @@ type SSHHostConnection struct {
 	Connection string
 }
 
+func (c *SSHHostConnection) Id() data.ID {
+	return data.IdFromString(c.Connection)
+}
+
 func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
@@ -20,13 +24,16 @@ func (c *SSHHostConnection) String() string {
 func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account) {
 	fmt.Printf("Retrieving from %s\n", c.Connection)
 
-	cAccounts <- data.Account{"SSH", c.Connection}
+	acct := data.Account{"SSH", c.Connection, c.Id(), nil}
 
 	keys := c.RetrieveKeys()
 	//a.SetKeys(keys)
 	for _, k:= range(keys) {
+		acct.AddBinding(k)
 		cKeys <- k
 	}
+
+	cAccounts <- acct
 }
 
 
