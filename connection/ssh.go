@@ -13,8 +13,10 @@ type SSHHostConnection struct {
 	Connection string
 }
 
-func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key) {
+func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account) {
 	fmt.Printf("Retrieving from %s\n", c.Connection)
+
+	cAccounts <- data.Account{"SSH", c.Connection}
 
 	keys := c.RetrieveKeys()
 	//a.SetKeys(keys)

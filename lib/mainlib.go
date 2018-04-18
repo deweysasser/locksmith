@@ -9,6 +9,7 @@ type MainLibrary struct {
 	Path string
 	connections Library
 	keys Library
+	accounts Library
 }
 
 func (l *MainLibrary) Connections() Library {
@@ -31,12 +32,29 @@ func (l *MainLibrary) Keys() Library {
 	return l.keys
 }
 
+func (l *MainLibrary) Accounts() Library {
+	if l.accounts == nil {
+		klib := new(library)
+		klib.Init(l.Path + "/accounts", accountid, loadaccount)
+		l.accounts = klib
+	}
+
+	return l.accounts
+}
+
+func loadaccount(id string, bytes []byte) (interface{}, error) {
+	return data.LoadAccount(bytes)
+}
+
 func loadkey(id string, bytes []byte) (interface{}, error) {
 	k := data.ReadJson(bytes)
 
 	return k , nil
 }
 
+func accountid(account interface{}) string {
+	return hashString(account.(data.Account).Name)
+}
 func keyid(key interface{}) string {
 	return string(key.(data.Key).Id())
 }

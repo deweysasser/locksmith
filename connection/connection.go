@@ -12,7 +12,7 @@ type SSHFileConnection struct {
 	Path string
 }
 
-func (c *SSHFileConnection) Fetch(keys chan data.Key){
+func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account){
 	fmt.Println("Reading", c.Path)
 	k := data.Read(c.Path)
 	keys <- k
@@ -20,7 +20,7 @@ func (c *SSHFileConnection) Fetch(keys chan data.Key){
 
 
 type Connection interface {
-	Fetch(keys chan data.Key)
+	Fetch(keys chan data.Key, accounts chan data.Account)
 }
 
 func Create(a string) Connection {
