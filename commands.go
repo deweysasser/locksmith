@@ -18,6 +18,12 @@ var Commands = []cli.Command{
 		Flags:  []cli.Flag{},
 	},
 	{
+		Name:   "fetch",
+		Usage:  "",
+		Action: command.CmdFetch,
+		Flags:  []cli.Flag{},
+	},
+	{
 		Name:   "list",
 		Usage:  "",
 		Action: command.CmdList,

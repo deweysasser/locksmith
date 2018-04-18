@@ -2,7 +2,6 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/data"
-	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"os"
 	"encoding/json"
@@ -13,15 +12,15 @@ type SSHFileConnection struct {
 	Path string
 }
 
-func (c *SSHFileConnection) Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib){
+func (c *SSHFileConnection) Fetch(keys chan data.Key){
 	fmt.Println("Reading", c.Path)
 	k := data.Read(c.Path)
-	klib.Ingest(k)
+	keys <- k
 }
 
 
 type Connection interface {
-	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib)
+	Fetch(keys chan data.Key)
 }
 
 func Create(a string) Connection {
@@ -41,7 +40,7 @@ func Deserialize(id string, bytes []byte) (interface{}, error) {
 	case "SSHFileConnection":
 		n = new(SSHFileConnection)
 	case "SSHHostConnection":
-		n =  new(SSHFileConnection)
+		n =  new(SSHHostConnection)
 	}
 
 	e := json.Unmarshal(bytes, n)

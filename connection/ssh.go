@@ -2,7 +2,6 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/data"
-	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"strings"
 	"os/exec"
@@ -14,14 +13,13 @@ type SSHHostConnection struct {
 	Connection string
 }
 
-func (c *SSHHostConnection) 	Fetch(alib *oldlib.Accountlib, klib *oldlib.KeyLib) {
+func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key) {
 	fmt.Printf("Retrieving from %s\n", c.Connection)
 
-	a := alib.EnsureAccount(c.Connection)
 	keys := c.RetrieveKeys()
-	a.SetKeys(keys)
+	//a.SetKeys(keys)
 	for _, k:= range(keys) {
-		klib.Ingest(k)
+		cKeys <- k
 	}
 }
 

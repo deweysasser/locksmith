@@ -121,7 +121,7 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 		l.cache[id]=o
 	}
 
-	fmt.Printf("Read %s\n", o)
+	//fmt.Printf("Read %s\n", o)
 	return o, e
 }
 
@@ -152,6 +152,7 @@ func (l *library) Delete(id string) error {
 }
 
 func (lib *library) List() (c chan interface{}) {
+	//fmt.Println("Fetching connections from ", lib.Path)
 	c = make(chan interface{})
 
 	_, error := os.Stat(lib.Path)
@@ -163,7 +164,7 @@ func (lib *library) List() (c chan interface{}) {
 
 	files, error := ioutil.ReadDir(lib.Path)
 
-	fmt.Println("Reading files in ", lib.Path)
+	//fmt.Println("Reading files in ", lib.Path)
 
 	if error != nil {
 		close(c)
@@ -181,7 +182,9 @@ func readFiles(lib *library, files []os.FileInfo, c chan interface{}) {
 		path := lib.Path + "/" + f.Name()
 		//fmt.Println("Reading from ", path)
 		o, e :=lib.fetchFrom("", path)
-		if e != nil {
+
+		if e == nil {
+			//fmt.Println("Enqueuing ", o)
 			c <- o
 		}
 
