@@ -12,39 +12,15 @@ var GlobalFlags = []cli.Flag{}
 
 var Commands = []cli.Command{
 	{
-		Name:   "add",
+		Name:   "connect",
 		Usage:  "",
-		Action: command.CmdAdd,
+		Action: command.CmdConnect,
 		Flags:  []cli.Flag{},
 	},
 	{
 		Name:   "list",
 		Usage:  "",
 		Action: command.CmdList,
-		Flags:  []cli.Flag{},
-	},
-	{
-		Name:   "refresh",
-		Usage:  "",
-		Action: command.CmdRefresh,
-		Flags:  []cli.Flag{},
-	},
-	{
-		Name:   "deploy",
-		Usage:  "",
-		Action: command.CmdDeploy,
-		Flags:  []cli.Flag{},
-	},
-	{
-		Name:   "deprecate",
-		Usage:  "",
-		Action: command.CmdDeprecate,
-		Flags:  []cli.Flag{},
-	},
-	{
-		Name:   "forget",
-		Usage:  "",
-		Action: command.CmdForget,
 		Flags:  []cli.Flag{},
 	},
 }

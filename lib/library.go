@@ -34,6 +34,8 @@ type Library interface {
 	Ensure(id string) (interface{}, error)
 	// Delete the object with the given ID from the disk
 	Delete(id string) error
+	// List the objects
+	List() chan interface{}
 }
 
 func (l *library) Init(path string, ider Ider, deserializer Deserializer) {
@@ -103,6 +105,10 @@ func (l *library) Store(o interface{}) error {
 
 func (l *library) Fetch(id string) (interface{}, error) {
 	path := fmt.Sprintf("%s/%s.json", l.Path, id)
+	return l.fetchFrom(id, path)
+}
+
+func (l *library) fetchFrom(id, path string) (interface{}, error) {
 
 	bytes, e := ioutil.ReadFile(path)
 	if e != nil {
@@ -115,6 +121,7 @@ func (l *library) Fetch(id string) (interface{}, error) {
 		l.cache[id]=o
 	}
 
+	fmt.Printf("Read %s\n", o)
 	return o, e
 }
 
@@ -142,4 +149,41 @@ func (l *library) Delete(id string) error {
 	path := fmt.Sprintf("%s/%s.json", l.Path, id)
 
 	return os.Remove(path)
+}
+
+func (lib *library) List() (c chan interface{}) {
+	c = make(chan interface{})
+
+	_, error := os.Stat(lib.Path)
+
+	if error != nil {
+		close(c)
+		return
+	}
+
+	files, error := ioutil.ReadDir(lib.Path)
+
+	fmt.Println("Reading files in ", lib.Path)
+
+	if error != nil {
+		close(c)
+		return
+	}
+
+	go readFiles(lib, files, c)
+	return
+}
+
+func readFiles(lib *library, files []os.FileInfo, c chan interface{}) {
+	defer close(c)
+
+	for _, f := range(files) {
+		path := lib.Path + "/" + f.Name()
+		//fmt.Println("Reading from ", path)
+		o, e :=lib.fetchFrom("", path)
+		if e != nil {
+			c <- o
+		}
+
+	}
 }

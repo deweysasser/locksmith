@@ -2,17 +2,14 @@ package command
 
 import (
 	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/oldlib"
 	"fmt"
 	"strings"
+	"github.com/deweysasser/locksmith/lib"
 )
 
 func CmdList(c *cli.Context) error {
-	keylib := oldlib.NewKeylib(datadir())
-	accountlib := oldlib.NewAccountlib(datadir())
+	ml := lib.MainLibrary{Path: datadir()}
 
-	keys, _ := keylib.AllKeys()
-	accounts, _ := accountlib.GetAccounts()
 
 	filter := func(a string) bool {
 		return true
@@ -31,15 +28,8 @@ func CmdList(c *cli.Context) error {
 		}
 	}
 
-	for key := range keys {
-		s := fmt.Sprintf("%s", key)
-		if filter(s) {
-			fmt.Println(s)
-		}
-	}
-
-	for _, account := range accounts {
-		s := fmt.Sprintf("%s", account)
+	for i:= range ml.Connections().List() {
+		s := fmt.Sprintf("%s", i)
 		if filter(s) {
 			fmt.Println(s)
 		}
