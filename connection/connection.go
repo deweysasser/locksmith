@@ -3,6 +3,7 @@ package connection
 import (
 	"github.com/deweysasser/locksmith/data"
 	"fmt"
+	"sync"
 	"os"
 	"encoding/json"
 )
@@ -16,7 +17,7 @@ func (c *SSHFileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account){
+func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account, group *sync.WaitGroup){
 	fmt.Println("Reading", c.Path)
 	k := data.Read(c.Path)
 	keys <- k
@@ -27,10 +28,12 @@ func (c *SSHFileConnection) Id() data.ID {
 }
 
 type Connection interface {
-	Fetch(keys chan data.Key, accounts chan data.Account)
+	Fetch(keys chan data.Key, accounts chan data.Account, group *sync.WaitGroup)
 	Id() data.ID
 }
 
+/** Determine the proper type of connection from the string given and create it
+ */
 func Create(a string) Connection {
 	if info, _ := os.Stat(a); info != nil {
 		return &SSHFileConnection{ "SSHFileConnection", a}

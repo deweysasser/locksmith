@@ -10,12 +10,12 @@ import (
 
 type KeyLib struct {
 	library
-	keys map[data.KeyID]data.Key
+	keys map[data.ID]data.Key
 	lock sync.Mutex
 }
 
 func NewKeylib(path string) *KeyLib {
-	return &KeyLib{library{path}, make(map[data.KeyID]data.Key), sync.Mutex{}}
+	return &KeyLib{library{path}, make(map[data.ID]data.Key), sync.Mutex{}}
 }
 
 

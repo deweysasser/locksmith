@@ -14,7 +14,7 @@ func NewAwsKey(id string, secret string) *AWSKey {
 	return &AWSKey{
 		keyImpl: keyImpl{
 			Type: "AWSKey",
-			Ids: []KeyID{KeyID(id)},
+			Ids: []ID{ID(id)},
 			Names: []string{},
 			Deprecated: false,
 			Replacement: ""},
@@ -39,6 +39,6 @@ func (key *AWSKey) Json() ([]byte, error) {
 	return json.MarshalIndent(key, "", "  ")
 }
 
-func (key *AWSKey) Replacement() KeyID {
+func (key *AWSKey) Replacement() ID {
 	return ""
 }

@@ -19,13 +19,13 @@ type SSHKey struct {
 /* Use of a public key, e.g. in an authorized_keys file
 */
 type SSHBinding struct {
-	Id KeyID
+	Id      ID
 	Comment string
 	Options []string
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey", []KeyID{getId(pub)}, []string{}, false, ""}, pub, []string{}}
+	return &SSHKey{keyImpl{"SSHKey", []ID{getId(pub)}, []string{}, false, ""}, pub, []string{}}
 }
 
 func (key *SSHKey) String() string {
@@ -44,7 +44,7 @@ func (key *SSHKey) IsDeprecated() bool {
 	return false
 }
 
-func (key *SSHKey) Replacement() KeyID {
+func (key *SSHKey) Replacement() ID {
 	return ""
 }
 
@@ -59,8 +59,8 @@ func (key *SSHKey) PublicKeyString() string {
 	return string(ssh.MarshalAuthorizedKey(key.PublicKey))
 }
 
-func getId(pub ssh.PublicKey) KeyID {
-	return KeyID(ssh.FingerprintSHA256(pub))
+func getId(pub ssh.PublicKey) ID {
+	return ID(ssh.FingerprintSHA256(pub))
 }
 
 func (key *SSHKey) GetNames() []string {
@@ -76,7 +76,7 @@ func parseSshPrivateKey(content string) Key {
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type: "SSHKey",
-			Ids: []KeyID{id},
+			Ids: []ID{id},
 			Names: []string{},
 			Deprecated: false,
 			Replacement: "" },
@@ -91,7 +91,7 @@ func parseSshPublicKey(content string) Key {
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type: "SSHKey",
-			Ids: []KeyID{getId(pub)},
+			Ids: []ID{getId(pub)},
 			Names: []string{},
 			Deprecated: false,
 			Replacement: "" },

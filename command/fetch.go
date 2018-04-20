@@ -31,7 +31,7 @@ func CmdFetch(c *cli.Context) error {
 			wgConnections.Add(1)
 			go func (c interface{}) {
 				defer wgConnections.Done()
-				fetchFrom(c, keys, cAccounts)
+				fetchFrom(c, keys, cAccounts, &wgConnections)
 			}(conn)
 		}
 	}
@@ -43,11 +43,11 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func fetchFrom(conn interface{}, keys chan data.Key, accounts chan data.Account) {
+func fetchFrom(conn interface{}, keys chan data.Key, accounts chan data.Account, group *sync.WaitGroup) {
 	switch conn.(type) {
 	case connection.Connection:
 			//fmt.Println("Fetching from ", conn)
-			conn.(connection.Connection).Fetch(keys, accounts)
+			conn.(connection.Connection).Fetch(keys, accounts, group)
 	}
 }
 

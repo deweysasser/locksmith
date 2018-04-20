@@ -6,14 +6,13 @@ import (
 	"strings"
 )
 
-type KeyID string
 
 type keyImpl struct {
 	Type        string
-	Ids         []KeyID
+	Ids         []ID
 	Names       []string
 	Deprecated  bool
-	Replacement KeyID
+	Replacement ID
 }
 
 type BindingType int
@@ -25,21 +24,21 @@ const(
 )
 
 type KeyBinding struct {
-	KeyID KeyID
+	KeyID     ID
 	AccountID ID
-	Type BindingType
+	Type      BindingType
 }
 
 type Key interface {
 	Json() ([]byte, error)
-	Id() KeyID
-	Identifiers() []KeyID
+	Id() ID
+	Identifiers() []ID
 	GetNames() []string
 	IsDeprecated() bool
-	ReplacementID() KeyID
+	ReplacementID() ID
 }
 
-func (key *keyImpl) Id() KeyID {
+func (key *keyImpl) Id() ID {
 	return key.Ids[0]
 }
 
@@ -48,11 +47,11 @@ func (key *keyImpl) GetNames() []string {
 }
 
 
-func (key *keyImpl) Identifiers() []KeyID {
+func (key *keyImpl) Identifiers() []ID {
 	return key.Ids
 }
 
-func (key *keyImpl) ReplacementID() KeyID {
+func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
 }
 
@@ -96,3 +95,4 @@ func New(content string) Key {
 		return nil
 	}
 }
+

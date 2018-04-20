@@ -5,7 +5,7 @@ import (
 )
 
 func TestBasicKeys(t *testing.T) {
-	var id KeyID
+	var id ID
 
 	id = "foo"
 
