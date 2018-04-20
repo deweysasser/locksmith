@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"os/exec"
-	"sync"
 )
 
 
@@ -22,7 +21,10 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account, group *sync.WaitGroup) {
+func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account) {
+	defer close(cKeys)
+	defer close(cAccounts)
+
 	fmt.Printf("Retrieving from %s\n", c.Connection)
 
 	acct := data.Account{"SSH", c.Connection, c.Id(), nil}

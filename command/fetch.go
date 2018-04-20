@@ -13,41 +13,35 @@ func CmdFetch(c *cli.Context) error {
 	libWG := sync.WaitGroup{}
 	ml := lib.MainLibrary{Path: datadir()}
 
-	keys := make(chan data.Key)
-	cAccounts := make(chan data.Account)
+	fKeys := data.NewFanInKey()
+	fAccounts := data.NewFanInAccount()
 
 	libWG.Add(1)
-	go ingestKeys(ml.Keys(), keys, &libWG)
+	go ingestKeys(ml.Keys(), fKeys.Output(), &libWG)
 
 
 	libWG.Add(1)
-	go ingestAccounts(ml.Accounts(), cAccounts, &libWG)
+	go ingestAccounts(ml.Accounts(), fAccounts.Output(), &libWG)
 
 	filter := buildFilter(c.Args())
 
-	wgConnections :=sync.WaitGroup{}
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
-			wgConnections.Add(1)
-			go func (c interface{}) {
-				defer wgConnections.Done()
-				fetchFrom(c, keys, cAccounts, &wgConnections)
-			}(conn)
+			go fetchFrom(conn, fKeys.Input(), fAccounts.Input())
 		}
 	}
 
-	wgConnections.Wait()
-	close(keys)
-	close(cAccounts)
+	fKeys.Wait()
+	fAccounts.Wait()
 	libWG.Wait()
 	return nil
 }
 
-func fetchFrom(conn interface{}, keys chan data.Key, accounts chan data.Account, group *sync.WaitGroup) {
+func fetchFrom(conn interface{}, keys chan data.Key, accounts chan data.Account) {
 	switch conn.(type) {
 	case connection.Connection:
 			//fmt.Println("Fetching from ", conn)
-			conn.(connection.Connection).Fetch(keys, accounts, group)
+			conn.(connection.Connection).Fetch(keys, accounts)
 	}
 }
 

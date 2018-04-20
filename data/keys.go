@@ -95,4 +95,3 @@ func New(content string) Key {
 		return nil
 	}
 }
-
