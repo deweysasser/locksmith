@@ -6,11 +6,12 @@ import "sync"
 type FanInKeys struct {
 	wg sync.WaitGroup
 	c chan Key
+	doneAdding bool
 }
 
 
 func NewFanInKey() *FanInKeys {
-	f :=  &FanInKeys{sync.WaitGroup{}, make(chan Key)}
+	f :=  &FanInKeys{sync.WaitGroup{}, make(chan Key), false}
 	return f
 }
 
@@ -28,11 +29,17 @@ func (f *FanInKeys) Output() chan Key {
 	return f.c
 }
 
-func (f *FanInKeys) Wait() {
-	f.wg.Wait()
-	f.Close()
+func (f *FanInKeys) DoneAdding() {
+	if !f.doneAdding {
+		go func() {
+			f.wg.Wait()
+			close(f.c)
+		}()
+		f.doneAdding = true
+	}
 }
 
-func (f *FanInKeys) Close() {
-	close(f.c)
+func (f *FanInKeys) Wait() {
+	f.DoneAdding()
+	f.wg.Wait()
 }

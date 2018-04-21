@@ -96,10 +96,14 @@ func Read(path string) Key {
 // Create a new key from the given content
 func New(content string) Key {
 	switch {
+	case strings.Contains(content, "PuTTY"):
+		return nil
 	case strings.Contains(content, "ssh-"):
 		return parseSshPublicKey(content)
+	/*
 	case strings.Contains(content, "PRIVATE KEY"):
 		return parseSshPrivateKey(content)
+	*/
 	default:
 		return nil
 	}

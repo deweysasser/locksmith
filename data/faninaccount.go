@@ -6,11 +6,12 @@ import "sync"
 type FanInAccounts struct {
 	wg sync.WaitGroup
 	c chan Account
+	doneAdding bool
 }
 
 
 func NewFanInAccount() *FanInAccounts {
-	f :=  &FanInAccounts{sync.WaitGroup{}, make(chan Account)}
+	f :=  &FanInAccounts{sync.WaitGroup{}, make(chan Account), false}
 	return f
 }
 
@@ -28,11 +29,17 @@ func (f *FanInAccounts) Output() chan Account {
 	return f.c
 }
 
-func (f *FanInAccounts) Wait() {
-	f.wg.Wait()
-	f.Close()
+func (f *FanInAccounts) DoneAdding() {
+	if !f.doneAdding {
+		go func() {
+			f.wg.Wait()
+			close(f.c)
+		}()
+		f.doneAdding = true
+	}
 }
 
-func (f *FanInAccounts) Close() {
-	close(f.c)
+func (f *FanInAccounts) Wait() {
+	f.DoneAdding()
+	f.wg.Wait()
 }
