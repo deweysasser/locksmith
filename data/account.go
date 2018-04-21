@@ -1,12 +1,19 @@
 package data
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type Account struct {
 	Type       string
 	Name       string
 	Connection ID
 	Keys       []KeyBinding
+}
+
+func (a *Account) String() string {
+	return fmt.Sprintf("Account %s", a.Name)
 }
 
 func (a *Account) AddBinding(k Key) {

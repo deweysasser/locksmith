@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"regexp"
+	"fmt"
 )
 
 type AWSKey struct {
@@ -23,6 +24,10 @@ func NewAwsKey(id, name string ) *AWSKey {
 		AwsKeyId:     id,
 		AwsSecretKey: "",
 		Active:       true}
+}
+
+func (key *AWSKey) String() string {
+	return fmt.Sprintf("AWS %s (%s)", key.Id(), strings.Join(key.Names, ", "))
 }
 
 func (key *AWSKey) GetNames() []string {

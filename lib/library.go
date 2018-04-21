@@ -95,7 +95,7 @@ func (l *library) Store(o interface{}) error {
 	}
 
 	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(l.id(o)))
-	fmt.Println("Writing to " , path)
+	//fmt.Println("Writing to " , path)
 	bytes, e := json.MarshalIndent(o, " ", " ")
 	if e != nil {
 		return e
