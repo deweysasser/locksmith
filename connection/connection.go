@@ -2,37 +2,10 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/data"
-	"fmt"
 	"os"
 	"encoding/json"
 )
 
-type SSHFileConnection struct {
-	Type string
-	Path string
-}
-
-func (c *SSHFileConnection) String() string {
-	return "file://" + c.Path
-}
-
-func (c *SSHFileConnection) Fetch() (keys chan data.Key, accounts chan data.Account){
-	keys = make(chan data.Key)
-	accounts = make(chan data.Account)
-
-	go func() {
-		fmt.Println("Reading", c.Path)
-		k := data.Read(c.Path)
-		keys <- k
-		close(keys)
-		close(accounts)
-	}()
-	return
-}
-
-func (c *SSHFileConnection) Id() data.ID {
-	return data.IdFromString(c.Path)
-}
 
 type Connection interface {
 	Fetch() (keys chan data.Key, accounts chan data.Account)
@@ -43,7 +16,7 @@ type Connection interface {
  */
 func Create(a string) Connection {
 	if info, _ := os.Stat(a); info != nil {
-		return &SSHFileConnection{ "SSHFileConnection", a}
+		return &FileConnection{ "FileConnection", a}
 	} else {
 		return &SSHHostConnection{ "SSHHostConnection", a}
 	}
@@ -55,8 +28,8 @@ func Deserialize(id string, bytes []byte) (interface{}, error) {
 	var n Connection
 
 	switch t["Type"] {
-	case "SSHFileConnection":
-		n = new(SSHFileConnection)
+	case "FileConnection":
+		n = new(FileConnection)
 	case "SSHHostConnection":
 		n =  new(SSHHostConnection)
 	}
