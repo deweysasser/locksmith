@@ -2,16 +2,17 @@ package data
 
 import "sync"
 
-
 type FanInKeys struct {
-	wg sync.WaitGroup
-	c chan Key
+	c          chan Key
+	wg         sync.WaitGroup
 	doneAdding bool
 }
 
-
-func NewFanInKey() *FanInKeys {
-	f :=  &FanInKeys{sync.WaitGroup{}, make(chan Key), false}
+func NewFanInKey(c chan Key) *FanInKeys {
+	if c == nil {
+		c = make(chan Key)
+	}
+	f := &FanInKeys{c: c, wg: sync.WaitGroup{}}
 	return f
 }
 

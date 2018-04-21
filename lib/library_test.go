@@ -1,16 +1,17 @@
 package lib
 
 import (
-	"testing"
-	"os"
 	"encoding/json"
+	"os"
+	"testing"
+	"github.com/deweysasser/locksmith/data"
 )
 
 type entry struct {
 	Id, Content string
 }
 
-func (e *entry) IdString() string{
+func (e *entry) IdString() string {
 	return e.Id
 }
 
@@ -42,7 +43,7 @@ func checkStringEquals(t *testing.T, message, s1, s2 string) {
 	}
 }
 
-func TestLibrary(t *testing.T)  {
+func TestLibrary(t *testing.T) {
 	lib := new(library)
 	lib.Path = testdir
 	lib.deserializer = createEntry
@@ -61,8 +62,7 @@ func TestLibrary(t *testing.T)  {
 	checkStringEquals(t, "Failed to restore correct content", e.Content, e2.(*entry).Content)
 }
 
-
-func TestSave(t *testing.T)  {
+func TestSave(t *testing.T) {
 	lib := new(library)
 	lib.Init(testdir, nil, createEntry)
 
@@ -111,6 +111,43 @@ func TestSave(t *testing.T)  {
 	_, err5 := os.Stat(testdir + "/id2.json")
 	if err5 == nil {
 		t.Error("File should not exist")
+	}
+
+}
+
+
+func assertStringEquals(t *testing.T, message, s1, s2 string) {
+	if s1 != s1 {
+		t.Error(message)
+	}
+}
+
+
+func TestAWSKey(t *testing.T) {
+	os.RemoveAll("test-output")
+
+	ml := MainLibrary{ Path:"test-output"}
+
+	lib := ml.Keys()
+
+	k := data.NewAwsKey("testing", "test")
+
+	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).id(k), "testing")
+
+	lib.Store(k)
+
+	_, err := os.Stat("test-output/keys/testing.json")
+
+	check(t, err, "Writing correct json file")
+
+	lib.Flush()
+
+	i2, err := lib.Fetch("testing")
+
+	check(t, err, "Failed to fetch key")
+
+	if k.Id() != i2.(data.Key).Id() {
+		t.Error("Keys did not match")
 	}
 
 }

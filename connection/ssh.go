@@ -1,12 +1,11 @@
 package connection
 
 import (
-	"github.com/deweysasser/locksmith/data"
 	"fmt"
-	"strings"
+	"github.com/deweysasser/locksmith/data"
 	"os/exec"
+	"strings"
 )
-
 
 type SSHHostConnection struct {
 	Type       string
@@ -21,7 +20,7 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) 	Fetch() (cKeys chan data.Key, cAccounts chan data.Account) {
+func (c *SSHHostConnection) Fetch() (cKeys chan data.Key, cAccounts chan data.Account) {
 	cKeys = make(chan data.Key)
 	cAccounts = make(chan data.Account)
 
@@ -32,7 +31,7 @@ func (c *SSHHostConnection) 	Fetch() (cKeys chan data.Key, cAccounts chan data.A
 
 		keys := c.RetrieveKeys()
 		//a.SetKeys(keys)
-		for _, k := range (keys) {
+		for _, k := range keys {
 			acct.AddBinding(k)
 			cKeys <- k
 		}
@@ -44,23 +43,21 @@ func (c *SSHHostConnection) 	Fetch() (cKeys chan data.Key, cAccounts chan data.A
 	return
 }
 
-
 func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	cmd := exec.Command("ssh",
 		remote.Connection,
 		"cat",
 		"~/.ssh/authorized_keys")
 
-	out, err := cmd.Output();
-	
+	out, err := cmd.Output()
+
 	if err != nil {
 		fmt.Printf("Failed to connect to %s: %s\n", remote.Connection, err)
 	}
 
 	lines := strings.Split(string(out), "\n")
 
-	keys := make([]data.Key,0)
-
+	keys := make([]data.Key, 0)
 
 	for _, line := range lines {
 		key := parseAuthorizedKey(line)

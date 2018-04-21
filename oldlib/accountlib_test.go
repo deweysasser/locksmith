@@ -6,15 +6,12 @@ import (
 	"testing"
 )
 
-
 func assertIntsEqual(t *testing.T, s1, s2 int) {
 	if s1 != s2 {
 		t.Logf("Expected [%d] but got [%d]", s1, s2)
 		t.Fail()
 	}
 }
-
-
 
 func failError(t *testing.T, msg string, e error) {
 	if e != nil {
@@ -24,7 +21,7 @@ func failError(t *testing.T, msg string, e error) {
 
 func TestEmptyAccountlib(t *testing.T) {
 	lib := NewAccountlib("test-output-missing")
-	accounts, err  := lib.GetAccounts()
+	accounts, err := lib.GetAccounts()
 
 	failError(t, "Failed to read accounts", err)
 

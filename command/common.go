@@ -1,9 +1,9 @@
 package command
 
 import (
+	"fmt"
 	"os"
 	"strings"
-	"fmt"
 )
 
 // Return the locksmith data directory
@@ -12,17 +12,16 @@ func datadir() string {
 	return home + "/" + ".x-locksmith"
 }
 
-func buildFilter(args []string) func (interface{}) bool {
+func buildFilter(args []string) func(interface{}) bool {
 	filter := func(a interface{}) bool {
 		return true
 	}
 
-
 	if len(args) > 0 {
-		filter =  func(i interface{}) bool {
+		filter = func(i interface{}) bool {
 			a := fmt.Sprintf("%s", i)
-			for _, s := range(args) {
-				if(strings.Contains(a, s)) {
+			for _, s := range args {
+				if strings.Contains(a, s) {
 					return true
 				}
 			}

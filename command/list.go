@@ -1,9 +1,9 @@
 package command
 
 import (
-	"github.com/urfave/cli"
 	"fmt"
 	"github.com/deweysasser/locksmith/lib"
+	"github.com/urfave/cli"
 	"sync"
 )
 
@@ -16,22 +16,22 @@ func CmdList(c *cli.Context) error {
 	ch := make(chan string)
 
 	// Start the printer
-	go func () {
+	go func() {
 		defer wg.Done()
-	   for s:= range ch {
-	   	if filter(s) {
-	   		fmt.Println(s)
+		for s := range ch {
+			if filter(s) {
+				fmt.Println(s)
+			}
 		}
-	   }
 	}()
 
-	for i:= range ml.Connections().List() {
+	for i := range ml.Connections().List() {
 		ch <- fmt.Sprintf("connection %s", i)
 	}
-	for i:= range ml.Accounts().List() {
+	for i := range ml.Accounts().List() {
 		ch <- fmt.Sprintf("account %s", i)
 	}
-	for i:= range ml.Keys().List() {
+	for i := range ml.Keys().List() {
 		ch <- fmt.Sprintf("key %s", i)
 	}
 

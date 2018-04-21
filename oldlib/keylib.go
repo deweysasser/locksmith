@@ -4,8 +4,8 @@ import (
 	"github.com/deweysasser/locksmith/data"
 	"io/ioutil"
 	"os"
-	"sync"
 	"regexp"
+	"sync"
 )
 
 type KeyLib struct {
@@ -17,7 +17,6 @@ type KeyLib struct {
 func NewKeylib(path string) *KeyLib {
 	return &KeyLib{library{path}, make(map[data.ID]data.Key), sync.Mutex{}}
 }
-
 
 func (kl *KeyLib) keypath() string {
 	keypath := kl.Path + "/data"
@@ -37,12 +36,12 @@ func (k *KeyLib) IngestFile(path string) (data.Key, error) {
 }
 
 func (kl *KeyLib) Ingest(key data.Key) (data.Key, error) {
-	kl.keys[key.Id()]=key
+	kl.keys[key.Id()] = key
 	return key, nil
 }
 
 func (kl *KeyLib) Save() {
-	for keyid, key:= range(kl.keys) {
+	for keyid, key := range kl.keys {
 		re, err := regexp.Compile("[^a-zA-Z0-9]")
 		check("Regexp failure", err)
 		id := string(re.ReplaceAll([]byte(keyid), []byte("")))
@@ -62,11 +61,11 @@ func saveKey(k data.Key, keyfile string) (data.Key, error) {
 }
 
 func (kl *KeyLib) AllKeys() (chan data.Key, error) {
-	c:= make(chan data.Key)
-	
+	c := make(chan data.Key)
+
 	keydir := kl.keypath()
 	files, error := ioutil.ReadDir(keydir)
-//	fmt.Println("Reading", keydir)
+	//	fmt.Println("Reading", keydir)
 
 	if error != nil {
 		return nil, error
@@ -79,6 +78,6 @@ func (kl *KeyLib) AllKeys() (chan data.Key, error) {
 		}
 		close(c)
 	}()
-	
+
 	return c, nil
 }

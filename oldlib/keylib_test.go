@@ -31,7 +31,7 @@ func TestKeyIngest(t *testing.T) {
 	// TODO:  this should return an error code
 	lib.Save()
 
-//	checke("Error saving data", t, e)
+	//	checke("Error saving data", t, e)
 
 	_, error := os.Stat("test-output/data/")
 
@@ -44,8 +44,8 @@ func TestKeyIngest(t *testing.T) {
 	checke("Failed to list data", t, e)
 
 	var count int
-	for k := range(keys) {
-		if &k != nil{
+	for k := range keys {
+		if &k != nil {
 			count++
 		}
 	}
@@ -55,3 +55,4 @@ func TestKeyIngest(t *testing.T) {
 	}
 
 }
+

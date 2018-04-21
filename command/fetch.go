@@ -1,21 +1,20 @@
 package command
 
 import (
-"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/lib"
+	"fmt"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/lib"
+	"github.com/urfave/cli"
 	"sync"
-	"fmt"
 )
 
 func CmdFetch(c *cli.Context) error {
 	libWG := sync.WaitGroup{}
 	ml := lib.MainLibrary{Path: datadir()}
 
-	fKeys := data.NewFanInKey()
+	fKeys := data.NewFanInKey(nil)
 	fAccounts := data.NewFanInAccount()
-
 
 	libWG.Add(1)
 	go ingestKeys(ml.Keys(), fKeys.Output(), &libWG)
@@ -33,7 +32,6 @@ func CmdFetch(c *cli.Context) error {
 		}
 	}
 
-
 	fKeys.Wait()
 	fAccounts.Wait()
 	libWG.Wait()
@@ -43,8 +41,8 @@ func CmdFetch(c *cli.Context) error {
 func fetchFrom(conn interface{}) (keys chan data.Key, accounts chan data.Account) {
 	switch conn.(type) {
 	case connection.Connection:
-			//fmt.Println("Fetching from ", conn)
-			return conn.(connection.Connection).Fetch()
+		//fmt.Println("Fetching from ", conn)
+		return conn.(connection.Connection).Fetch()
 	default:
 		panic("Unknown connection type")
 	}

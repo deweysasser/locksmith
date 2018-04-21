@@ -5,8 +5,7 @@ import (
 )
 
 type KeyBinding struct {
-Id data.ID
-//	Options []string
-Comment string
+	Id data.ID
+	//	Options []string
+	Comment string
 }
-

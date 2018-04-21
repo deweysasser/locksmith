@@ -1,11 +1,12 @@
 package connection
 
 import (
-	"github.com/deweysasser/locksmith/data"
 	"fmt"
-	"os"
+	"github.com/deweysasser/locksmith/data"
 	"io/ioutil"
+	"os"
 	"regexp"
+	"strings"
 )
 
 type FileConnection struct {
@@ -17,8 +18,8 @@ func (c *FileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *FileConnection) Fetch() (keys chan data.Key, accounts chan data.Account){
-	fKeys := data.NewFanInKey()
+func (c *FileConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
+	fKeys := data.NewFanInKey(nil)
 	defer fKeys.DoneAdding()
 	keys = fKeys.Output()
 
@@ -31,7 +32,7 @@ func (c *FileConnection) Fetch() (keys chan data.Key, accounts chan data.Account
 	return
 }
 
-func fetchPath(path string, inKeys *data.FanInKeys)  {
+func fetchPath(path string, inKeys *data.FanInKeys) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return
@@ -40,7 +41,7 @@ func fetchPath(path string, inKeys *data.FanInKeys)  {
 	if info.IsDir() {
 		files, err := ioutil.ReadDir(path)
 		if err == nil {
-			for  _, file := range (files) {
+			for _, file := range files {
 				if !shouldSkipFile(file) {
 					fetchPath(path+"/"+file.Name(), inKeys)
 				}
@@ -72,16 +73,31 @@ func fetchFile(path string) chan data.Key {
 	go func() {
 		defer close(keys)
 		fmt.Println("Reading", path)
-		k := data.Read(path)
-		
-		if k != nil {
-			keys <- k
+
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return
+		}
+
+		s := string(bytes)
+
+		switch {
+		case strings.Contains(s, "aws_access_key_id"):
+			data.ParseAWSCredentials(bytes, keys)
+		default:
+			readSSHKey(bytes, keys)
 		}
 	}()
 	return keys
 }
 
+func readSSHKey(bytes []byte, keys chan data.Key)  {
+	k := data.New(string(bytes))
+	if k != nil {
+		keys <- k
+	}
+}
+
 func (c *FileConnection) Id() data.ID {
 	return data.IdFromString(c.Path)
 }
-

@@ -1,7 +1,7 @@
 package data
 
 import (
-//	"encoding/base64"
+	//	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/ssh"
@@ -9,15 +9,15 @@ import (
 )
 
 /** An SSH key, public and (optionally) private
-*/
+ */
 type SSHKey struct {
 	keyImpl
 	PublicKey ssh.PublicKey
-	Comments []string
+	Comments  []string
 }
 
 /* Use of a public key, e.g. in an authorized_keys file
-*/
+ */
 type SSHBinding struct {
 	Id      ID
 	Comment string
@@ -67,7 +67,6 @@ func (key *SSHKey) GetNames() []string {
 	return key.Names
 }
 
-
 func parseSshPrivateKey(content string) Key {
 	signer, err := ssh.ParsePrivateKey([]byte(content))
 	check(err)
@@ -75,13 +74,13 @@ func parseSshPrivateKey(content string) Key {
 	id := getId(pub)
 	return &SSHKey{
 		keyImpl: keyImpl{
-			Type: "SSHKey",
-			Ids: []ID{id},
-			Names: []string{},
-			Deprecated: false,
-			Replacement: "" },
+			Type:        "SSHKey",
+			Ids:         []ID{id},
+			Names:       []string{},
+			Deprecated:  false,
+			Replacement: ""},
 		PublicKey: pub,
-		Comments:         []string{}	}
+		Comments:  []string{}}
 }
 
 func parseSshPublicKey(content string) Key {
@@ -90,14 +89,15 @@ func parseSshPublicKey(content string) Key {
 	check(err)
 	return &SSHKey{
 		keyImpl: keyImpl{
-			Type: "SSHKey",
-			Ids: []ID{getId(pub)},
-			Names: []string{},
-			Deprecated: false,
-			Replacement: "" },
+			Type:        "SSHKey",
+			Ids:         []ID{getId(pub)},
+			Names:       []string{},
+			Deprecated:  false,
+			Replacement: ""},
 		PublicKey: pub,
-		Comments:         []string{comment}	}
+		Comments:  []string{comment}}
 }
+
 
 func SSHLoadJson(s []byte) Key {
 	var key SSHKey

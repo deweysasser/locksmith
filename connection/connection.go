@@ -1,11 +1,10 @@
 package connection
 
 import (
+	"encoding/json"
 	"github.com/deweysasser/locksmith/data"
 	"os"
-	"encoding/json"
 )
-
 
 type Connection interface {
 	Fetch() (keys chan data.Key, accounts chan data.Account)
@@ -16,14 +15,14 @@ type Connection interface {
  */
 func Create(a string) Connection {
 	if info, _ := os.Stat(a); info != nil {
-		return &FileConnection{ "FileConnection", a}
+		return &FileConnection{"FileConnection", a}
 	} else {
-		return &SSHHostConnection{ "SSHHostConnection", a}
+		return &SSHHostConnection{"SSHHostConnection", a}
 	}
 }
 
 func Deserialize(id string, bytes []byte) (interface{}, error) {
-	t:= make(map[string]interface{})
+	t := make(map[string]interface{})
 	json.Unmarshal(bytes, &t)
 	var n Connection
 
@@ -31,7 +30,7 @@ func Deserialize(id string, bytes []byte) (interface{}, error) {
 	case "FileConnection":
 		n = new(FileConnection)
 	case "SSHHostConnection":
-		n =  new(SSHHostConnection)
+		n = new(SSHHostConnection)
 	}
 
 	e := json.Unmarshal(bytes, n)

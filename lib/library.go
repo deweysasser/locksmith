@@ -1,11 +1,12 @@
 package lib
 
 import (
-	"os"
-	"io/ioutil"
-	"fmt"
-	"encoding/json"
 	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"regexp"
 )
 
 type IdStringer interface {
@@ -16,12 +17,11 @@ type Deserializer func(string, []byte) (interface{}, error)
 type Ider func(interface{}) string
 
 type library struct {
-	Path string
+	Path         string
 	deserializer Deserializer
-	ider Ider
-	cache map[string]interface{}
+	ider         Ider
+	cache        map[string]interface{}
 }
-
 
 type Library interface {
 	// Flush all active objects to disk
@@ -50,7 +50,7 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 		return l.deserializer(id, bytes)
 	default:
 		o := make(map[string]interface{})
-		e := json.Unmarshal(bytes,&o)
+		e := json.Unmarshal(bytes, &o)
 		return o, e
 	}
 }
@@ -94,18 +94,25 @@ func (l *library) Store(o interface{}) error {
 		}
 	}
 
-	path := fmt.Sprintf("%s/%s.json", l.Path, l.id(o))
+	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(l.id(o)))
+	fmt.Println("Writing to " , path)
 	bytes, e := json.MarshalIndent(o, " ", " ")
 	if e != nil {
 		return e
 	}
-	e = ioutil.WriteFile(path, bytes , 666)
+	e = ioutil.WriteFile(path, bytes, 666)
 	return e
 }
 
 func (l *library) Fetch(id string) (interface{}, error) {
-	path := fmt.Sprintf("%s/%s.json", l.Path, id)
+	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(id))
 	return l.fetchFrom(id, path)
+}
+
+func sanitize(path string) string {
+re := regexp.MustCompile(`\W+`)
+return 	re.ReplaceAllString(path, "")
+
 }
 
 func (l *library) fetchFrom(id, path string) (interface{}, error) {
@@ -117,8 +124,10 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 
 	o, e := l.deserialize(id, bytes)
 
-	if e != nil {
-		l.cache[id]=o
+	if e == nil {
+		//l.cache[id] = o
+	} else {
+		fmt.Println("Failed to read key in " + path)
 	}
 
 	//fmt.Printf("Read %s\n", o)
@@ -126,7 +135,7 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 }
 
 func (l *library) Flush() error {
-	for _, object := range(l.cache) {
+	for _, object := range l.cache {
 		e := l.Store(object)
 		if e != nil {
 			return e
@@ -178,10 +187,10 @@ func (lib *library) List() (c chan interface{}) {
 func readFiles(lib *library, files []os.FileInfo, c chan interface{}) {
 	defer close(c)
 
-	for _, f := range(files) {
+	for _, f := range files {
 		path := lib.Path + "/" + f.Name()
 		//fmt.Println("Reading from ", path)
-		o, e :=lib.fetchFrom("", path)
+		o, e := lib.fetchFrom("", path)
 
 		if e == nil {
 			//fmt.Println("Enqueuing ", o)

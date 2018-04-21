@@ -1,8 +1,8 @@
 package data
 
 import (
-	"fmt"
 	"crypto/sha256"
+	"fmt"
 )
 
 type ID string

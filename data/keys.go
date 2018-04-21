@@ -17,7 +17,8 @@ type keyImpl struct {
 /** What action to perform (if any) for a binding
  */
 type BindingAction int
-const(
+
+const (
 	EXISTS         BindingAction = iota
 	PENDING_ADD    BindingAction = iota
 	PENDING_DELETE BindingAction = iota
@@ -26,8 +27,9 @@ const(
 /** Where a key is bound on an account
  */
 type BindingLocation int
+
 const (
-	FILE BindingLocation = iota
+	FILE            BindingLocation = iota
 	AUTHORIZED_KEYS BindingLocation = iota
 	AWS_CREDENTIALS BindingLocation = iota
 )
@@ -41,6 +43,7 @@ type KeyBinding struct {
 type Key interface {
 	Json() ([]byte, error)
 	Id() ID
+	//IdString() string
 	Identifiers() []ID
 	GetNames() []string
 	IsDeprecated() bool
@@ -51,10 +54,13 @@ func (key *keyImpl) Id() ID {
 	return key.Ids[0]
 }
 
+func (key *keyImpl) IdString() string {
+	return string(key.Id())
+}
+
 func (key *keyImpl) GetNames() []string {
 	return key.Names
 }
-
 
 func (key *keyImpl) Identifiers() []ID {
 	return key.Ids
@@ -64,19 +70,30 @@ func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
 }
 
-
 // Load the key from the given JSON
 func ReadJson(bytes []byte) Key {
 	var key keyImpl
 	json.Unmarshal(bytes, &key)
-	
+
 	switch key.Type {
 	// For now, SSH key is the only kind
 	case "SSHKey":
-		return SSHLoadJson(bytes)
+		return LoadTypeFromJSON(bytes, new(SSHKey))
+	case "AWSKey":
+		return LoadTypeFromJSON(bytes, new(AWSKey))
+	default:
+		//panic("Don't know how to read type " + key.Type)
+		return nil
 	}
 	return nil
 }
+
+func LoadTypeFromJSON(s []byte, o Key) Key {
+	json.Unmarshal(s, o)
+
+	return o
+}
+
 
 func LoadJsonFile(path string) Key {
 	json, e := ioutil.ReadFile(path)
@@ -101,8 +118,8 @@ func New(content string) Key {
 	case strings.Contains(content, "ssh-"):
 		return parseSshPublicKey(content)
 	/*
-	case strings.Contains(content, "PRIVATE KEY"):
-		return parseSshPrivateKey(content)
+		case strings.Contains(content, "PRIVATE KEY"):
+			return parseSshPrivateKey(content)
 	*/
 	default:
 		return nil

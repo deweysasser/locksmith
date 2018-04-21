@@ -6,16 +6,16 @@ import (
 )
 
 type MainLibrary struct {
-	Path string
+	Path        string
 	connections Library
-	keys Library
-	accounts Library
+	keys        Library
+	accounts    Library
 }
 
 func (l *MainLibrary) Connections() Library {
 	if l.connections == nil {
 		clib := new(library)
-		clib.Init(l.Path + "/connections", nil, connection.Deserialize)
+		clib.Init(l.Path+"/connections", nil, connection.Deserialize)
 		l.connections = clib
 	}
 
@@ -25,7 +25,7 @@ func (l *MainLibrary) Connections() Library {
 func (l *MainLibrary) Keys() Library {
 	if l.keys == nil {
 		klib := new(library)
-		klib.Init(l.Path + "/keys", keyid, loadkey)
+		klib.Init(l.Path+"/keys", keyid, loadkey)
 		l.keys = klib
 	}
 
@@ -35,11 +35,19 @@ func (l *MainLibrary) Keys() Library {
 func (l *MainLibrary) Accounts() Library {
 	if l.accounts == nil {
 		klib := new(library)
-		klib.Init(l.Path + "/accounts", accountid, loadaccount)
+		klib.Init(l.Path+"/accounts", accountid, loadaccount)
 		l.accounts = klib
 	}
 
 	return l.accounts
+}
+
+type keyReadError struct {
+	Path string
+}
+
+func (e *keyReadError) Error() string {
+	return "Error reading " + e.Path
 }
 
 func loadaccount(id string, bytes []byte) (interface{}, error) {
@@ -49,7 +57,11 @@ func loadaccount(id string, bytes []byte) (interface{}, error) {
 func loadkey(id string, bytes []byte) (interface{}, error) {
 	k := data.ReadJson(bytes)
 
-	return k , nil
+	if nil == k {
+		return nil, &keyReadError{string(bytes)}
+	}
+
+	return k, nil
 }
 
 func accountid(account interface{}) string {

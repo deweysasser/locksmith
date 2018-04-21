@@ -1,18 +1,17 @@
 package oldlib
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
-//	"regexp"
+	//	"regexp"
 )
 
 type Accountlib struct {
 	library
 	Accounts []Account
 }
-
 
 func NewAccountlib(path string) *Accountlib {
 	return &Accountlib{library{path}, []Account{}}
@@ -34,14 +33,14 @@ func (lib *Accountlib) GetAccounts() ([]Account, error) {
 	if error != nil {
 		return []Account{}, nil
 	}
-	
+
 	files, error := ioutil.ReadDir(lib.Path + "/accounts")
 
 	fmt.Println("Reading files in ", lib.Path)
 
 	check("Failed to read accounts dir", error)
 
-	for _, f := range(files) {
+	for _, f := range files {
 		dir := lib.Path + "/accounts/" + f.Name()
 
 		fmt.Println("Reading", dir)
@@ -49,8 +48,8 @@ func (lib *Accountlib) GetAccounts() ([]Account, error) {
 		acctfiles, error := ioutil.ReadDir(dir)
 		check("Failed to read TYPE dir", error)
 
-		for _, f2 := range(acctfiles) {
-			lib.Read(dir +  "/" + f2.Name())
+		for _, f2 := range acctfiles {
+			lib.Read(dir + "/" + f2.Name())
 		}
 	}
 
@@ -60,14 +59,13 @@ func (lib *Accountlib) GetAccounts() ([]Account, error) {
 func (lib *Accountlib) Read(file string) {
 	data, e := ioutil.ReadFile(file)
 
-	check("Failed to read account file " + file, e)
-	
+	check("Failed to read account file "+file, e)
+
 	var acc Account
 	json.Unmarshal(data, &acc)
 
 	lib.Accounts = append(lib.Accounts, acc)
 }
-
 
 func (lib *Accountlib) accountpath() string {
 	accountpath := lib.Path + "/accounts"
@@ -80,6 +78,3 @@ func (lib *Accountlib) accountpath() string {
 
 	return accountpath
 }
-
-
-

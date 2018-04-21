@@ -2,16 +2,14 @@ package data
 
 import "sync"
 
-
 type FanInAccounts struct {
-	wg sync.WaitGroup
-	c chan Account
+	wg         sync.WaitGroup
+	c          chan Account
 	doneAdding bool
 }
 
-
 func NewFanInAccount() *FanInAccounts {
-	f :=  &FanInAccounts{sync.WaitGroup{}, make(chan Account), false}
+	f := &FanInAccounts{sync.WaitGroup{}, make(chan Account), false}
 	return f
 }
 

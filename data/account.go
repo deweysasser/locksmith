@@ -3,10 +3,10 @@ package data
 import "encoding/json"
 
 type Account struct {
-	Type string
-	Name string
+	Type       string
+	Name       string
 	Connection ID
-	Keys []KeyBinding
+	Keys       []KeyBinding
 }
 
 func (a *Account) AddBinding(k Key) {
@@ -28,4 +28,3 @@ func LoadAccount(bytes []byte) (*Account, error) {
 
 	return nil, e
 }
-

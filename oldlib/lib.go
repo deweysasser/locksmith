@@ -28,8 +28,7 @@ type Library interface {
 	Save()
 }
 
-
-func (o *olib)Save() {
+func (o *olib) Save() {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 	if o.alib != nil {
@@ -41,7 +40,7 @@ func (o *olib)Save() {
 	}
 }
 
-func (o *olib)Keylib() *KeyLib {
+func (o *olib) Keylib() *KeyLib {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 	if o.klib == nil {
@@ -50,7 +49,7 @@ func (o *olib)Keylib() *KeyLib {
 	return o.klib
 }
 
-func (o *olib)Accountlib() *Accountlib {
+func (o *olib) Accountlib() *Accountlib {
 	o.lock.Lock()
 	defer o.lock.Unlock()
 	if o.alib == nil {
