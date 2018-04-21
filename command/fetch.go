@@ -16,9 +16,9 @@ func CmdFetch(c *cli.Context) error {
 	fKeys := data.NewFanInKey()
 	fAccounts := data.NewFanInAccount()
 
+
 	libWG.Add(1)
 	go ingestKeys(ml.Keys(), fKeys.Output(), &libWG)
-
 
 	libWG.Add(1)
 	go ingestAccounts(ml.Accounts(), fAccounts.Output(), &libWG)
@@ -27,9 +27,12 @@ func CmdFetch(c *cli.Context) error {
 
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
-			go fetchFrom(conn, fKeys.Input(), fAccounts.Input())
+			k, a := fetchFrom(conn)
+			fKeys.Add(k)
+			fAccounts.Add(a)
 		}
 	}
+
 
 	fKeys.Wait()
 	fAccounts.Wait()
@@ -37,11 +40,13 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func fetchFrom(conn interface{}, keys chan data.Key, accounts chan data.Account) {
+func fetchFrom(conn interface{}) (keys chan data.Key, accounts chan data.Account) {
 	switch conn.(type) {
 	case connection.Connection:
 			//fmt.Println("Fetching from ", conn)
-			conn.(connection.Connection).Fetch(keys, accounts)
+			return conn.(connection.Connection).Fetch()
+	default:
+		panic("Unknown connection type")
 	}
 }
 

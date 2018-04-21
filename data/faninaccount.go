@@ -14,32 +14,25 @@ func NewFanInAccount() *FanInAccounts {
 	return f
 }
 
-func (f *FanInAccounts) Output() chan Account {
-	return f.c
-}
-
-func (f *FanInAccounts) Close() {
-	go func () {
-		f.wg.Wait()
-		close(f.c)
-	}()
-}
-
-func (f *FanInAccounts) Wait() {
-	f.Close()
-	f.wg.Wait()
-}
-
-func  (f *FanInAccounts) Input() chan Account {
-	c := make(chan Account)
+func (f *FanInAccounts) Add(c chan Account) {
 	f.wg.Add(1)
-
 	go func() {
 		for k := range c {
 			f.c <- k
 		}
 		f.wg.Done()
 	}()
+}
 
-	return c
+func (f *FanInAccounts) Output() chan Account {
+	return f.c
+}
+
+func (f *FanInAccounts) Wait() {
+	f.wg.Wait()
+	f.Close()
+}
+
+func (f *FanInAccounts) Close() {
+	close(f.c)
 }

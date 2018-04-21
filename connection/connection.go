@@ -16,13 +16,18 @@ func (c *SSHFileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *SSHFileConnection) Fetch(keys chan data.Key, accounts chan data.Account){
-	defer close(keys)
-	defer close(accounts)
+func (c *SSHFileConnection) Fetch() (keys chan data.Key, accounts chan data.Account){
+	keys = make(chan data.Key)
+	accounts = make(chan data.Account)
 
-	fmt.Println("Reading", c.Path)
-	k := data.Read(c.Path)
-	keys <- k
+	go func() {
+		fmt.Println("Reading", c.Path)
+		k := data.Read(c.Path)
+		keys <- k
+		close(keys)
+		close(accounts)
+	}()
+	return
 }
 
 func (c *SSHFileConnection) Id() data.ID {
@@ -30,7 +35,7 @@ func (c *SSHFileConnection) Id() data.ID {
 }
 
 type Connection interface {
-	Fetch(keys chan data.Key, accounts chan data.Account)
+	Fetch() (keys chan data.Key, accounts chan data.Account)
 	Id() data.ID
 }
 

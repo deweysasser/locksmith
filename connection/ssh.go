@@ -21,22 +21,27 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) 	Fetch(cKeys chan data.Key, cAccounts chan data.Account) {
-	defer close(cKeys)
-	defer close(cAccounts)
+func (c *SSHHostConnection) 	Fetch() (cKeys chan data.Key, cAccounts chan data.Account) {
+	cKeys = make(chan data.Key)
+	cAccounts = make(chan data.Account)
 
-	fmt.Printf("Retrieving from %s\n", c.Connection)
+	go func() {
+		fmt.Printf("Retrieving from %s\n", c.Connection)
 
-	acct := data.Account{"SSH", c.Connection, c.Id(), nil}
+		acct := data.Account{"SSH", c.Connection, c.Id(), nil}
 
-	keys := c.RetrieveKeys()
-	//a.SetKeys(keys)
-	for _, k:= range(keys) {
-		acct.AddBinding(k)
-		cKeys <- k
-	}
+		keys := c.RetrieveKeys()
+		//a.SetKeys(keys)
+		for _, k := range (keys) {
+			acct.AddBinding(k)
+			cKeys <- k
+		}
 
-	cAccounts <- acct
+		cAccounts <- acct
+		close(cKeys)
+		close(cAccounts)
+	}()
+	return
 }
 
 
