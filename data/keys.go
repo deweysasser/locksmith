@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-
 type keyImpl struct {
 	Type        string
 	Ids         []ID
@@ -15,18 +14,28 @@ type keyImpl struct {
 	Replacement ID
 }
 
-type BindingType int
-
+/** What action to perform (if any) for a binding
+ */
+type BindingAction int
 const(
-	EXISTS BindingType = iota
-	PENDING_ADD BindingType = iota
-	PENDING_DELETE BindingType = iota
+	EXISTS         BindingAction = iota
+	PENDING_ADD    BindingAction = iota
+	PENDING_DELETE BindingAction = iota
+)
+
+/** Where a key is bound on an account
+ */
+type BindingLocation int
+const (
+	FILE BindingLocation = iota
+	AUTHORIZED_KEYS BindingLocation = iota
+	AWS_CREDENTIALS BindingLocation = iota
 )
 
 type KeyBinding struct {
 	KeyID     ID
 	AccountID ID
-	Type      BindingType
+	Type      BindingAction
 }
 
 type Key interface {
