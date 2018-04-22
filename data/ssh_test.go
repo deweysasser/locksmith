@@ -93,6 +93,8 @@ func TestSSHPublicKeyParse(t *testing.T) {
 		}
 		rsa := key.(*SSHKey)
 		assertStringsEquals(t, "ssh-rsa", rsa.KeyType())
+		assertStringsEquals(t, "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ", string(rsa.Id()))
+		assertStringsEquals(t, "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39", string(rsa.Identifiers()[1]))
 		assertStringsEquals(t, "dewey@FlynnRyder", rsa.Comments[0])
 		assertStringsEquals(t, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5\n", rsa.PublicKeyString())
 	})
@@ -142,9 +144,6 @@ func TestSSHId(t *testing.T) {
 func TestSSHJSon(t *testing.T) {
 	expected := `{
   "Type": "SSHKey",
-  "Ids": [
-    "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ"
-  ],
   "Names": [
     "test name"
   ],

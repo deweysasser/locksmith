@@ -8,7 +8,6 @@ import (
 
 type keyImpl struct {
 	Type        string
-	Ids         []ID
 	Names       []string
 	Deprecated  bool
 	Replacement ID
@@ -51,20 +50,8 @@ type Key interface {
 	ReplacementID() ID
 }
 
-func (key *keyImpl) Id() ID {
-	return key.Ids[0]
-}
-
-func (key *keyImpl) IdString() string {
-	return string(key.Id())
-}
-
 func (key *keyImpl) GetNames() []string {
 	return key.Names
-}
-
-func (key *keyImpl) Identifiers() []ID {
-	return key.Ids
 }
 
 func (key *keyImpl) ReplacementID() ID {

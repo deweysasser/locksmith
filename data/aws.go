@@ -17,13 +17,20 @@ func NewAwsKey(id, name string ) *AWSKey {
 	return &AWSKey{
 		keyImpl: keyImpl{
 			Type:        "AWSKey",
-			Ids:         []ID{ID(id)},
 			Names:       []string{name},
 			Deprecated:  false,
 			Replacement: ""},
 		AwsKeyId:     id,
 		AwsSecretKey: "",
 		Active:       true}
+}
+
+func (key *AWSKey) Id() ID {
+	return ID(key.AwsKeyId)
+}
+
+func (key *AWSKey) Identifiers() []ID {
+	return []ID{key.Id()}
 }
 
 func (key *AWSKey) String() string {

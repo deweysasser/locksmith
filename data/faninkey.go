@@ -26,6 +26,12 @@ func (f *FanInKeys) Add(c chan Key) {
 	}()
 }
 
+func (f *FanInKeys) Input() chan Key {
+	c := make(chan Key)
+	f.Add(c)
+	return c
+}
+
 func (f *FanInKeys) Output() chan Key {
 	return f.c
 }

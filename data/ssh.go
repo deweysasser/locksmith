@@ -45,6 +45,7 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
  */
 type SSHKey struct {
 	keyImpl
+	ids []ID
 	PublicKey PublicKey
 	Comments  []string
 }
@@ -58,7 +59,20 @@ type SSHBinding struct {
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey", []ID{getId(pub)}, []string{}, false, ""},PublicKey{pub}, []string{},}
+	return &SSHKey{keyImpl{"SSHKey",[]string{}, false, ""},nil,PublicKey{pub}, []string{},}
+}
+
+func (key *SSHKey) Id() ID {
+	return key.Identifiers()[0]
+}
+
+func (key *SSHKey) Identifiers() []ID {
+	if key.ids == nil {
+		key.ids = append(key.ids, ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
+		key.ids = append(key.ids, ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
+	}
+
+	return key.ids
 }
 
 func (key *SSHKey) String() string {
@@ -104,11 +118,9 @@ func parseSshPrivateKey(content string) Key {
 	signer, err := ssh.ParsePrivateKey([]byte(content))
 	check(err)
 	pub := signer.PublicKey()
-	id := getId(pub)
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
-			Ids:         []ID{id},
 			Names:       []string{},
 			Deprecated:  false,
 			Replacement: ""},
@@ -123,7 +135,6 @@ func parseSshPublicKey(content string) Key {
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
-			Ids:         []ID{getId(pub)},
 			Names:       []string{},
 			Deprecated:  false,
 			Replacement: ""},
