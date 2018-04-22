@@ -11,6 +11,10 @@ type Ider interface {
 	Id() ID
 }
 
+type Identiferser interface {
+	Identifers() []ID
+}
+
 func IdFromString(s string) ID {
 	return IdFromBytes([]byte(s))
 }

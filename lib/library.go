@@ -11,7 +11,7 @@ import (
 	"github.com/deweysasser/locksmith/data"
 )
 
-var TypeMap map[string]reflect.Type = make(map[string]reflect.Type)
+var TypeMap = make(map[string]reflect.Type)
 
 func AddType(p reflect.Type) {
 	TypeMap[p.Name()] = p
@@ -27,8 +27,11 @@ type IdFunction func(interface{}) string
 type library struct {
 	Path         string
 	deserializer Deserializer
-	ider         IdFunction
-	cache        map[string]interface{}
+	idfunc       IdFunction
+	cache 		map[string]interface{}
+	cacheLoaded bool
+	// If we want to make store *NOT* hit disk, then uncomment and implement
+	//changes map[string]interface{}
 }
 
 type Library interface {
@@ -46,9 +49,9 @@ type Library interface {
 	List() chan interface{}
 }
 
-func (l *library) Init(path string, ider IdFunction, deserializer Deserializer) {
+func (l *library) Init(path string, idfunc IdFunction, deserializer Deserializer) {
 	l.Path = path
-	l.ider = ider
+	l.idfunc = idfunc
 	l.deserializer = deserializer
 }
 
@@ -72,6 +75,8 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 	}
 }
 
+/* Return the primary identifier for this object
+ */
 func (l *library) id(o interface{}) string {
 	//fmt.Printf("type is %s\n", reflect.TypeOf(o))
 
@@ -87,6 +92,23 @@ func (l *library) id(o interface{}) string {
 		return hashString(s.String())
 	}
 	return hash(toJson(o))
+}
+
+/** Return the set of identifiers used by this object.  Each identifier must be unique to this object, but there (obviously) can be many.
+ */
+func (l *library) ids(o interface{}) chan string {
+	c:= make(chan string)
+	go func() {
+		defer close(c)
+		if i, ok := o.(data.Identiferser); ok {
+			for _, id:= range i.Identifers() {
+				c <- string(id)
+			}
+		} else {
+			c <- l.id(o)
+		}
+	}()
+	return c
 }
 
 
@@ -117,17 +139,37 @@ func (l *library) Store(o interface{}) error {
 		}
 	}
 
-	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(l.id(o)))
+	primaryID := l.id(o)
+	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(primaryID))
 	//fmt.Println("Writing to " , path)
 	bytes, e := json.MarshalIndent(o, " ", " ")
 	if e != nil {
 		return e
 	}
 	e = ioutil.WriteFile(path, bytes, 666)
+
+	if e == nil {
+		l.addToCache(o)
+	}
 	return e
 }
 
+func (l *library) addToCache(o interface{}) {
+	if l.cache == nil {
+		l.cache = make(map[string]interface{})
+	}
+	for id := range l.ids(o) {
+		l.cache[id] = o
+	}
+}
+
 func (l *library) Fetch(id string) (interface{}, error) {
+	l.Load()
+	if l.cache != nil {
+		if v, ok := l.cache[id]; ok {
+			return v, nil
+		}
+	}
 	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(id))
 	return l.fetchFrom(id, path)
 }
@@ -158,12 +200,6 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 }
 
 func (l *library) Flush() error {
-	for _, object := range l.cache {
-		e := l.Store(object)
-		if e != nil {
-			return e
-		}
-	}
 	return nil
 }
 
@@ -183,27 +219,40 @@ func (l *library) Delete(id string) error {
 	return os.Remove(path)
 }
 
-func (lib *library) List() (c chan interface{}) {
+func (l *library) Load()  {
+	if l.cache == nil {
+		l.cache = make(map[string]interface{})
+	}
+
+	if !l.cacheLoaded {
+		l.cacheLoaded = true
+		for o := range l.List() {
+			l.addToCache(o)
+		}
+	}
+}
+
+func (l *library) List() (c chan interface{}) {
 	//fmt.Println("Fetching connections from ", lib.Path)
 	c = make(chan interface{})
 
-	_, error := os.Stat(lib.Path)
+	_, e := os.Stat(l.Path)
 
-	if error != nil {
+	if e != nil {
 		close(c)
 		return
 	}
 
-	files, error := ioutil.ReadDir(lib.Path)
+	files, e := ioutil.ReadDir(l.Path)
 
 	//fmt.Println("Reading files in ", lib.Path)
 
-	if error != nil {
+	if e != nil {
 		close(c)
 		return
 	}
 
-	go readFiles(lib, files, c)
+	go readFiles(l, files, c)
 	return
 }
 
