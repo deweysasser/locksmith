@@ -36,8 +36,9 @@ const (
 
 type KeyBinding struct {
 	KeyID     ID
-	AccountID ID
-	Type      BindingAction
+	AccountID ID `json:",omitempty"`
+	Type      BindingAction `json:",omitempty"`
+	Name      string `json:",omitempty"`
 }
 
 type Key interface {

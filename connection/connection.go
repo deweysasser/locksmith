@@ -3,6 +3,7 @@ package connection
 import (
 	"github.com/deweysasser/locksmith/data"
 	"os"
+	"strings"
 )
 
 type Connection interface {
@@ -13,9 +14,14 @@ type Connection interface {
 /** Determine the proper type of connection from the string given and create it
  */
 func Create(a string) Connection {
-	if info, _ := os.Stat(a); info != nil {
+	info, _ := os.Stat(a)
+
+	switch {
+	case info != nil:
 		return &FileConnection{"FileConnection", a}
-	} else {
+	case strings.HasPrefix(a, "aws:"):
+		return &AWSConnection{"AWSConnection", a[4:]}
+	default:
 		return &SSHHostConnection{"SSHHostConnection", a}
 	}
 }

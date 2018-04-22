@@ -7,6 +7,7 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/urfave/cli"
 	"sync"
+	"reflect"
 )
 
 func CmdFetch(c *cli.Context) error {
@@ -26,6 +27,7 @@ func CmdFetch(c *cli.Context) error {
 
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
+			fmt.Printf("Fetching from %s\n", conn)
 			k, a := fetchFrom(conn)
 			fKeys.Add(k)
 			fAccounts.Add(a)
@@ -44,7 +46,7 @@ func fetchFrom(conn interface{}) (keys chan data.Key, accounts chan data.Account
 		//fmt.Println("Fetching from ", conn)
 		return conn.(connection.Connection).Fetch()
 	default:
-		panic("Unknown connection type")
+		panic("Unknown connection type " + reflect.TypeOf(conn).Name())
 	}
 }
 

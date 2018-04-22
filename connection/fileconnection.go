@@ -91,7 +91,7 @@ func fetchFile(path string) chan data.Key {
 	return keys
 }
 
-func readSSHKey(bytes []byte, keys chan data.Key)  {
+func readSSHKey(bytes []byte, keys chan data.Key) {
 	k := data.New(string(bytes))
 	if k != nil {
 		keys <- k

@@ -12,7 +12,6 @@ type SSHHostConnection struct {
 	Connection string
 }
 
-
 func (c *SSHHostConnection) Id() data.ID {
 	return data.IdFromString(c.Connection)
 }

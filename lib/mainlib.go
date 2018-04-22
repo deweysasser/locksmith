@@ -18,6 +18,7 @@ func init() {
 	AddType(reflect.TypeOf(data.AWSKey{}))
 	AddType(reflect.TypeOf(connection.SSHHostConnection{}))
 	AddType(reflect.TypeOf(connection.FileConnection{}))
+	AddType(reflect.TypeOf(connection.AWSConnection{}))
 }
 
 func (l *MainLibrary) Connections() Library {
