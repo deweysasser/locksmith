@@ -7,6 +7,10 @@ import (
 
 type ID string
 
+type Ider interface {
+	Id() ID
+}
+
 func IdFromString(s string) ID {
 	return IdFromBytes([]byte(s))
 }

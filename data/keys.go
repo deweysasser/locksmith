@@ -70,24 +70,6 @@ func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
 }
 
-// Load the Key from the given JSON
-func ReadJson(bytes []byte) Key {
-	var key keyImpl
-	json.Unmarshal(bytes, &key)
-
-	switch key.Type {
-	// For now, SSH Key is the only kind
-	case "SSHKey":
-		return LoadTypeFromJSON(bytes, new(SSHKey))
-	case "AWSKey":
-		return LoadTypeFromJSON(bytes, new(AWSKey))
-	default:
-		//panic("Don't know how to read type " + Key.Type)
-		return nil
-	}
-	return nil
-}
-
 func LoadTypeFromJSON(s []byte, o Key) Key {
 	json.Unmarshal(s, o)
 

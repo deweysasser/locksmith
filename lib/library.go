@@ -7,19 +7,27 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"reflect"
+	"github.com/deweysasser/locksmith/data"
 )
+
+var TypeMap map[string]reflect.Type = make(map[string]reflect.Type)
+
+func AddType(p reflect.Type) {
+	TypeMap[p.Name()] = p
+}
 
 type IdStringer interface {
 	IdString() string
 }
 
 type Deserializer func(string, []byte) (interface{}, error)
-type Ider func(interface{}) string
+type IdFunction func(interface{}) string
 
 type library struct {
 	Path         string
 	deserializer Deserializer
-	ider         Ider
+	ider         IdFunction
 	cache        map[string]interface{}
 }
 
@@ -38,7 +46,7 @@ type Library interface {
 	List() chan interface{}
 }
 
-func (l *library) Init(path string, ider Ider, deserializer Deserializer) {
+func (l *library) Init(path string, ider IdFunction, deserializer Deserializer) {
 	l.Path = path
 	l.ider = ider
 	l.deserializer = deserializer
@@ -51,19 +59,34 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 	default:
 		o := make(map[string]interface{})
 		e := json.Unmarshal(bytes, &o)
+		if t, ok := o["Type"]; ok {
+			if strT, ok := t.(string); ok { // it's a string
+				if p, ok := TypeMap[strT]; ok { // it's in the type map
+					no := reflect.New(p).Interface()
+					e := json.Unmarshal(bytes, &no)
+					return no, e
+				}
+			}
+		}
 		return o, e
 	}
 }
 
 func (l *library) id(o interface{}) string {
-	switch o.(type) {
-	case IdStringer:
-		return o.(IdStringer).IdString()
-	case fmt.Stringer:
-		return hashString(o.(fmt.Stringer).String())
-	default:
-		return hash(toJson(o))
+	//fmt.Printf("type is %s\n", reflect.TypeOf(o))
+
+	if i, ok := o.(data.Ider); ok {
+		return string(i.Id())
 	}
+
+	if i, ok := o.(IdStringer); ok {
+		return i.IdString()
+	}
+
+	if s, ok := o.(fmt.Stringer); ok {
+		return hashString(s.String())
+	}
+	return hash(toJson(o))
 }
 
 

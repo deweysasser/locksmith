@@ -3,6 +3,7 @@ package lib
 import (
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
+	"reflect"
 )
 
 type MainLibrary struct {
@@ -12,10 +13,17 @@ type MainLibrary struct {
 	accounts    Library
 }
 
+func init() {
+	AddType(reflect.TypeOf(data.SSHKey{}))
+	AddType(reflect.TypeOf(data.AWSKey{}))
+	AddType(reflect.TypeOf(connection.SSHHostConnection{}))
+	AddType(reflect.TypeOf(connection.FileConnection{}))
+}
+
 func (l *MainLibrary) Connections() Library {
 	if l.connections == nil {
 		clib := new(library)
-		clib.Init(l.Path+"/connections", nil, connection.Deserialize)
+		clib.Init(l.Path+"/connections", nil, nil)
 		l.connections = clib
 	}
 
@@ -25,7 +33,7 @@ func (l *MainLibrary) Connections() Library {
 func (l *MainLibrary) Keys() Library {
 	if l.keys == nil {
 		klib := new(library)
-		klib.Init(l.Path+"/keys", keyid, loadkey)
+		klib.Init(l.Path+"/keys", keyid, nil)
 		l.keys = klib
 	}
 
@@ -52,16 +60,6 @@ func (e *keyReadError) Error() string {
 
 func loadaccount(id string, bytes []byte) (interface{}, error) {
 	return data.LoadAccount(bytes)
-}
-
-func loadkey(id string, bytes []byte) (interface{}, error) {
-	k := data.ReadJson(bytes)
-
-	if nil == k {
-		return nil, &keyReadError{string(bytes)}
-	}
-
-	return k, nil
 }
 
 func accountid(account interface{}) string {

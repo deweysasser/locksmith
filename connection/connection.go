@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"encoding/json"
 	"github.com/deweysasser/locksmith/data"
 	"os"
 )
@@ -19,23 +18,4 @@ func Create(a string) Connection {
 	} else {
 		return &SSHHostConnection{"SSHHostConnection", a}
 	}
-}
-
-func Deserialize(id string, bytes []byte) (interface{}, error) {
-	t := make(map[string]interface{})
-	json.Unmarshal(bytes, &t)
-	var n Connection
-
-	switch t["Type"] {
-	case "FileConnection":
-		n = new(FileConnection)
-	case "SSHHostConnection":
-		n = new(SSHHostConnection)
-	}
-
-	e := json.Unmarshal(bytes, n)
-	if e != nil {
-		return nil, e
-	}
-	return n, nil
 }

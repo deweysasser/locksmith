@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 	"github.com/deweysasser/locksmith/data"
+	"reflect"
 )
 
 type entry struct {
@@ -117,7 +118,7 @@ func TestSave(t *testing.T) {
 
 
 func assertStringEquals(t *testing.T, message, s1, s2 string) {
-	if s1 != s1 {
+	if s1 != s2 {
 		t.Error(message)
 	}
 }
@@ -150,4 +151,56 @@ func TestAWSKey(t *testing.T) {
 		t.Error("Keys did not match")
 	}
 
+}
+
+type withID  struct{
+	Type string
+	ID string
+}
+
+func (t *withID) IdString() string {
+	return t.ID
+}
+
+type Type1 struct {
+	withID
+	Name1 string
+}
+
+
+type Type2 struct {
+	withID
+	Name2 string
+}
+
+func TestIdConversion(t *testing.T) {
+	lib := library{Path: "test-output/type-test"}
+	var t1 *Type1 = &Type1{ withID{"Type1", "id1"}, "name1"}
+
+	assertStringEquals(t, "Verify ID", "id1", lib.id(t1))
+}
+
+func init() {
+	AddType(reflect.TypeOf(Type1{}))
+}
+
+func TestReflectionDeserialize(t *testing.T) {
+
+	lib := library{Path: "test-output/type-test"}
+
+	t1 := Type1{ withID{"Type1", "id1"}, "name1"}
+	t2 := Type1{ withID{"Type2", "id2"}, "name2"}
+
+	lib.Store(&t1)
+	lib.Store(&t2)
+
+	t1a ,err := lib.Fetch("id1")
+
+	check(t, err, "Error fetching id1")
+
+	if _, ok:= t1a.(Type1); ok {
+		t.Error("Restored wrong type")
+	}
+
+	assertStringEquals(t, "Failed to restore id1", "name1", t1a.(*Type1).Name1)
 }
