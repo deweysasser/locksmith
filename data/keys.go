@@ -8,7 +8,7 @@ import (
 
 type keyImpl struct {
 	Type        string
-	Names       []string
+	Names       StringSet
 	Deprecated  bool
 	Replacement ID
 }
@@ -51,7 +51,7 @@ type Key interface {
 }
 
 func (key *keyImpl) GetNames() []string {
-	return key.Names
+	return key.Names.StringArray()
 }
 
 func (key *keyImpl) ReplacementID() ID {

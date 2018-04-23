@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"encoding/base64"
-	"strings"
 )
 
 type PublicKey struct {
@@ -47,7 +46,7 @@ type SSHKey struct {
 	keyImpl
 	ids []ID
 	PublicKey PublicKey
-	Comments  []string
+	Comments  StringSet
 }
 
 /* Use of a public Key, e.g. in an authorized_keys file
@@ -61,15 +60,15 @@ type SSHBinding struct {
 func (s *SSHKey) Merge(k Key) {
 	if other, ok := k.(*SSHKey); ok {
 	   s.Deprecated = s.Deprecated || other.Deprecated
-	   s.Names = append(s.Names, other.Names...)
-	   s.Comments = append(s.Comments, other.Comments...)
+	   s.Names.AddSet(other.Names)
+	   s.Comments.AddSet(other.Comments)
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey",[]string{}, false, ""},nil,PublicKey{pub}, []string{},}
+	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},nil,PublicKey{pub}, StringSet{},}
 }
 
 func (key *SSHKey) Id() ID {
@@ -86,7 +85,7 @@ func (key *SSHKey) Identifiers() []ID {
 }
 
 func (key *SSHKey) String() string {
-	return fmt.Sprintf("%s %s %s", key.Type, key.Id(), strings.Join(key.Comments, ", "))
+	return fmt.Sprintf("%s %s %s", key.Type, key.Id(), key.Comments.Join(", "))
 }
 
 func (key *SSHKey) KeyType() string {
@@ -117,7 +116,7 @@ func getId(pub ssh.PublicKey) ID {
 }
 
 func (key *SSHKey) GetNames() []string {
-	return key.Names
+	return key.Names.StringArray()
 }
 
 func parseSshPrivateKey(content string) Key {
@@ -127,27 +126,29 @@ func parseSshPrivateKey(content string) Key {
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
-			Names:       []string{},
+			Names:       StringSet{},
 			Deprecated:  false,
 			Replacement: ""},
 		PublicKey: PublicKey{pub},
-		Comments:  []string{},
+		Comments:  StringSet{},
 	}
 }
 
 func parseSshPublicKey(content string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
+	comments := StringSet{}
+	comments.Add(comment)
 
 	check(err)
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
-			Names:       []string{},
+			Names:       StringSet{},
 			Deprecated:  false,
 			Replacement: ""},
 		PublicKey: PublicKey{pub},
-		Comments:  []string{comment},
+		Comments:  comments,
 	}
 }
 

@@ -17,7 +17,7 @@ func NewAwsKey(id, name string ) *AWSKey {
 	return &AWSKey{
 		keyImpl: keyImpl{
 			Type:        "AWSKey",
-			Names:       []string{name},
+			Names:       StringSet{},
 			Deprecated:  false,
 			Replacement: ""},
 		AwsKeyId:     id,
@@ -39,11 +39,11 @@ func (key *AWSKey) Identifiers() []ID {
 }
 
 func (key *AWSKey) String() string {
-	return fmt.Sprintf("AWS %s (%s)", key.Id(), strings.Join(key.Names, ", "))
+	return fmt.Sprintf("AWS %s (%s)", key.Id(), key.Names.Join(", "))
 }
 
 func (key *AWSKey) GetNames() []string {
-	return key.Names
+	return key.Names.StringArray()
 }
 
 func (key *AWSKey) Ids() []string {
