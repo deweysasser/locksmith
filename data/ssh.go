@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"strings"
 	"encoding/base64"
+	"strings"
 )
 
 type PublicKey struct {
@@ -58,6 +58,16 @@ type SSHBinding struct {
 	Options []string
 }
 
+func (s *SSHKey) Merge(k Key) {
+	if other, ok := k.(*SSHKey); ok {
+	   s.Deprecated = s.Deprecated || other.Deprecated
+	   s.Names = append(s.Names, other.Names...)
+	   s.Comments = append(s.Comments, other.Comments...)
+	} else {
+		panic("SSH asked to merge non-SSH key")
+	}
+}
+
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
 	return &SSHKey{keyImpl{"SSHKey",[]string{}, false, ""},nil,PublicKey{pub}, []string{},}
 }
@@ -91,10 +101,6 @@ func (key *SSHKey) IsDeprecated() bool {
 	return false
 }
 
-func (key *SSHKey) Replacement() ID {
-	return ""
-}
-
 func publicKey(keytype, pub string) ssh.PublicKey {
 	line := fmt.Sprintf("%s %s", keytype, pub)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
@@ -125,12 +131,14 @@ func parseSshPrivateKey(content string) Key {
 			Deprecated:  false,
 			Replacement: ""},
 		PublicKey: PublicKey{pub},
-		Comments:  []string{}}
+		Comments:  []string{},
+	}
 }
 
 func parseSshPublicKey(content string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
+
 	check(err)
 	return &SSHKey{
 		keyImpl: keyImpl{
@@ -139,13 +147,14 @@ func parseSshPublicKey(content string) Key {
 			Deprecated:  false,
 			Replacement: ""},
 		PublicKey: PublicKey{pub},
-		Comments:  []string{comment}}
+		Comments:  []string{comment},
+	}
 }
 
 
 func SSHLoadJson(s []byte) Key {
-	var key SSHKey
-	json.Unmarshal(s, &key)
+	key := new(SSHKey)
+	json.Unmarshal(s, key)
 
-	return &key
+	return key
 }

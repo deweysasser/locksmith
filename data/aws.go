@@ -25,6 +25,11 @@ func NewAwsKey(id, name string ) *AWSKey {
 		Active:       true}
 }
 
+// Does nothing for AWS keys
+func (key *AWSKey) Merge(k Key) {
+	return
+}
+
 func (key *AWSKey) Id() ID {
 	return ID(key.AwsKeyId)
 }

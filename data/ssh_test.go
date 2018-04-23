@@ -2,10 +2,8 @@ package data
 
 import (
 	"bufio"
-	//	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
-	//	"fmt"
 	"testing"
 	"golang.org/x/crypto/ssh"
 	"encoding/base64"
@@ -27,8 +25,8 @@ func assertStringsEquals(t *testing.T, s1, s2 string) {
 
 func TestPublicKey(t *testing.T) {
 	data := "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
-	 bKey, e := base64.StdEncoding.DecodeString(data)
-	 checke(t, e)
+	bKey, e := base64.StdEncoding.DecodeString(data)
+	checke(t, e)
 
 	sshKey, e := ssh.ParsePublicKey(bKey)
 	checke(t, e)
@@ -45,6 +43,11 @@ func TestPublicKey(t *testing.T) {
 
 	assertStringsEquals(t, "ssh-rsa", p.Key.Type())
 
+}
+func assertTrue(t *testing.T, message string, b bool) {
+	if !b {
+		t.Error(message)
+	}
 }
 
 func TestSSHPublicKeyParsing(t *testing.T) {
@@ -106,7 +109,7 @@ func TestSSHPublicKeyParse(t *testing.T) {
 		}
 		dss := key.(*SSHKey)
 		assertStringsEquals(t, "ssh-dss", dss.KeyType())
-		assertStringsEquals(t, "dewey@FlynnRyder", dss.Comments[0])
+		assertStringsEquals(t, "dewey@FlynnRyder",  dss.Comments[0])
 		assertStringsEquals(t, "ssh-dss AAAAB3NzaC1kc3MAAACBAMZhAjMPsL/oo9RZiD7jfWBOVGoLqwdwtjuTkaKVFmBVBh+c2nMi11zVzRz1JqbXR15QNyaDc2EumZTC2WTyas4uSXTh2F6Ohto+a2QnCN3rjsiBsXHnr6hbBN+Qs8uJ/+ssGDpsWKIpWOL3+Q6QmHQZg+df4XtBlMyehCWr7jCdAAAAFQCrynAE+Z6tGteawaHWa8ReOpYkrQAAAIB3cd1Ls/1ox/gNNMqTbuAvWQIgIda7Uw+OHU55EyeryPR9e2GH6rsHWCwd47cyurOukqF+e5FH/dnj7K/Kt4BFXPeR0YU4KaiAZIEl8I7Kcdazxz3vWgK3sTKRy10ABqEZL9oUazMfX43IaiPeiU6nwgrMHokTwKLkZH+iBwN8JQAAAIEAo+h6Lop9my2BxrHKSmhQfya3rl0N35ZDk/8kExLW1xkpQmzARrCMrw3YNuRCNgrh5Ds7EdyG0HyjWnnSnPBXqCxFfDTtaGeieLquocEK3M5DGckgI4IEa9pvL3fVZ/cHT3YxC369PF/vX9l7TPHF6Au8lnEFEzNyZLQvsfrqxgg=\n", dss.PublicKeyString())
 	})
 }
@@ -148,7 +151,7 @@ func TestSSHJSon(t *testing.T) {
     "test name"
   ],
   "Deprecated": false,
-  "Replacement": "",
+  "Replacement": "other id",
   "PublicKey": {
     "Type": "ssh-rsa",
     "Data": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
@@ -157,11 +160,13 @@ func TestSSHJSon(t *testing.T) {
     "dewey@FlynnRyder"
   ]
 }`
+
 	key := Read("test-data/rsa.pub")
 
 	key.(*SSHKey).Names = append(key.(*SSHKey).Names, "test name")
+	key.(*SSHKey).Replacement = "other id"
 
-	sJson, error := key.Json()
+	sJson, error := json.MarshalIndent(key, "", "  ")
 	checke(t, error)
 	ioutil.WriteFile("temp", sJson, 666)
 	assertStringsEquals(t, expected, string(sJson))
@@ -174,6 +179,7 @@ func TestSSHJSon(t *testing.T) {
 	//fmt.Printf("Recovered key is %s\n", newkey)
 
 	assertStringsEquals(t, string(key.Id()), string(newkey.Id()))
+	assertStringsEquals(t, string(key.ReplacementID()), string(newkey.ReplacementID()))
 	assertStringsEquals(t, key.(*SSHKey).Names[0], newkey.(*SSHKey).Names[0])
 
 	if newkey.(*SSHKey).Comments == nil {
@@ -183,7 +189,7 @@ func TestSSHJSon(t *testing.T) {
 	assertStringsEquals(t, key.(*SSHKey).Comments[0], newkey.(*SSHKey).Comments[0])
 
 
-	sJson2, error := newkey.Json()
+	sJson2, error := json.MarshalIndent(newkey, "", "  ")
 	checke(t, error)
 	assertStringsEquals(t, expected, string(sJson2))
 }

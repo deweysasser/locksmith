@@ -39,6 +39,8 @@ type Library interface {
 	Flush() error
 	// Store the given data as the ID
 	Store(object interface{}) error
+	// Get the ID of the given object
+	Id(object interface{}) string
 	// Fetch the data given by ID from the disk
 	Fetch(id string) (interface{}, error)
 	// Ensure that the object exists
@@ -77,7 +79,7 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 
 /* Return the primary identifier for this object
  */
-func (l *library) id(o interface{}) string {
+func (l *library) Id(o interface{}) string {
 	//fmt.Printf("type is %s\n", reflect.TypeOf(o))
 
 	if i, ok := o.(data.Ider); ok {
@@ -105,7 +107,7 @@ func (l *library) ids(o interface{}) chan string {
 				c <- string(id)
 			}
 		} else {
-			c <- l.id(o)
+			c <- l.Id(o)
 		}
 	}()
 	return c
@@ -139,7 +141,7 @@ func (l *library) Store(o interface{}) error {
 		}
 	}
 
-	primaryID := l.id(o)
+	primaryID := l.Id(o)
 	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(primaryID))
 	//fmt.Println("Writing to " , path)
 	bytes, e := json.MarshalIndent(o, " ", " ")
@@ -190,7 +192,7 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 	o, e := l.deserialize(id, bytes)
 
 	if e == nil {
-		//l.cache[id] = o
+		//l.cache[Id] = o
 	} else {
 		fmt.Println("Failed to read key in " + path)
 	}

@@ -134,7 +134,7 @@ func TestAWSKey(t *testing.T) {
 
 	k := data.NewAwsKey("testing", "test")
 
-	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).id(k), "testing")
+	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).Id(k), "testing")
 
 	lib.Store(k)
 
@@ -178,7 +178,7 @@ func TestIdConversion(t *testing.T) {
 	lib := library{Path: "test-output/type-test"}
 	var t1 = &Type1{ withID{"Type1", "id1"}, "name1"}
 
-	assertStringEquals(t, "Verify ID", "id1", lib.id(t1))
+	assertStringEquals(t, "Verify ID", "id1", lib.Id(t1))
 }
 
 func init() {

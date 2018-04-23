@@ -66,7 +66,13 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 	i := 0
 	for k := range keys {
 		i++
-		klib.Store(k)
+		id := klib.Id(k)
+		if existing, err := klib.Fetch(id); err == nil {
+			existing.(data.Key).Merge(k)
+			klib.Store(existing)
+		} else {
+			klib.Store(k)
+		}
 	}
 
 	fmt.Printf("Discovered %d keys\n", i)

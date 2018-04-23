@@ -41,13 +41,13 @@ type KeyBinding struct {
 }
 
 type Key interface {
-	Json() ([]byte, error)
 	Id() ID
 	//IdString() string
 	Identifiers() []ID
 	GetNames() []string
 	IsDeprecated() bool
 	ReplacementID() ID
+	Merge(Key)
 }
 
 func (key *keyImpl) GetNames() []string {
