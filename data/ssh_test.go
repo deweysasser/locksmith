@@ -150,7 +150,6 @@ func TestSSHJSon(t *testing.T) {
   "Names": [
     "test name"
   ],
-  "Deprecated": false,
   "Replacement": "other id",
   "PublicKey": {
     "Type": "ssh-rsa",

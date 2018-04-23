@@ -10,8 +10,9 @@ import (
 )
 
 type AWSConnection struct {
-	Type, String string
+	Type, Profile string
 }
+
 
 func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
 	keys = make(chan data.Key)
@@ -23,7 +24,7 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewSharedCredentials("", a.String),
+		Credentials: credentials.NewSharedCredentials("", a.Profile),
 	})
 
 	if err != nil {
@@ -49,7 +50,7 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 			bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
 		}
 
-		acct := data.Account{Type: "Account", Connection: a.Id(), Name: a.String, Keys: bindings}
+		acct := data.Account{Type: "Account", Connection: a.Id(), Name: a.Profile, Keys: bindings}
 
 		accounts <- acct
 
@@ -59,5 +60,5 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 }
 
 func (a *AWSConnection) Id() data.ID {
-	return data.ID(a.String)
+	return data.ID(a.Profile)
 }

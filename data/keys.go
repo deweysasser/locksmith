@@ -9,8 +9,8 @@ import (
 type keyImpl struct {
 	Type        string
 	Names       StringSet
-	Deprecated  bool
-	Replacement ID
+	Deprecated  bool `json:",omitempty"`
+	Replacement ID `json:",omitempty"`
 }
 
 /** What action to perform (if any) for a binding
