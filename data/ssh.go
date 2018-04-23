@@ -6,17 +6,50 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"strings"
+	"encoding/base64"
 )
 
-/** An SSH key, public and (optionally) private
+type PublicKey struct {
+	Key ssh.PublicKey
+}
+
+
+func (p *PublicKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Type, Data string
+	}{
+		Type: p.Key.Type(),
+		Data: base64.StdEncoding.EncodeToString(p.Key.Marshal()),
+	})
+}
+
+func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
+	temp := make(map[string]interface{})
+	if e := json.Unmarshal(bytes, &temp); e != nil {
+		return e
+	}
+
+	if bKey, e := base64.StdEncoding.DecodeString(temp["Data"].(string)); e==nil {
+		if k, e2 := ssh.ParsePublicKey(bKey); e2 == nil {
+			p.Key = k
+			return nil
+		} else {
+			return e2
+		}
+	} else {
+		return e
+	}
+}
+
+/** An SSH Key, public and (optionally) private
  */
 type SSHKey struct {
 	keyImpl
-	PublicKey ssh.PublicKey
+	PublicKey PublicKey
 	Comments  []string
 }
 
-/* Use of a public key, e.g. in an authorized_keys file
+/* Use of a public Key, e.g. in an authorized_keys file
  */
 type SSHBinding struct {
 	Id      ID
@@ -25,7 +58,7 @@ type SSHBinding struct {
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey", []ID{getId(pub)}, []string{}, false, ""}, pub, []string{}}
+	return &SSHKey{keyImpl{"SSHKey", []ID{getId(pub)}, []string{}, false, ""},PublicKey{pub}, []string{},}
 }
 
 func (key *SSHKey) String() string {
@@ -33,7 +66,7 @@ func (key *SSHKey) String() string {
 }
 
 func (key *SSHKey) KeyType() string {
-	return key.PublicKey.Type()
+	return key.PublicKey.Key.Type()
 }
 
 func (key *SSHKey) Json() ([]byte, error) {
@@ -56,7 +89,7 @@ func publicKey(keytype, pub string) ssh.PublicKey {
 }
 
 func (key *SSHKey) PublicKeyString() string {
-	return string(ssh.MarshalAuthorizedKey(key.PublicKey))
+	return string(ssh.MarshalAuthorizedKey(key.PublicKey.Key))
 }
 
 func getId(pub ssh.PublicKey) ID {
@@ -79,7 +112,7 @@ func parseSshPrivateKey(content string) Key {
 			Names:       []string{},
 			Deprecated:  false,
 			Replacement: ""},
-		PublicKey: pub,
+		PublicKey: PublicKey{pub},
 		Comments:  []string{}}
 }
 
@@ -94,7 +127,7 @@ func parseSshPublicKey(content string) Key {
 			Names:       []string{},
 			Deprecated:  false,
 			Replacement: ""},
-		PublicKey: pub,
+		PublicKey: PublicKey{pub},
 		Comments:  []string{comment}}
 }
 

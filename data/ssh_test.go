@@ -7,6 +7,9 @@ import (
 	"os"
 	//	"fmt"
 	"testing"
+	"golang.org/x/crypto/ssh"
+	"encoding/base64"
+	"encoding/json"
 )
 
 func checke(t *testing.T, e error) {
@@ -20,6 +23,28 @@ func assertStringsEquals(t *testing.T, s1, s2 string) {
 		t.Logf("Expected [%s] but got [%s]", s1, s2)
 		t.Fail()
 	}
+}
+
+func TestPublicKey(t *testing.T) {
+	data := "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
+	 bKey, e := base64.StdEncoding.DecodeString(data)
+	 checke(t, e)
+
+	sshKey, e := ssh.ParsePublicKey(bKey)
+	checke(t, e)
+	p := PublicKey{sshKey}
+
+	b, e := json.Marshal(&p)
+	checke(t, e)
+
+	assertStringsEquals(t, `{"Type":"ssh-rsa","Data":"AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"}`, string(b))
+
+	p = PublicKey{}
+	e = json.Unmarshal(b, &p)
+	checke(t, e)
+
+	assertStringsEquals(t, "ssh-rsa", p.Key.Type())
+
 }
 
 func TestSSHPublicKeyParsing(t *testing.T) {
@@ -91,7 +116,7 @@ func TestReadAuthorizedKeys(t *testing.T) {
 
 	scanner := bufio.NewScanner(file)
 
-	// Constrained key is the first line
+	// Constrained Key is the first line
 	scanner.Scan()
 	text := scanner.Text()
 
@@ -115,31 +140,51 @@ func TestSSHId(t *testing.T) {
 }
 
 func TestSSHJSon(t *testing.T) {
-	key := Read("test-data/rsa.pub")
-
-	json, error := key.Json()
-	checke(t, error)
-	ioutil.WriteFile("temp", json, 666)
-	assertStringsEquals(t, `{
+	expected := `{
   "Type": "SSHKey",
   "Ids": [
     "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ"
   ],
-  "Names": [],
+  "Names": [
+    "test name"
+  ],
   "Deprecated": false,
   "Replacement": "",
   "PublicKey": {
-    "N": 24809051920830052890525181663834441562026965135039612171555457049570978341010824702982333278059308143991930998126783941620692557632728744577159151723229554430031053565344135388348118543421038378400575227281198627317117014484306016930895724285350616040857348021361132827891442508498492344373669032945937823849182795792657014842937263625871476146281616750298221384794570364753932252429117402688216047768632943893167376694869582348687268093872504134257344361532896936336925442773163484682792603660177457890027949342950405164971002422265080740838135765734774882286316380152623151063236328138603783949035635609218432853817,
-    "E": 65537
+    "Type": "ssh-rsa",
+    "Data": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
   },
   "Comments": [
     "dewey@FlynnRyder"
   ]
-}`, string(json))
+}`
+	key := Read("test-data/rsa.pub")
 
-	newkey := ReadJson(json)
+	key.(*SSHKey).Names = append(key.(*SSHKey).Names, "test name")
 
-	if key.Id() != newkey.Id() {
-		t.Errorf("Failed to load JSON")
+	sJson, error := key.Json()
+	checke(t, error)
+	ioutil.WriteFile("temp", sJson, 666)
+	assertStringsEquals(t, expected, string(sJson))
+
+	var newkey Key = new(SSHKey)
+	e :=json.Unmarshal([]byte(expected), &newkey)
+	checke(t, e)
+	//newkey := ReadJson(sJson)
+
+	//fmt.Printf("Recovered key is %s\n", newkey)
+
+	assertStringsEquals(t, string(key.Id()), string(newkey.Id()))
+	assertStringsEquals(t, key.(*SSHKey).Names[0], newkey.(*SSHKey).Names[0])
+
+	if newkey.(*SSHKey).Comments == nil {
+		t.Fatal("Failed to restore comments")
 	}
+
+	assertStringsEquals(t, key.(*SSHKey).Comments[0], newkey.(*SSHKey).Comments[0])
+
+
+	sJson2, error := newkey.Json()
+	checke(t, error)
+	assertStringsEquals(t, expected, string(sJson2))
 }

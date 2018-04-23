@@ -24,7 +24,7 @@ const (
 	PENDING_DELETE BindingAction = iota
 )
 
-/** Where a key is bound on an account
+/** Where a Key is bound on an account
  */
 type BindingLocation int
 
@@ -70,19 +70,19 @@ func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
 }
 
-// Load the key from the given JSON
+// Load the Key from the given JSON
 func ReadJson(bytes []byte) Key {
 	var key keyImpl
 	json.Unmarshal(bytes, &key)
 
 	switch key.Type {
-	// For now, SSH key is the only kind
+	// For now, SSH Key is the only kind
 	case "SSHKey":
 		return LoadTypeFromJSON(bytes, new(SSHKey))
 	case "AWSKey":
 		return LoadTypeFromJSON(bytes, new(AWSKey))
 	default:
-		//panic("Don't know how to read type " + key.Type)
+		//panic("Don't know how to read type " + Key.Type)
 		return nil
 	}
 	return nil
@@ -102,7 +102,7 @@ func LoadJsonFile(path string) Key {
 	return SSHLoadJson(json)
 }
 
-// Create a new key from the given path
+// Create a new Key from the given path
 func Read(path string) Key {
 	bytes, err := ioutil.ReadFile(path)
 	check(err)
@@ -110,7 +110,7 @@ func Read(path string) Key {
 	return New(string(bytes))
 }
 
-// Create a new key from the given content
+// Create a new Key from the given content
 func New(content string) Key {
 	switch {
 	case strings.Contains(content, "PuTTY"):
