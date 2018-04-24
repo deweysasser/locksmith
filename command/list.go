@@ -5,6 +5,7 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/urfave/cli"
 	"sync"
+	"github.com/deweysasser/locksmith/output"
 )
 
 func CmdList(c *cli.Context) error {
@@ -20,7 +21,7 @@ func CmdList(c *cli.Context) error {
 		defer wg.Done()
 		for s := range ch {
 			if filter(s) {
-				fmt.Println(s)
+				output.Normal(s)
 			}
 		}
 	}()

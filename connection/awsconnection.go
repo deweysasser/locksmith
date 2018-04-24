@@ -7,12 +7,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/deweysasser/locksmith/data"
 	"fmt"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type AWSConnection struct {
 	Type, Profile string
 }
 
+func (a *AWSConnection) String() string {
+	return fmt.Sprintf("aws://%s", a.Profile)
+}
 
 func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
 	keys = make(chan data.Key)
@@ -28,7 +32,7 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 	})
 
 	if err != nil {
-		fmt.Println("Failed to connect")
+		output.Error("Failed to connect")
 		return
 	}
 
@@ -37,7 +41,7 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 	out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
 
 	if err != nil {
-		fmt.Println("Failed to find key pairs")
+		output.Warn("Failed to find key pairs")
 		return
 	}
 

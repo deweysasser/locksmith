@@ -17,7 +17,7 @@ func (a *Account) String() string {
 }
 
 func (a *Account) AddBinding(k Key) {
-	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id(), AccountID: a.Id()})
+	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id(), /* AccountID: a.Id() */})
 }
 
 func (a *Account) Id() ID {

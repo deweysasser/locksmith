@@ -1,13 +1,13 @@
 package command
 
 import (
-	"fmt"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/urfave/cli"
 	"sync"
 	"reflect"
+	"github.com/deweysasser/locksmith/output"
 )
 
 func CmdFetch(c *cli.Context) error {
@@ -27,7 +27,7 @@ func CmdFetch(c *cli.Context) error {
 
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
-			fmt.Printf("Fetching from %s\n", conn)
+			output.Debugf("Fetching from %s\n", conn)
 			k, a := fetchFrom(conn)
 			fKeys.Add(k)
 			fAccounts.Add(a)
@@ -58,7 +58,7 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 		alib.Store(k)
 	}
 
-	fmt.Printf("Discovered %d accounts\n", i)
+	output.Normalf("Discovered %d accounts\n", i)
 }
 
 func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
@@ -75,5 +75,5 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 		}
 	}
 
-	fmt.Printf("Discovered %d keys\n", i)
+	output.Normalf("Discovered %d keys\n", i)
 }

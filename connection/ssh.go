@@ -1,10 +1,10 @@
 package connection
 
 import (
-	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"os/exec"
 	"strings"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type SSHHostConnection struct {
@@ -25,7 +25,7 @@ func (c *SSHHostConnection) Fetch() (cKeys chan data.Key, cAccounts chan data.Ac
 	cAccounts = make(chan data.Account)
 
 	go func() {
-		fmt.Printf("Retrieving from %s\n", c.Connection)
+		output.Debugf("Retrieving from %s\n", c.Connection)
 
 		acct := data.Account{"SSH", c.Connection, c.Id(), nil}
 
@@ -52,7 +52,7 @@ func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	out, err := cmd.Output()
 
 	if err != nil {
-		fmt.Printf("Failed to connect to %s: %s\n", remote.Connection, err)
+		output.Errorf("Failed to connect to %s: %s\n", remote.Connection, err)
 	}
 
 	lines := strings.Split(string(out), "\n")

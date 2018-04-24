@@ -15,27 +15,28 @@ type keyImpl struct {
 
 /** What action to perform (if any) for a binding
  */
-type BindingAction int
+type BindingAction string
 
 const (
-	EXISTS         BindingAction = iota
-	PENDING_ADD    BindingAction = iota
-	PENDING_DELETE BindingAction = iota
+	EXISTS         BindingAction = ""
+	PENDING_ADD    BindingAction = "ADD"
+	PENDING_DELETE BindingAction = "REMOVE"
 )
 
 /** Where a Key is bound on an account
  */
-type BindingLocation int
+type BindingLocation string
 
 const (
-	FILE            BindingLocation = iota
-	AUTHORIZED_KEYS BindingLocation = iota
-	AWS_CREDENTIALS BindingLocation = iota
+	FILE            BindingLocation = "FILE"
+	AUTHORIZED_KEYS BindingLocation = "AUTHORIZED_KEYS"
+	AWS_CREDENTIALS BindingLocation = "CREDENTIALS"
 )
 
 type KeyBinding struct {
 	KeyID     ID
-	AccountID ID `json:",omitempty"`
+	//AccountID ID `json:",omitempty"`
+	Location  BindingLocation `json:",omitempty"`
 	Type      BindingAction `json:",omitempty"`
 	Name      string `json:",omitempty"`
 }

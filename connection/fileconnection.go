@@ -1,12 +1,12 @@
 package connection
 
 import (
-	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type FileConnection struct {
@@ -72,7 +72,7 @@ func fetchFile(path string) chan data.Key {
 	keys := make(chan data.Key)
 	go func() {
 		defer close(keys)
-		fmt.Println("Reading", path)
+		output.Debug("Reading", path)
 
 		bytes, err := ioutil.ReadFile(path)
 		if err != nil {

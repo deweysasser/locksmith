@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"reflect"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/output"
 )
 
 var TypeMap = make(map[string]reflect.Type)
@@ -194,7 +195,7 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 	if e == nil {
 		//l.cache[Id] = o
 	} else {
-		fmt.Println("Failed to read key in " + path)
+		output.Error("Failed to read key in " + path)
 	}
 
 	//fmt.Printf("Read %s\n", o)
