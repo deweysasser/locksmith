@@ -23,7 +23,7 @@ func CmdFetch(c *cli.Context) error {
 	libWG.Add(1)
 	go ingestAccounts(ml.Accounts(), fAccounts.Output(), &libWG)
 
-	filter := buildFilter(c.Args())
+	filter := buildFilter(c)
 
 	for conn := range ml.Connections().List() {
 		if filter(conn) {

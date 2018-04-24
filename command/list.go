@@ -13,7 +13,7 @@ func CmdList(c *cli.Context) error {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	filter := buildFilter(c.Args())
+	filter := buildFilter(c)
 	ch := make(chan string)
 
 	// Start the printer

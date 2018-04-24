@@ -19,6 +19,7 @@ func (a *AWSConnection) String() string {
 }
 
 func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
+	output.Debug("Fetching from aws", a.Profile)
 	keys = make(chan data.Key)
 	accounts = make(chan data.Account)
 
@@ -66,3 +67,5 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 func (a *AWSConnection) Id() data.ID {
 	return data.ID(a.Profile)
 }
+
+

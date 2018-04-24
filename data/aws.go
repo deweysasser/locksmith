@@ -5,6 +5,7 @@ import (
 	"strings"
 	"regexp"
 	"fmt"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type AWSKey struct {
@@ -67,6 +68,7 @@ func ParseAWSCredentials(bytes []byte, keys chan Key) {
 	config := parseFile(string(bytes))
 
 	for name, fields := range(config) {
+		output.Debug("Reading key", name)
 		key := NewAwsKey(fields["aws_access_key_id"], name)
 		keys <- key
 		}

@@ -16,7 +16,7 @@ const (
 var Level OutputLevel = DebugLevel
 
 func output(l OutputLevel, s ...interface{}) {
-	if Level > l {
+	if Level >= l {
 		fmt.Println(s...)
 	}
 }

@@ -29,6 +29,12 @@ var Commands = []cli.Command{
 		Action: command.CmdList,
 		Flags:  []cli.Flag{},
 	},
+	{
+		Name:   "rm",
+		Usage:  "",
+		Action: command.CmdRemove,
+		Flags:  []cli.Flag{},
+	},
 }
 
 func CommandNotFound(c *cli.Context, command string) {

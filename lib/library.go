@@ -48,6 +48,8 @@ type Library interface {
 	Ensure(id string) (interface{}, error)
 	// Delete the object with the given ID from the disk
 	Delete(id string) error
+	// Delete the object given
+	DeleteObject(o interface{}) error
 	// List the objects
 	List() chan interface{}
 }
@@ -133,6 +135,14 @@ func toJson(o interface{}) []byte {
 
 }
 
+func (l *library) pathOfObject(o interface{}) string {
+	return l.pathOfId(l.Id(o))
+}
+
+func (l *library) pathOfId(s string) string {
+	return fmt.Sprintf("%s/%s.json", l.Path, sanitize(s))
+}
+
 func (l *library) Store(o interface{}) error {
 	_, e := os.Stat(l.Path)
 	if e != nil {
@@ -142,8 +152,7 @@ func (l *library) Store(o interface{}) error {
 		}
 	}
 
-	primaryID := l.Id(o)
-	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(primaryID))
+	path := l.pathOfObject(o)
 	//fmt.Println("Writing to " , path)
 	bytes, e := json.MarshalIndent(o, " ", " ")
 	if e != nil {
@@ -173,7 +182,7 @@ func (l *library) Fetch(id string) (interface{}, error) {
 			return v, nil
 		}
 	}
-	path := fmt.Sprintf("%s/%s.json", l.Path, sanitize(id))
+	path := l.pathOfId(id)
 	return l.fetchFrom(id, path)
 }
 
@@ -216,10 +225,23 @@ func (l *library) Ensure(id string) (interface{}, error) {
 	return o, e
 }
 
+
 func (l *library) Delete(id string) error {
-	path := fmt.Sprintf("%s/%s.json", l.Path, id)
+	path := l.pathOfId(id)
+
+	if o, e := l.fetchFrom(id, path); e==nil {
+		for i:= range l.ids(o) {
+			delete(l.cache, i)
+		}
+	}
 
 	return os.Remove(path)
+}
+
+func (l* library) DeleteObject(o interface{}) error {
+	id := l.Id(o)
+	output.Debug("Deleting object with id ", id)
+	return l.Delete(id)
 }
 
 func (l *library) Load()  {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"github.com/urfave/cli"
 )
 
 // Return the locksmith data directory
@@ -12,7 +13,10 @@ func datadir() string {
 	return home + "/" + ".x-locksmith"
 }
 
-func buildFilter(args []string) func(interface{}) bool {
+type Filter func(interface{}) bool
+
+func buildFilter(c *cli.Context) Filter {
+	args := c.Args()
 	filter := func(a interface{}) bool {
 		return true
 	}
