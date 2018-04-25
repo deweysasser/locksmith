@@ -69,9 +69,13 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 		id := klib.Id(k)
 		if existing, err := klib.Fetch(id); err == nil {
 			existing.(data.Key).Merge(k)
-			klib.Store(existing)
+			if e := klib.Store(existing); e != nil {
+				output.Error(e)
+			}
 		} else {
-			klib.Store(k)
+			if e:= klib.Store(k); e != nil {
+				output.Error(e)
+			}
 		}
 	}
 

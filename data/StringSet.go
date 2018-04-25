@@ -70,10 +70,6 @@ func (s *StringSet) Values() chan string {
 func (s *StringSet) MarshalJSON() ([]byte, error) {
 	s2 := s.StringArray()
 
-	if len(s2) <1 {
-		return nil, nil
-	}
-
 	return json.Marshal(s2)
 }
 

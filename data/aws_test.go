@@ -12,6 +12,17 @@ func TestBasic(t *testing.T) {
 
 	assertStringsEquals(t, "12345", string(key.Id()))
 
+	if s, e := impl.Json() ; e==nil {
+		assertStringsEquals(t, `{
+  "Type": "AWSKey",
+  "Names": [],
+  "AwsKeyId": "12345",
+  "AwsSecretKey": "",
+  "Active": true
+}`, string(s))
+	}	else {
+		t.Error("json failed", e)
+	}
 }
 
 

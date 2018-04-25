@@ -38,4 +38,11 @@ func TestJSON(t *testing.T) {
 	assertTrue(t, "deser contains foo", s2.Contains("foo"))
 	assertTrue(t, "deser contains bar", s2.Contains("bar"))
 
+	 s3 := StringSet{}
+
+	if bJson, err = json.Marshal(&s3); err != nil {
+		t.Error(err)
+	} else {
+		assertStringsEquals(t, `[]`, string(bJson))
+	}
 }
