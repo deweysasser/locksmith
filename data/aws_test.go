@@ -2,6 +2,7 @@ package data
 
 import (
 	"testing"
+	"encoding/json"
 )
 
 func TestBasic(t *testing.T) {
@@ -26,3 +27,6 @@ func TestBasic(t *testing.T) {
 }
 
 
+func testJson(i interface{}) ([]byte, error ){
+	return json.MarshalIndent(i, "", "  ")
+}

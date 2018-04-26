@@ -59,6 +59,19 @@ func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
 }
 
+func (key *keyImpl) IsDeprecated() bool {
+	return key.Deprecated
+}
+
+
+func (key *keyImpl) Merge(k *keyImpl) {
+	key.Names.AddSet(k.Names)
+	key.Deprecated = key.Deprecated || k.Deprecated
+	if key.Replacement == "" && k.Replacement != "" {
+		key.Replacement = k.Replacement
+	}
+}
+
 func LoadTypeFromJSON(s []byte, o Key) Key {
 	json.Unmarshal(s, o)
 

@@ -24,7 +24,9 @@ func (set *StringSet) AddSet(other StringSet) {
 
 	if other.strings != nil{
 		for v, _ := range other.strings {
-			set.strings[v] = true
+			if v != "" {
+				set.strings[v] = true
+			}
 		}
 	}
 }

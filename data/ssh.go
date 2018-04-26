@@ -96,10 +96,6 @@ func (key *SSHKey) Json() ([]byte, error) {
 	return json.MarshalIndent(key, "", "  ")
 }
 
-func (key *SSHKey) IsDeprecated() bool {
-	return false
-}
-
 func publicKey(keytype, pub string) ssh.PublicKey {
 	line := fmt.Sprintf("%s %s", keytype, pub)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
@@ -113,10 +109,6 @@ func (key *SSHKey) PublicKeyString() string {
 
 func getId(pub ssh.PublicKey) ID {
 	return ID(ssh.FingerprintSHA256(pub))
-}
-
-func (key *SSHKey) GetNames() []string {
-	return key.Names.StringArray()
 }
 
 func parseSshPrivateKey(content string) Key {
@@ -138,7 +130,9 @@ func parseSshPublicKey(content string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	comments := StringSet{}
-	comments.Add(comment)
+	if comment != "" {
+		comments.Add(comment)
+	}
 
 	check(err)
 	return &SSHKey{

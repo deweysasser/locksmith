@@ -15,10 +15,14 @@ type AWSKey struct {
 }
 
 func NewAwsKey(id, name string ) *AWSKey {
+	names := StringSet{}
+	if name != "" {
+		names.Add(name)
+	}
 	return &AWSKey{
 		keyImpl: keyImpl{
 			Type:        "AWSKey",
-			Names:       StringSet{},
+			Names:       names,
 			Deprecated:  false,
 			Replacement: ""},
 		AwsKeyId:     id,
@@ -28,7 +32,9 @@ func NewAwsKey(id, name string ) *AWSKey {
 
 // Does nothing for AWS keys
 func (key *AWSKey) Merge(k Key) {
-	return
+	if ak, ok := k.(*AWSKey); ok {
+		key.keyImpl.Merge(&ak.keyImpl)
+	}
 }
 
 func (key *AWSKey) Id() ID {
@@ -43,24 +49,12 @@ func (key *AWSKey) String() string {
 	return fmt.Sprintf("AWS %s (%s)", key.Id(), key.Names.Join(", "))
 }
 
-func (key *AWSKey) GetNames() []string {
-	return key.Names.StringArray()
-}
-
 func (key *AWSKey) Ids() []string {
 	return []string{key.AwsKeyId}
 }
 
-func (key *AWSKey) IsDeprecated() bool {
-	return key.Deprecated
-}
-
 func (key *AWSKey) Json() ([]byte, error) {
 	return json.MarshalIndent(key, "", "  ")
-}
-
-func (key *AWSKey) Replacement() ID {
-	return ""
 }
 
 func ParseAWSCredentials(bytes []byte, keys chan Key) {
