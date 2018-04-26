@@ -45,14 +45,14 @@ type Key interface {
 	Id() ID
 	//IdString() string
 	Identifiers() []ID
-	GetNames() []string
+	GetNames() StringSet
 	IsDeprecated() bool
 	ReplacementID() ID
 	Merge(Key)
 }
 
-func (key *keyImpl) GetNames() []string {
-	return key.Names.StringArray()
+func (key *keyImpl) GetNames() StringSet {
+	return key.Names
 }
 
 func (key *keyImpl) ReplacementID() ID {
@@ -95,12 +95,13 @@ func Read(path string) Key {
 }
 
 // Create a new Key from the given content
-func New(content string) Key {
+func New(content string, names ...string) Key {
+
 	switch {
 	case strings.Contains(content, "PuTTY"):
 		return nil
 	case strings.Contains(content, "ssh-"):
-		return parseSshPublicKey(content)
+		return parseSshPublicKey(content, names...)
 	/*
 		case strings.Contains(content, "PRIVATE KEY"):
 			return parseSshPrivateKey(content)

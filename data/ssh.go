@@ -85,7 +85,7 @@ func (key *SSHKey) Identifiers() []ID {
 }
 
 func (key *SSHKey) String() string {
-	return fmt.Sprintf("%s %s %s", key.Type, key.Id(), key.Comments.Join(", "))
+	return fmt.Sprintf("%s %s %s (%s)", key.Type, key.Id(), key.Comments.Join(", "), key.Names.Join(", "))
 }
 
 func (key *SSHKey) KeyType() string {
@@ -126,7 +126,7 @@ func parseSshPrivateKey(content string) Key {
 	}
 }
 
-func parseSshPublicKey(content string) Key {
+func parseSshPublicKey(content string, names ...string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	comments := StringSet{}
@@ -134,11 +134,19 @@ func parseSshPublicKey(content string) Key {
 		comments.Add(comment)
 	}
 
+	sNames := StringSet{}
+	for _, s:= range(names) {
+		if s != "" {
+			sNames.Add(s)
+		}
+	}
+
+
 	check(err)
 	return &SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
-			Names:       StringSet{},
+			Names:       sNames,
 			Deprecated:  false,
 			Replacement: ""},
 		PublicKey: PublicKey{pub},

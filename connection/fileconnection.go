@@ -85,14 +85,23 @@ func fetchFile(path string) chan data.Key {
 		case strings.Contains(s, "aws_access_key_id"):
 			data.ParseAWSCredentials(bytes, keys)
 		default:
-			readSSHKey(bytes, keys)
+			readSSHKey(bytes, keys, basename(path))
 		}
 	}()
 	return keys
 }
 
-func readSSHKey(bytes []byte, keys chan data.Key) {
-	k := data.New(string(bytes))
+func basename(path string) string {
+	if i := strings.LastIndex(path, "/"); i>0 {
+		i++
+		return path[i:]
+	} else {
+		return path
+	}
+}
+
+func readSSHKey(bytes []byte, keys chan data.Key, names ...string) {
+	k := data.New(string(bytes), names...)
 	if k != nil {
 		keys <- k
 	}
