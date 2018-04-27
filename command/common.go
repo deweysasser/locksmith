@@ -16,8 +16,12 @@ func datadir() string {
 
 type Filter func(interface{}) bool
 
-func buildFilter(c *cli.Context) Filter {
-	args := c.Args()
+
+func buildFilterFromContext(c *cli.Context) Filter {
+	return buildFilter(c.Args())
+}
+
+func buildFilter(args []string) Filter {
 	filter := func(a interface{}) bool {
 		return true
 	}

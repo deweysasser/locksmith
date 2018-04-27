@@ -10,7 +10,7 @@ func CmdRemove(c *cli.Context) error {
 
 	ml := lib.MainLibrary{Path: datadir()}
 
-	filter := buildFilter(c)
+	filter := buildFilterFromContext(c)
 
 	process(ml.Connections(), filter)
 	process(ml.Accounts(), filter)

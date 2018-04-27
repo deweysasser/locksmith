@@ -9,6 +9,10 @@ import (
 )
 
 var GlobalFlags = []cli.Flag{
+	cli.BoolFlag{
+		Name: "debug, d",
+		Usage: "Debug output",
+	},
 }
 
 var outputFlags = []cli.Flag{
@@ -48,6 +52,13 @@ var Commands = []cli.Command{
 		Action: command.CmdRemove,
 		Flags:  []cli.Flag{},
 	},
+	{
+		Name: "add-id",
+		Usage: "Add an ID to 1 key",
+		Action: command.CmdAddId,
+		Flags: []cli.Flag{},
+	},
+}
 }
 
 func CommandNotFound(c *cli.Context, command string) {

@@ -16,7 +16,7 @@ func CmdList(c *cli.Context) error {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	filter := buildFilter(c)
+	filter := buildFilterFromContext(c)
 	ch := make(chan string)
 
 	// Start the printer
@@ -29,21 +29,18 @@ func CmdList(c *cli.Context) error {
 		}
 	}()
 
-	for i := range ml.Connections().List() {
-		ch <- connectionString(i, "")
-		if output.IsLevel(output.VerboseLevel) {
-		}
-	}
+	printConnections(ml.Connections(), ch)
+	printAccounts(ml.Accounts(), ch, ml)
+	printKeys(ml.Keys(), ch)
 
-	accountsForKey := make(map[data.ID][]data.ID)
+	close(ch)
+	wg.Wait()
 
-	for i := range ml.Accounts().List() {
-		ch <- accountString(i, "")
-		if output.IsLevel(output.VerboseLevel) {
-			outputKeysFor(ch, i.(data.Account), accountsForKey, ml.Keys())
-		}
-	}
-	for i := range ml.Keys().List() {
+	return nil
+}
+
+func printKeys(keys lib.Library, ch chan<- string) {
+	for i := range keys.List() {
 		ch <- keyString(i, "")
 		if output.IsLevel(output.DebugLevel) {
 			for _, id := range i.(data.Key).Identifiers() {
@@ -51,10 +48,27 @@ func CmdList(c *cli.Context) error {
 			}
 		}
 	}
-
-	return nil
 }
 
+func printAccounts(accounts lib.Library, ch chan<- string, ml lib.MainLibrary)  map[data.ID][]data.ID {
+	accountsForKey := make(map[data.ID][]data.ID)
+	for i := range accounts.List() {
+		ch <- accountString(i, "")
+		if output.IsLevel(output.VerboseLevel) {
+			outputKeysFor(ch, i.(data.Account), accountsForKey, ml.Keys())
+		}
+	}
+
+	return accountsForKey
+}
+
+func printConnections(connections lib.Library, ch chan<- string)  {
+	for i := range connections.List() {
+		ch <- connectionString(i, "")
+		if output.IsLevel(output.VerboseLevel) {
+		}
+	}
+}
 
 func connectionString(i interface{}, prefix string) string {
 	return fmt.Sprintf("%sconnection %s", prefix, i)
@@ -68,8 +82,8 @@ func keyString(i interface{}, prefix string) string {
 	return fmt.Sprintf("%skey %s", prefix, i)
 }
 
-func outputKeysFor(ch chan <-string, a data.Account, m map[data.ID][]data.ID, keys lib.Library) {
-	for _, k:=range a.Bindings() {
+func outputKeysFor(ch chan<- string, a data.Account, m map[data.ID][]data.ID, keys lib.Library) {
+	for _, k := range a.Bindings() {
 		if s, key := k.Describe(keys); key != nil {
 			if k, ok := key.(data.Key); ok {
 				m[k.Id()] = append(m[k.Id()], a.Id())

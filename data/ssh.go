@@ -45,6 +45,8 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
 type SSHKey struct {
 	keyImpl
 	ids []ID
+	// A place fo stupid Amazon fingerprints
+	ExtraIds []ID `json:",omitempty"`
 	PublicKey PublicKey
 	Comments  StringSet
 }
@@ -68,7 +70,7 @@ func (s *SSHKey) Merge(k Key) {
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},nil,PublicKey{pub}, StringSet{},}
+	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},nil, nil,PublicKey{pub}, StringSet{},}
 }
 
 func (key *SSHKey) Id() ID {
@@ -79,6 +81,7 @@ func (key *SSHKey) Identifiers() []ID {
 	if key.ids == nil {
 		key.ids = append(key.ids, ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
 		key.ids = append(key.ids, ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
+		key.ids = append(key.ids, key.ExtraIds...)
 	}
 
 	return key.ids
