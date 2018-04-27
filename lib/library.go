@@ -52,6 +52,10 @@ type Library interface {
 	DeleteObject(o interface{}) error
 	// List the objects
 	List() chan interface{}
+	// Load all objects from disk into cache
+	Load()
+	// Print the cache, for debugging purposes
+	PrintCache()
 }
 
 func (l *library) Init(path string, idfunc IdFunction, deserializer Deserializer) {
@@ -106,7 +110,7 @@ func (l *library) ids(o interface{}) chan string {
 	go func() {
 		defer close(c)
 		if i, ok := o.(data.Identiferser); ok {
-			for _, id:= range i.Identifers() {
+			for _, id:= range i.Identifiers() {
 				c <- string(id)
 			}
 		} else {
@@ -133,6 +137,17 @@ func toJson(o interface{}) []byte {
 	}
 	return bytes
 
+}
+
+func (l *library) PrintCache() {
+	l.Load()
+	if l.cache == nil {
+		output.Debug("Cache is nil")
+	}
+	output.Debug("Printing cache")
+	for k, v := range l.cache {
+		output.Debug(k, "=", v)
+	}
 }
 
 func (l *library) pathOfObject(o interface{}) string {
@@ -248,7 +263,6 @@ func (l *library) Load()  {
 	if l.cache == nil {
 		l.cache = make(map[string]interface{})
 	}
-
 	if !l.cacheLoaded {
 		l.cacheLoaded = true
 		for o := range l.List() {
@@ -258,7 +272,7 @@ func (l *library) Load()  {
 }
 
 func (l *library) List() (c chan interface{}) {
-	//fmt.Println("Fetching connections from ", lib.Path)
+	output.Debug("Listing objects from", l.Path)
 	c = make(chan interface{})
 
 	_, e := os.Stat(l.Path)

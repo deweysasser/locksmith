@@ -12,7 +12,7 @@ type Ider interface {
 }
 
 type Identiferser interface {
-	Identifers() []ID
+	Identifiers() []ID
 }
 
 func IdFromString(s string) ID {

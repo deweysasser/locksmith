@@ -8,6 +8,9 @@ import (
 	"github.com/deweysasser/locksmith/output"
 )
 
+/* Adds an ID manually to a key.  Note that to get an ID for Amazon generate key pairs we need access to the *private* key.
+ * The fingerprint can be extracted with 'openssl.exe pkcs8 -in $KEYFILE -nocrypt -topk8 -outform DER | openssl sha1 -c'
+ */
 func CmdAddId(c *cli.Context) error {
 	outputLevel(c)
 	ml := lib.MainLibrary{Path: datadir()}
