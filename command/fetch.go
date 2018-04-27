@@ -11,6 +11,7 @@ import (
 )
 
 func CmdFetch(c *cli.Context) error {
+	outputLevel(c)
 	libWG := sync.WaitGroup{}
 	ml := lib.MainLibrary{Path: datadir()}
 
@@ -55,7 +56,17 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 	i := 0
 	for k := range accounts {
 		i++
-		alib.Store(k)
+		id := alib.Id(k)
+		if existing, err := alib.Fetch(id); err == nil {
+			existing.(data.Account).Merge(k)
+			if e := alib.Store(existing); e != nil {
+				output.Error(e)
+			}
+		} else {
+			if e:= alib.Store(k); e != nil {
+				output.Error(e)
+			}
+		}
 	}
 
 	output.Normalf("Discovered %d accounts\n", i)

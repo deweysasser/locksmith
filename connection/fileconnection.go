@@ -101,7 +101,7 @@ func basename(path string) string {
 }
 
 func readSSHKey(bytes []byte, keys chan data.Key, names ...string) {
-	k := data.New(string(bytes), names...)
+	k := data.NewKey(string(bytes), names...)
 	if k != nil {
 		keys <- k
 	}

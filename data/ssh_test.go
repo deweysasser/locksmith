@@ -125,7 +125,7 @@ func TestReadAuthorizedKeys(t *testing.T) {
 	scanner.Scan()
 	text := scanner.Text()
 
-	key := New(text)
+	key := NewKey(text)
 
 	if key == nil {
 		t.Errorf("Key is nil")

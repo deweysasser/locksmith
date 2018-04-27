@@ -6,14 +6,18 @@ type OutputLevel int
 
 const (
 	ErrorLevel   OutputLevel = iota
-	SilentLevel  OutputLevel = iota
-	NormalLevel  OutputLevel = iota
-	VerboseLevel OutputLevel = iota
-	DebugLevel   OutputLevel = iota
+	SilentLevel
+	NormalLevel
+	VerboseLevel
+	DebugLevel
 )
 
 
-var Level OutputLevel = DebugLevel
+var Level OutputLevel = NormalLevel
+
+func IsLevel(l OutputLevel) bool {
+	return l <= Level
+}
 
 func output(l OutputLevel, s ...interface{}) {
 	if Level >= l {

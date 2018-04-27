@@ -27,7 +27,7 @@ func (c *SSHHostConnection) Fetch() (cKeys chan data.Key, cAccounts chan data.Ac
 	go func() {
 		output.Debugf("Retrieving from %s\n", c.Connection)
 
-		acct := data.Account{"SSH", c.Connection, c.Id(), nil}
+		acct := data.NewSSHAccount(c.Connection, c.Id(), nil)
 
 		keys := c.RetrieveKeys()
 		//a.SetKeys(keys)
@@ -70,7 +70,7 @@ func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 }
 
 func parseAuthorizedKey(line string) data.Key {
-	key := data.New(line)
+	key := data.NewKey(line)
 	if key != nil {
 		return key
 	}

@@ -42,20 +42,18 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 	out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
 
 	if err != nil {
-		output.Warn("Failed to find key pairs")
+		output.Warn(a.String() + ":", "Failed to find key pairs:", err)
 		return
 	}
 
 	bindings := make([]data.KeyBinding, 0)
-
-
 		for _, p := range out.KeyPairs {
 			fp := p.KeyFingerprint
 			name := p.KeyName
 			bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
 		}
 
-		acct := data.Account{Type: "Account", Connection: a.Id(), Name: a.Profile, Keys: bindings}
+		acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
 
 		accounts <- acct
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"github.com/urfave/cli"
+	"github.com/deweysasser/locksmith/output"
 )
 
 // Return the locksmith data directory
@@ -34,4 +35,15 @@ func buildFilter(c *cli.Context) Filter {
 	}
 
 	return filter
+}
+
+func outputLevel(c *cli.Context) {
+	switch {
+	case c.Bool("verbose"):
+		output.Level = output.VerboseLevel
+	case c.Bool("debug"):
+		output.Level = output.DebugLevel
+	case c.Bool("silent"):
+		output.Level = output.SilentLevel
+	}
 }

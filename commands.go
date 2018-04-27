@@ -8,30 +8,43 @@ import (
 	"github.com/urfave/cli"
 )
 
-var GlobalFlags = []cli.Flag{}
+var GlobalFlags = []cli.Flag{
+}
+
+var outputFlags = []cli.Flag{
+	cli.BoolFlag{
+		Name:"verbose, v",
+		Usage: "Verbose output",
+	},
+	cli.BoolFlag{
+		Name: "debug, d",
+		Usage: "Debug output",
+	},
+}
+
 
 var Commands = []cli.Command{
 	{
 		Name:   "connect",
-		Usage:  "",
+		Usage:  "Connect a new source of keys",
 		Action: command.CmdConnect,
 		Flags:  []cli.Flag{},
 	},
 	{
 		Name:   "fetch",
-		Usage:  "",
+		Usage:  "fetch keys from sources",
 		Action: command.CmdFetch,
-		Flags:  []cli.Flag{},
+		Flags:  outputFlags,
 	},
 	{
 		Name:   "list",
-		Usage:  "",
+		Usage:  "list all objects",
 		Action: command.CmdList,
-		Flags:  []cli.Flag{},
+		Flags:  outputFlags,
 	},
 	{
-		Name:   "rm",
-		Usage:  "",
+		Name:   "remove",
+		Usage:  "remove the given objects",
 		Action: command.CmdRemove,
 		Flags:  []cli.Flag{},
 	},

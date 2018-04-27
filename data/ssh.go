@@ -9,7 +9,7 @@ import (
 )
 
 type PublicKey struct {
-	Key ssh.PublicKey
+	Key ssh.PublicKey `json:",omitifempty"`
 }
 
 

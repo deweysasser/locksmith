@@ -19,6 +19,8 @@ func init() {
 	AddType(reflect.TypeOf(connection.SSHHostConnection{}))
 	AddType(reflect.TypeOf(connection.FileConnection{}))
 	AddType(reflect.TypeOf(connection.AWSConnection{}))
+	AddType(reflect.TypeOf(data.SSHAccount{}))
+	AddType(reflect.TypeOf(data.AWSAccount{}))
 }
 
 func (l *MainLibrary) Connections() Library {
@@ -44,7 +46,7 @@ func (l *MainLibrary) Keys() Library {
 func (l *MainLibrary) Accounts() Library {
 	if l.accounts == nil {
 		klib := new(library)
-		klib.Init(l.Path+"/accounts", accountid, loadaccount)
+		klib.Init(l.Path+"/accounts", nil, nil)
 		l.accounts = klib
 	}
 
@@ -59,13 +61,6 @@ func (e *keyReadError) Error() string {
 	return "Error reading " + e.Path
 }
 
-func loadaccount(id string, bytes []byte) (interface{}, error) {
-	return data.LoadAccount(bytes)
-}
-
-func accountid(account interface{}) string {
-	return hashString(account.(data.Account).Name)
-}
 func keyid(key interface{}) string {
 	return string(key.(data.Key).Id())
 }
