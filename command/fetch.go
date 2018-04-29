@@ -4,10 +4,10 @@ import (
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
-	"github.com/urfave/cli"
-	"sync"
-	"reflect"
 	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
+	"reflect"
+	"sync"
 )
 
 func CmdFetch(c *cli.Context) error {
@@ -63,7 +63,7 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 				output.Error(e)
 			}
 		} else {
-			if e:= alib.Store(k); e != nil {
+			if e := alib.Store(k); e != nil {
 				output.Error(e)
 			}
 		}
@@ -84,7 +84,7 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 				output.Error(e)
 			}
 		} else {
-			if e:= klib.Store(k); e != nil {
+			if e := klib.Store(k); e != nil {
 				output.Error(e)
 			}
 		}

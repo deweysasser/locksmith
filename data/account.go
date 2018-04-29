@@ -1,8 +1,8 @@
 package data
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 )
 
 type accountImpl struct {
@@ -63,7 +63,7 @@ func (a *accountImpl) String() string {
 }
 
 func (a *accountImpl) AddBinding(k Key) {
-	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id(), /* AccountID: a.Id() */})
+	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id() /* AccountID: a.Id() */})
 }
 
 func (a *accountImpl) Id() ID {
@@ -78,13 +78,13 @@ func mergeBindings(b1 []KeyBinding, b2 []KeyBinding) []KeyBinding {
 		s.Add(toJson(&k))
 	}
 
-	for _, k :=  range b2 {
+	for _, k := range b2 {
 		s.Add(toJson(&k))
 	}
 
-	var result  []KeyBinding
+	var result []KeyBinding
 
-	for s:= range s.Values() {
+	for s := range s.Values() {
 		result = append(result, fromJson(s))
 	}
 
@@ -94,7 +94,7 @@ func mergeBindings(b1 []KeyBinding, b2 []KeyBinding) []KeyBinding {
 func toJson(binding *KeyBinding) string {
 	if bytes, err := json.Marshal(binding); err == nil {
 		return string(bytes)
-	} 	else {
+	} else {
 		panic(fmt.Sprintf("Failed to jsonify keybinding: %s", err))
 	}
 }

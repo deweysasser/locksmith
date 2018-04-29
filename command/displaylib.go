@@ -1,9 +1,9 @@
 package command
 
 import (
-	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/output"
 	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
 )
 
 func CmdDisplayLib(c *cli.Context) error {
@@ -17,4 +17,3 @@ func CmdDisplayLib(c *cli.Context) error {
 	ml.Keys().PrintCache()
 	return nil
 }
-

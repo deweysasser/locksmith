@@ -1,13 +1,13 @@
 package data
 
 import (
-	"testing"
 	"encoding/json"
 	"strings"
+	"testing"
 )
 
 func TestStringSet(t *testing.T) {
-	var s  = StringSet{}
+	var s = StringSet{}
 
 	s.Add("foo")
 	s.Add("foo")
@@ -20,7 +20,7 @@ func TestStringSet(t *testing.T) {
 }
 
 func TestJSON(t *testing.T) {
-	var s  = StringSet{}
+	var s = StringSet{}
 
 	s.Add("foo")
 	s.Add("bar")
@@ -28,7 +28,7 @@ func TestJSON(t *testing.T) {
 	bJson, err := json.Marshal(&s)
 	checke(t, err)
 
-	assertTrue(t, "serialized has foo",  strings.Contains(string(bJson), "foo"))
+	assertTrue(t, "serialized has foo", strings.Contains(string(bJson), "foo"))
 
 	var s2 = StringSet{}
 	err = json.Unmarshal(bJson, &s2)
@@ -38,7 +38,7 @@ func TestJSON(t *testing.T) {
 	assertTrue(t, "deser contains foo", s2.Contains("foo"))
 	assertTrue(t, "deser contains bar", s2.Contains("bar"))
 
-	 s3 := StringSet{}
+	s3 := StringSet{}
 
 	if bJson, err = json.Marshal(&s3); err != nil {
 		t.Error(err)

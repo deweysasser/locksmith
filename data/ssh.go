@@ -2,24 +2,23 @@ package data
 
 import (
 	//	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"golang.org/x/crypto/ssh"
-	"encoding/base64"
-	"errors"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/sha1"
-	"strings"
 	"crypto/ecdsa"
-	"reflect"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/deweysasser/locksmith/output"
+	"golang.org/x/crypto/ssh"
+	"reflect"
+	"strings"
 )
 
 type PublicKey struct {
 	Key ssh.PublicKey `json:",omitifempty"`
 }
-
 
 func (p *PublicKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
@@ -36,7 +35,7 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
 		return e
 	}
 
-	if bKey, e := base64.StdEncoding.DecodeString(temp["Data"].(string)); e==nil {
+	if bKey, e := base64.StdEncoding.DecodeString(temp["Data"].(string)); e == nil {
 		if k, e2 := ssh.ParsePublicKey(bKey); e2 == nil {
 			p.Key = k
 			return nil
@@ -52,9 +51,9 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
  */
 type SSHKey struct {
 	keyImpl
-	Ids IDList
-	PublicKey PublicKey
-	Comments  StringSet
+	Ids              IDList
+	PublicKey        PublicKey
+	Comments         StringSet
 	haveIdsBeenAdded bool
 }
 
@@ -68,27 +67,27 @@ type SSHBinding struct {
 
 func (s *SSHKey) Merge(k Key) {
 	if other, ok := k.(*SSHKey); ok {
-	   s.Deprecated = s.Deprecated || other.Deprecated
-	   s.Names.AddSet(other.Names)
-	   s.Comments.AddSet(other.Comments)
-	   s.Ids.AddList(&other.Ids)
+		s.Deprecated = s.Deprecated || other.Deprecated
+		s.Names.AddSet(other.Names)
+		s.Comments.AddSet(other.Comments)
+		s.Ids.AddList(&other.Ids)
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
 }
 
-func mergeIDArrays(a []ID, b[]ID) []ID{
+func mergeIDArrays(a []ID, b []ID) []ID {
 	r := make(map[ID]bool, 0)
 
 	if a != nil {
 		for _, id := range a {
-			r[id]=true
+			r[id] = true
 		}
 	}
 
 	if b != nil {
 		for _, id := range b {
-			r[id]=true
+			r[id] = true
 		}
 	}
 
@@ -103,7 +102,7 @@ func mergeIDArrays(a []ID, b[]ID) []ID{
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},IDList{},PublicKey{pub}, StringSet{},false,}
+	return &SSHKey{keyImpl{"SSHKey", StringSet{}, false, ""}, IDList{}, PublicKey{pub}, StringSet{}, false}
 }
 
 func (key *SSHKey) Id() ID {
@@ -153,31 +152,31 @@ func parseSshPrivateKey(content string, names ...string) Key {
 		setNames.Add(s)
 	}
 	//if pk, err := ssh.ParseRawPrivateKey([]byte(content)) ; err == nil {
-		if signer, err := ssh.ParsePrivateKey([]byte(content)); err == nil {
-			pub := signer.PublicKey()
-			/*
+	if signer, err := ssh.ParsePrivateKey([]byte(content)); err == nil {
+		pub := signer.PublicKey()
+		/*
 			var extras []ID
 			if s, err := getAWSID(pk); err == nil {
 				extras = append(extras, s)
 			}
-			*/
-			return &SSHKey{
-				keyImpl: keyImpl{
-					Type:        "SSHKey",
-					Names:       setNames,
-					Deprecated:  false,
-					Replacement: ""},
-				Ids: IDList{},
-				PublicKey: PublicKey{pub},
-				Comments:  StringSet{},
-			}
+		*/
+		return &SSHKey{
+			keyImpl: keyImpl{
+				Type:        "SSHKey",
+				Names:       setNames,
+				Deprecated:  false,
+				Replacement: ""},
+			Ids:       IDList{},
+			PublicKey: PublicKey{pub},
+			Comments:  StringSet{},
 		}
+	}
 	//}
 	return nil
 }
 
 // openssl.exe pkcs8 -in ~/.ssh/AlignedWindowsInstancePair.pem -nocrypt -topk8 -outform DER | openssl sha1 -c
-func getAWSID(iKey interface{}) (ID , error){
+func getAWSID(iKey interface{}) (ID, error) {
 	switch k := iKey.(type) {
 	case *rsa.PrivateKey:
 		output.Debug("Computing RSA AWS fingerprint")
@@ -213,12 +212,11 @@ func parseSshPublicKey(content string, names ...string) Key {
 	}
 
 	sNames := StringSet{}
-	for _, s:= range(names) {
+	for _, s := range names {
 		if s != "" {
 			sNames.Add(s)
 		}
 	}
-
 
 	check(err)
 	s := SSHKey{
@@ -227,7 +225,7 @@ func parseSshPublicKey(content string, names ...string) Key {
 			Names:       sNames,
 			Deprecated:  false,
 			Replacement: ""},
-		Ids: IDList{},
+		Ids:       IDList{},
 		PublicKey: PublicKey{pub},
 		Comments:  comments,
 	}
@@ -235,7 +233,6 @@ func parseSshPublicKey(content string, names ...string) Key {
 
 	return &s
 }
-
 
 func SSHLoadJson(s []byte) Key {
 	key := new(SSHKey)

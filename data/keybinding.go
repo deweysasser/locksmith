@@ -1,4 +1,4 @@
-	package data
+package data
 
 import (
 	"fmt"
@@ -29,21 +29,20 @@ const (
 )
 
 type KeyBinding struct {
-	KeyID     ID
+	KeyID ID
 	//AccountID ID `json:",omitempty"`
-	Location  BindingLocation `json:",omitempty"`
-	Type      BindingAction `json:",omitempty"`
-	Name      string `json:",omitempty"`
+	Location BindingLocation `json:",omitempty"`
+	Type     BindingAction   `json:",omitempty"`
+	Name     string          `json:",omitempty"`
 }
-
 
 func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 	if k.Name != "" {
 		s = k.Name + " = "
 	}
 
-	if	key, err := keylib.Fetch(string(k.KeyID)); err != nil {
-			s = fmt.Sprintf("%s%s", s, "Unknown key " + k.KeyID)
+	if key, err := keylib.Fetch(string(k.KeyID)); err != nil {
+		s = fmt.Sprintf("%s%s", s, "Unknown key "+k.KeyID)
 	} else {
 		s = fmt.Sprintf("%s%s", s, key)
 	}

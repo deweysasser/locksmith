@@ -1,12 +1,12 @@
 package connection
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/deweysasser/locksmith/data"
-	"fmt"
 	"github.com/deweysasser/locksmith/output"
 )
 
@@ -24,29 +24,29 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 	accounts = make(chan data.Account)
 
 	go func() {
-	defer close(keys)
+		defer close(keys)
 		defer close(accounts)
 
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-1"),
-		Credentials: credentials.NewSharedCredentials("", a.Profile),
-	})
+		sess, err := session.NewSession(&aws.Config{
+			Region:      aws.String("us-east-1"),
+			Credentials: credentials.NewSharedCredentials("", a.Profile),
+		})
 
-	if err != nil {
-		output.Error("Failed to connect")
-		return
-	}
+		if err != nil {
+			output.Error("Failed to connect")
+			return
+		}
 
-	e := ec2.New(sess)
+		e := ec2.New(sess)
 
-	out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
+		out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
 
-	if err != nil {
-		output.Warn(a.String() + ":", "Failed to find key pairs:", err)
-		return
-	}
+		if err != nil {
+			output.Warn(a.String()+":", "Failed to find key pairs:", err)
+			return
+		}
 
-	bindings := make([]data.KeyBinding, 0)
+		bindings := make([]data.KeyBinding, 0)
 		for _, p := range out.KeyPairs {
 			fp := p.KeyFingerprint
 			name := p.KeyName
@@ -65,5 +65,3 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 func (a *AWSConnection) Id() data.ID {
 	return data.ID(a.Profile)
 }
-
-

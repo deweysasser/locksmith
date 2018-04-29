@@ -14,7 +14,7 @@ func (set *StringSet) Add(s string) {
 		set.strings = make(map[string]bool)
 	}
 
-	set.strings[s]=true
+	set.strings[s] = true
 }
 
 func (set *StringSet) AddSet(other StringSet) {
@@ -22,7 +22,7 @@ func (set *StringSet) AddSet(other StringSet) {
 		set.strings = make(map[string]bool)
 	}
 
-	if other.strings != nil{
+	if other.strings != nil {
 		for v, _ := range other.strings {
 			if v != "" {
 				set.strings[v] = true
@@ -60,7 +60,7 @@ func (s *StringSet) Values() chan string {
 	} else {
 		go func() {
 			defer close(c)
-			for k, _ := range (s.strings) {
+			for k, _ := range s.strings {
 				c <- k
 			}
 		}()
@@ -77,7 +77,7 @@ func (s *StringSet) MarshalJSON() ([]byte, error) {
 
 func (s *StringSet) StringArray() []string {
 	s2 := make([]string, 0)
-	for v := range (s.Values()) {
+	for v := range s.Values() {
 		s2 = append(s2, v)
 	}
 	return s2
@@ -91,8 +91,8 @@ func (s *StringSet) UnmarshalJSON(data []byte) error {
 	if s.strings == nil {
 		s.strings = make(map[string]bool)
 	}
-	for _, v := range(s2) {
-		s.strings[v]=true
+	for _, v := range s2 {
+		s.strings[v] = true
 	}
 
 	return nil

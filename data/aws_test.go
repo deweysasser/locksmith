@@ -1,8 +1,8 @@
 package data
 
 import (
-	"testing"
 	"encoding/json"
+	"testing"
 )
 
 func TestBasic(t *testing.T) {
@@ -13,7 +13,7 @@ func TestBasic(t *testing.T) {
 
 	assertStringsEquals(t, "12345", string(key.Id()))
 
-	if s, e := impl.Json() ; e==nil {
+	if s, e := impl.Json(); e == nil {
 		assertStringsEquals(t, `{
   "Type": "AWSKey",
   "Names": [],
@@ -21,12 +21,11 @@ func TestBasic(t *testing.T) {
   "AwsSecretKey": "",
   "Active": true
 }`, string(s))
-	}	else {
+	} else {
 		t.Error("json failed", e)
 	}
 }
 
-
-func testJson(i interface{}) ([]byte, error ){
+func testJson(i interface{}) ([]byte, error) {
 	return json.MarshalIndent(i, "", "  ")
 }

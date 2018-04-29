@@ -2,10 +2,10 @@ package data
 
 import (
 	"encoding/json"
-	"strings"
-	"regexp"
 	"fmt"
 	"github.com/deweysasser/locksmith/output"
+	"regexp"
+	"strings"
 )
 
 type AWSKey struct {
@@ -14,7 +14,7 @@ type AWSKey struct {
 	Active                 bool
 }
 
-func NewAwsKey(id, name string ) *AWSKey {
+func NewAwsKey(id, name string) *AWSKey {
 	names := StringSet{}
 	if name != "" {
 		names.Add(name)
@@ -61,11 +61,11 @@ func ParseAWSCredentials(bytes []byte, keys chan Key) {
 
 	config := parseFile(string(bytes))
 
-	for name, fields := range(config) {
+	for name, fields := range config {
 		output.Debug("Reading key", name)
 		key := NewAwsKey(fields["aws_access_key_id"], name)
 		keys <- key
-		}
+	}
 }
 
 func parseFile(input string) map[string]map[string]string {
@@ -76,8 +76,7 @@ func parseFile(input string) map[string]map[string]string {
 
 	var current map[string]string
 
-
-	for _, line := range(strings.Split(input, "\n")) {
+	for _, line := range strings.Split(input, "\n") {
 
 		parts := reSection.FindAllStringSubmatch(line, -1)
 		if parts != nil {

@@ -23,7 +23,7 @@ func process(l lib.Library, filter Filter) {
 	for o := range l.List() {
 		if filter(o) {
 			output.Verbose("Removing ", o)
-			if e := l.DeleteObject(o); e!= nil {
+			if e := l.DeleteObject(o); e != nil {
 				output.Errorf("Failed to delete '%s' with id '%s': %s", o, l.Id(o), e)
 			}
 		}

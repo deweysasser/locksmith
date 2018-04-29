@@ -2,17 +2,17 @@ package data
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"encoding/asn1"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"github.com/deweysasser/pkcs8"
+	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
 	"testing"
-	"golang.org/x/crypto/ssh"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"github.com/deweysasser/pkcs8"
-	"crypto/sha1"
-	"encoding/pem"
-	"encoding/asn1"
 )
 
 func checke(t *testing.T, e error) {
@@ -180,7 +180,7 @@ func TestSSHJSon(t *testing.T) {
 	assertStringsEquals(t, expected, string(sJson))
 
 	var newkey Key = new(SSHKey)
-	e :=json.Unmarshal([]byte(expected), &newkey)
+	e := json.Unmarshal([]byte(expected), &newkey)
 	checke(t, e)
 
 	fmt.Printf("Recovered key is %v\n", newkey)
@@ -209,28 +209,27 @@ func TestPrivateKeyParsing(t *testing.T) {
 	}
 
 	/*
-	s := key.(*SSHKey)
+		s := key.(*SSHKey)
 
-	if !s.Ids.Contains(ID("6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b")) {
-		t.Error("Failed to contain AWS private ID")
-	}
+		if !s.Ids.Contains(ID("6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b")) {
+			t.Error("Failed to contain AWS private ID")
+		}
 
-	k2 := Read("test-data/rsa")
+		k2 := Read("test-data/rsa")
 
-	if k2 == nil {
-		t.Error("Failed to parse locally generated SSH key")
-	}
+		if k2 == nil {
+			t.Error("Failed to parse locally generated SSH key")
+		}
 
-	if !s.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
-		t.Error("Failed to contain AWS public ID")
-	}
+		if !s.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
+			t.Error("Failed to contain AWS public ID")
+		}
 	*/
 }
 
-
 func skipTestAWSIds(t *testing.T) {
 	if bytes, err := ioutil.ReadFile("test-data/locksmith-test-aws-generated.pem"); err == nil {
-		block, _:= pem.Decode(bytes)
+		block, _ := pem.Decode(bytes)
 		fmt.Println("PEM decode bytes in", block.Type, "are", block.Bytes)
 		data := make(map[string]interface{})
 		if _, err := asn1.Unmarshal(block.Bytes, data); err == nil {

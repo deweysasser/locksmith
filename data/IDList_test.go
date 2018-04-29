@@ -151,7 +151,6 @@ func TestIDList_UnmarshalJSONs(t *testing.T) {
 	}
 }
 
-
 func TestIDList_UnmarshalJSONs2(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -196,4 +195,3 @@ func TestIDList_UnmarshalJSONs2(t *testing.T) {
 		})
 	}
 }
-

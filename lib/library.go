@@ -4,12 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"regexp"
-	"reflect"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
+	"io/ioutil"
+	"os"
+	"reflect"
+	"regexp"
 )
 
 var TypeMap = make(map[string]reflect.Type)
@@ -29,8 +29,8 @@ type library struct {
 	Path         string
 	deserializer Deserializer
 	idfunc       IdFunction
-	cache 		map[string]interface{}
-	cacheLoaded bool
+	cache        map[string]interface{}
+	cacheLoaded  bool
 	// If we want to make store *NOT* hit disk, then uncomment and implement
 	//changes map[string]interface{}
 }
@@ -106,11 +106,11 @@ func (l *library) Id(o interface{}) string {
 /** Return the set of identifiers used by this object.  Each identifier must be unique to this object, but there (obviously) can be many.
  */
 func (l *library) ids(o interface{}) chan string {
-	c:= make(chan string)
+	c := make(chan string)
 	go func() {
 		defer close(c)
 		if i, ok := o.(data.Identiferser); ok {
-			for _, id:= range i.Identifiers() {
+			for _, id := range i.Identifiers() {
 				c <- string(id)
 			}
 		} else {
@@ -119,7 +119,6 @@ func (l *library) ids(o interface{}) chan string {
 	}()
 	return c
 }
-
 
 func hashString(s string) string {
 	return hash([]byte(s))
@@ -202,8 +201,8 @@ func (l *library) Fetch(id string) (interface{}, error) {
 }
 
 func sanitize(path string) string {
-re := regexp.MustCompile(`\W+`)
-return 	re.ReplaceAllString(path, "")
+	re := regexp.MustCompile(`\W+`)
+	return re.ReplaceAllString(path, "")
 
 }
 
@@ -240,12 +239,11 @@ func (l *library) Ensure(id string) (interface{}, error) {
 	return o, e
 }
 
-
 func (l *library) Delete(id string) error {
 	path := l.pathOfId(id)
 
-	if o, e := l.fetchFrom(id, path); e==nil {
-		for i:= range l.ids(o) {
+	if o, e := l.fetchFrom(id, path); e == nil {
+		for i := range l.ids(o) {
 			delete(l.cache, i)
 		}
 	}
@@ -253,13 +251,13 @@ func (l *library) Delete(id string) error {
 	return os.Remove(path)
 }
 
-func (l* library) DeleteObject(o interface{}) error {
+func (l *library) DeleteObject(o interface{}) error {
 	id := l.Id(o)
 	output.Debug("Deleting object with id ", id)
 	return l.Delete(id)
 }
 
-func (l *library) Load()  {
+func (l *library) Load() {
 	if l.cache == nil {
 		l.cache = make(map[string]interface{})
 	}

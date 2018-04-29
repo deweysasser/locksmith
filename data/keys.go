@@ -2,18 +2,17 @@ package data
 
 import (
 	"encoding/json"
+	"github.com/deweysasser/locksmith/output"
 	"io/ioutil"
 	"strings"
-	"github.com/deweysasser/locksmith/output"
 )
 
 type keyImpl struct {
 	Type        string
 	Names       StringSet
 	Deprecated  bool `json:",omitempty"`
-	Replacement ID `json:",omitempty"`
+	Replacement ID   `json:",omitempty"`
 }
-
 
 type Key interface {
 	Id() ID
@@ -37,7 +36,6 @@ func (key *keyImpl) IsDeprecated() bool {
 	return key.Deprecated
 }
 
-
 func (key *keyImpl) Merge(k *keyImpl) {
 	key.Names.AddSet(k.Names)
 	key.Deprecated = key.Deprecated || k.Deprecated
@@ -51,7 +49,6 @@ func LoadTypeFromJSON(s []byte, o Key) Key {
 
 	return o
 }
-
 
 func LoadJsonFile(path string) Key {
 	json, e := ioutil.ReadFile(path)

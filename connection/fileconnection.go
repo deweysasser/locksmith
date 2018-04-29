@@ -2,11 +2,11 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/output"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
-	"github.com/deweysasser/locksmith/output"
 )
 
 type FileConnection struct {
@@ -92,7 +92,7 @@ func fetchFile(path string) chan data.Key {
 }
 
 func basename(path string) string {
-	if i := strings.LastIndex(path, "/"); i>0 {
+	if i := strings.LastIndex(path, "/"); i > 0 {
 		i++
 		return path[i:]
 	} else {

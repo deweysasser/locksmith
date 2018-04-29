@@ -2,11 +2,11 @@ package lib
 
 import (
 	"encoding/json"
-	"os"
-	"testing"
-	"github.com/deweysasser/locksmith/data"
-	"reflect"
 	"fmt"
+	"github.com/deweysasser/locksmith/data"
+	"os"
+	"reflect"
+	"testing"
 )
 
 type entry struct {
@@ -117,18 +117,16 @@ func TestSave(t *testing.T) {
 
 }
 
-
 func assertStringEquals(t *testing.T, message, s1, s2 string) {
 	if s1 != s2 {
 		t.Error(message)
 	}
 }
 
-
 func TestAWSKey(t *testing.T) {
 	os.RemoveAll("test-output")
 
-	ml := MainLibrary{ Path:"test-output"}
+	ml := MainLibrary{Path: "test-output"}
 
 	lib := ml.Keys()
 
@@ -154,9 +152,9 @@ func TestAWSKey(t *testing.T) {
 
 }
 
-type withID  struct{
+type withID struct {
 	Type string
-	ID string
+	ID   string
 }
 
 func (t *withID) IdString() string {
@@ -168,7 +166,6 @@ type Type1 struct {
 	Name1 string
 }
 
-
 type Type2 struct {
 	withID
 	Name2 string
@@ -176,7 +173,7 @@ type Type2 struct {
 
 func TestIdConversion(t *testing.T) {
 	lib := library{Path: "test-output/type-test"}
-	var t1 = &Type1{ withID{"Type1", "id1"}, "name1"}
+	var t1 = &Type1{withID{"Type1", "id1"}, "name1"}
 
 	assertStringEquals(t, "Verify ID", "id1", lib.Id(t1))
 }
@@ -189,17 +186,17 @@ func TestReflectionDeserialize(t *testing.T) {
 
 	lib := library{Path: "test-output/type-test"}
 
-	t1 := Type1{ withID{"Type1", "id1"}, "name1"}
-	t2 := Type2{ withID{"Type2", "id2"}, "name2"}
+	t1 := Type1{withID{"Type1", "id1"}, "name1"}
+	t2 := Type2{withID{"Type2", "id2"}, "name2"}
 
 	lib.Store(&t1)
 	lib.Store(&t2)
 
-	t1a ,err := lib.Fetch("id1")
+	t1a, err := lib.Fetch("id1")
 
 	check(t, err, "Error fetching id1")
 
-	if _, ok:= t1a.(Type1); ok {
+	if _, ok := t1a.(Type1); ok {
 		t.Error("Restored wrong type")
 	}
 
@@ -226,7 +223,7 @@ func (m *multiID) Identifers() []data.ID {
 func TestMultipleIds(t *testing.T) {
 	lib := library{Path: "test-output/test-multiple-ids", deserializer: deserializeMultiID}
 
-	m := multiID{ []data.ID{ data.ID("id1"), data.ID("id2")}}
+	m := multiID{[]data.ID{data.ID("id1"), data.ID("id2")}}
 
 	lib.Store(&m)
 

@@ -2,9 +2,9 @@ package connection
 
 import (
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/output"
 	"os/exec"
 	"strings"
-	"github.com/deweysasser/locksmith/output"
 )
 
 type SSHHostConnection struct {

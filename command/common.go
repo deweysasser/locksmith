@@ -2,10 +2,10 @@ package command
 
 import (
 	"fmt"
+	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
 	"os"
 	"strings"
-	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/output"
 )
 
 // Return the locksmith data directory
@@ -15,7 +15,6 @@ func datadir() string {
 }
 
 type Filter func(interface{}) bool
-
 
 func buildFilterFromContext(c *cli.Context) Filter {
 	return buildFilter(c.Args())

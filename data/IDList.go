@@ -9,7 +9,7 @@ type IDList struct {
 }
 
 func (l *IDList) Add(i ID) {
-	if ! l.Contains(i) {
+	if !l.Contains(i) {
 		l.Ids = append(l.Ids, i)
 	}
 }

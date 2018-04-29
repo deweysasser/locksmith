@@ -10,22 +10,21 @@ import (
 
 var GlobalFlags = []cli.Flag{
 	cli.BoolFlag{
-		Name: "debug, d",
+		Name:  "debug, d",
 		Usage: "Debug output",
 	},
 }
 
 var outputFlags = []cli.Flag{
 	cli.BoolFlag{
-		Name:"verbose, v",
+		Name:  "verbose, v",
 		Usage: "Verbose output",
 	},
 	cli.BoolFlag{
-		Name: "debug, d",
+		Name:  "debug, d",
 		Usage: "Debug output",
 	},
 }
-
 
 var Commands = []cli.Command{
 	{
@@ -53,16 +52,16 @@ var Commands = []cli.Command{
 		Flags:  []cli.Flag{},
 	},
 	{
-		Name: "add-id",
-		Usage: "Add an ID to 1 key",
+		Name:   "add-id",
+		Usage:  "Add an ID to 1 key",
 		Action: command.CmdAddId,
-		Flags: []cli.Flag{},
+		Flags:  []cli.Flag{},
 	},
 	{
-		Name: "display-lib",
-		Usage: "Display the library for debugging purposes",
+		Name:   "display-lib",
+		Usage:  "Display the library for debugging purposes",
 		Action: command.CmdDisplayLib,
-		Flags: []cli.Flag{},
+		Flags:  []cli.Flag{},
 	},
 }
 

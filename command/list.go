@@ -2,11 +2,11 @@ package command
 
 import (
 	"fmt"
+	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
 	"sync"
-	"github.com/deweysasser/locksmith/output"
-	"github.com/deweysasser/locksmith/data"
 )
 
 func CmdList(c *cli.Context) error {
@@ -50,7 +50,7 @@ func printKeys(keys lib.Library, ch chan<- string) {
 	}
 }
 
-func printAccounts(accounts lib.Library, ch chan<- string, ml lib.MainLibrary)  map[data.ID][]data.ID {
+func printAccounts(accounts lib.Library, ch chan<- string, ml lib.MainLibrary) map[data.ID][]data.ID {
 	accountsForKey := make(map[data.ID][]data.ID)
 	for i := range accounts.List() {
 		ch <- accountString(i, "")
@@ -62,7 +62,7 @@ func printAccounts(accounts lib.Library, ch chan<- string, ml lib.MainLibrary)  
 	return accountsForKey
 }
 
-func printConnections(connections lib.Library, ch chan<- string)  {
+func printConnections(connections lib.Library, ch chan<- string) {
 	for i := range connections.List() {
 		ch <- connectionString(i, "")
 		if output.IsLevel(output.VerboseLevel) {
