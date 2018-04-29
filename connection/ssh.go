@@ -20,9 +20,9 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) Fetch() (cKeys chan data.Key, cAccounts chan data.Account) {
-	cKeys = make(chan data.Key)
-	cAccounts = make(chan data.Account)
+func (c *SSHHostConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
+	cKeys := make(chan data.Key)
+	cAccounts := make(chan data.Account)
 
 	go func() {
 		output.Debugf("Retrieving from %s\n", c.Connection)
@@ -40,7 +40,7 @@ func (c *SSHHostConnection) Fetch() (cKeys chan data.Key, cAccounts chan data.Ac
 		close(cKeys)
 		close(cAccounts)
 	}()
-	return
+	return cKeys, cAccounts
 }
 
 func (remote *SSHHostConnection) RetrieveKeys() []data.Key {

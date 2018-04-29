@@ -13,7 +13,7 @@ func NewFanInAccount() *FanInAccounts {
 	return f
 }
 
-func (f *FanInAccounts) Add(c chan Account) {
+func (f *FanInAccounts) Add(c <- chan Account) {
 	f.wg.Add(1)
 	go func() {
 		for k := range c {

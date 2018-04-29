@@ -18,18 +18,18 @@ func (c *FileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *FileConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
+func (c *FileConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
 	fKeys := data.NewFanInKey(nil)
 	defer fKeys.DoneAdding()
 	keys = fKeys.Output()
 
-	accounts = make(chan data.Account)
-	defer close(accounts)
+	cAccounts := make(chan data.Account)
+	defer close(cAccounts)
 
 	path := c.Path
 
 	fetchPath(path, fKeys)
-	return
+	return keys, cAccounts
 }
 
 func fetchPath(path string, inKeys *data.FanInKeys) {

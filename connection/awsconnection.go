@@ -18,14 +18,14 @@ func (a *AWSConnection) String() string {
 	return fmt.Sprintf("aws://%s", a.Profile)
 }
 
-func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account) {
+func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
 	output.Debug("Fetching from aws", a.Profile)
-	keys = make(chan data.Key)
-	accounts = make(chan data.Account)
+	cKeys := make(chan data.Key)
+	cAccounts := make(chan data.Account)
 
 	go func() {
-		defer close(keys)
-		defer close(accounts)
+		defer close(cKeys)
+		defer close(cAccounts)
 
 		sess, err := session.NewSession(&aws.Config{
 			Region:      aws.String("us-east-1"),
@@ -55,11 +55,11 @@ func (a *AWSConnection) Fetch() (keys chan data.Key, accounts chan data.Account)
 
 		acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
 
-		accounts <- acct
+		cAccounts <- acct
 
 	}()
 
-	return
+	return cKeys, cAccounts
 }
 
 func (a *AWSConnection) Id() data.ID {

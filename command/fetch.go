@@ -41,7 +41,7 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func fetchFrom(conn interface{}) (keys chan data.Key, accounts chan data.Account) {
+func fetchFrom(conn interface{}) (keys <-  chan data.Key, accounts <- chan data.Account) {
 	switch conn.(type) {
 	case connection.Connection:
 		//fmt.Println("Fetching from ", conn)
