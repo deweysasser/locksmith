@@ -152,13 +152,15 @@ func parseSshPrivateKey(content string, names ...string) Key {
 	for _, s := range names {
 		setNames.Add(s)
 	}
-	if pk, err := ssh.ParseRawPrivateKey([]byte(content)) ; err == nil {
+	//if pk, err := ssh.ParseRawPrivateKey([]byte(content)) ; err == nil {
 		if signer, err := ssh.ParsePrivateKey([]byte(content)); err == nil {
 			pub := signer.PublicKey()
+			/*
 			var extras []ID
 			if s, err := getAWSID(pk); err == nil {
 				extras = append(extras, s)
 			}
+			*/
 			return &SSHKey{
 				keyImpl: keyImpl{
 					Type:        "SSHKey",
@@ -170,7 +172,7 @@ func parseSshPrivateKey(content string, names ...string) Key {
 				Comments:  StringSet{},
 			}
 		}
-	}
+	//}
 	return nil
 }
 
