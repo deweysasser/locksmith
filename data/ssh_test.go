@@ -9,7 +9,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"github.com/deweysasser/pkcs8"
+	"crypto/sha1"
+	"encoding/pem"
+	"encoding/asn1"
 )
 
 func checke(t *testing.T, e error) {
@@ -188,12 +191,56 @@ func TestSSHJSon(t *testing.T) {
 
 	assertTrue(t, "Correct comment", newkey.(*SSHKey).Comments.Contains("dewey@FlynnRyder"))
 
-	var sk strippedSSHKey = strippedSSHKey(*newkey.(*SSHKey))
-
-	fmt.Println("List is ", sk, "with IDs", sk.Ids, "type", reflect.TypeOf(sk.Ids))
 	sJson2, err := json.MarshalIndent(newkey, "", "  ")
 	checke(t, err)
 	assertStringsEquals(t, expected, string(sJson2))
 }
 
-type strippedSSHKey SSHKey
+func TestPrivateKeyParsing(t *testing.T) {
+	key := Read("test-data/locksmith-test-aws-generated.pem")
+	if bytes, err := json.MarshalIndent(key, "", "  "); err == nil {
+		ioutil.WriteFile("locksmith-test-aws-generated.json", bytes, 666)
+	} else {
+		t.Error("Failed to write key json file")
+	}
+
+	if key == nil {
+		t.Error("Failed to parse RSA key")
+	}
+
+	s := key.(*SSHKey)
+
+	if !s.Ids.Contains(ID("6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b")) {
+		t.Error("Failed to contain AWS private ID")
+	}
+
+	k2 := Read("test-data/rsa")
+
+	if k2 == nil {
+		t.Error("Failed to parse locally generated SSH key")
+	}
+
+	if !s.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
+		t.Error("Failed to contain AWS public ID")
+	}
+}
+
+
+func TestAWSIds(t *testing.T) {
+	if bytes, err := ioutil.ReadFile("test-data/locksmith-test-aws-generated.pem"); err == nil {
+		block, _:= pem.Decode(bytes)
+		fmt.Println("PEM decode bytes in", block.Type, "are", block.Bytes)
+		data := make(map[string]interface{})
+		if _, err := asn1.Unmarshal(block.Bytes, data); err == nil {
+			fmt.Println("ASN structure is ", data)
+		}
+		if pk, err := ssh.ParseRawPrivateKey(bytes); err == nil {
+			if bytes, err := pkcs8.ConvertPrivateKeyToPKCS8(pk); err == nil {
+				fmt.Println("converted bytes are", bytes)
+				id := ID(asHex(sha1.Sum(bytes)))
+				assertStringsEquals(t, "6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b", string(id))
+				return
+			}
+		}
+	}
+}

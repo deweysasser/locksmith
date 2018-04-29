@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strings"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type keyImpl struct {
@@ -75,10 +76,9 @@ func NewKey(content string, names ...string) Key {
 		return nil
 	case strings.Contains(content, "ssh-"):
 		return parseSshPublicKey(content, names...)
-	/*
-		case strings.Contains(content, "PRIVATE KEY"):
-			return parseSshPrivateKey(content)
-	*/
+	case strings.Contains(content, "PRIVATE KEY"):
+		output.Debug("Parsing private key from", names)
+		return parseSshPrivateKey(content, names...)
 	default:
 		return nil
 	}

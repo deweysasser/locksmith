@@ -14,6 +14,12 @@ func (l *IDList) Add(i ID) {
 	}
 }
 
+func (l *IDList) AddList(other *IDList) {
+	for _, id := range other.Ids {
+		l.Add(id)
+	}
+}
+
 func (l *IDList) Contains(i ID) bool {
 	for _, id := range l.Ids {
 		if id == i {

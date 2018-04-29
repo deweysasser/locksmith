@@ -6,6 +6,14 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh"
 	"encoding/base64"
+	"errors"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/sha1"
+	"strings"
+	"crypto/ecdsa"
+	"reflect"
+	"github.com/deweysasser/locksmith/output"
 )
 
 type PublicKey struct {
@@ -63,9 +71,35 @@ func (s *SSHKey) Merge(k Key) {
 	   s.Deprecated = s.Deprecated || other.Deprecated
 	   s.Names.AddSet(other.Names)
 	   s.Comments.AddSet(other.Comments)
+	   s.Ids.AddList(&other.Ids)
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
+}
+
+func mergeIDArrays(a []ID, b[]ID) []ID{
+	r := make(map[ID]bool, 0)
+
+	if a != nil {
+		for _, id := range a {
+			r[id]=true
+		}
+	}
+
+	if b != nil {
+		for _, id := range b {
+			r[id]=true
+		}
+	}
+
+	ra := make([]ID, len(r))
+	for k, _ := range r {
+		if k != "" {
+			ra = append(ra, k)
+		}
+	}
+
+	return ra
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
@@ -113,19 +147,59 @@ func getId(pub ssh.PublicKey) ID {
 	return ID(ssh.FingerprintSHA256(pub))
 }
 
-func parseSshPrivateKey(content string) Key {
-	signer, err := ssh.ParsePrivateKey([]byte(content))
-	check(err)
-	pub := signer.PublicKey()
-	return &SSHKey{
-		keyImpl: keyImpl{
-			Type:        "SSHKey",
-			Names:       StringSet{},
-			Deprecated:  false,
-			Replacement: ""},
-		PublicKey: PublicKey{pub},
-		Comments:  StringSet{},
+func parseSshPrivateKey(content string, names ...string) Key {
+	setNames := StringSet{}
+	for _, s := range names {
+		setNames.Add(s)
 	}
+	if pk, err := ssh.ParseRawPrivateKey([]byte(content)) ; err == nil {
+		if signer, err := ssh.ParsePrivateKey([]byte(content)); err == nil {
+			pub := signer.PublicKey()
+			var extras []ID
+			if s, err := getAWSID(pk); err == nil {
+				extras = append(extras, s)
+			}
+			return &SSHKey{
+				keyImpl: keyImpl{
+					Type:        "SSHKey",
+					Names:       setNames,
+					Deprecated:  false,
+					Replacement: ""},
+				Ids: IDList{},
+				PublicKey: PublicKey{pub},
+				Comments:  StringSet{},
+			}
+		}
+	}
+	return nil
+}
+
+// openssl.exe pkcs8 -in ~/.ssh/AlignedWindowsInstancePair.pem -nocrypt -topk8 -outform DER | openssl sha1 -c
+func getAWSID(iKey interface{}) (ID , error){
+	switch k := iKey.(type) {
+	case *rsa.PrivateKey:
+		output.Debug("Computing RSA AWS fingerprint")
+		return ID(asHex(sha1.Sum(x509.MarshalPKCS1PrivateKey(k)))), nil
+	case *ecdsa.PrivateKey:
+		output.Debug("Computing ECDSA AWS fingerprint")
+		if bytes, err := x509.MarshalECPrivateKey(k); err == nil {
+			return ID(asHex(sha1.Sum(bytes))), nil
+		}
+	default:
+		return ID(""), errors.New(fmt.Sprintf("Don't know how to compute AWS fingerprint for type %s", reflect.TypeOf(iKey)))
+	}
+
+	return ID(""), errors.New("Could not find key ID")
+}
+
+// asHex returns the given []byte as : separated string representation
+func asHex(bytes [20]byte) string {
+	var s []string
+	for _, b := range bytes {
+		s = append(s, fmt.Sprintf("%02x", b))
+	}
+
+	return strings.Join(s, ":")
 }
 
 func parseSshPublicKey(content string, names ...string) Key {
