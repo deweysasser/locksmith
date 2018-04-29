@@ -8,6 +8,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"reflect"
 )
 
 func checke(t *testing.T, e error) {
@@ -151,6 +153,10 @@ func TestSSHJSon(t *testing.T) {
     "test name"
   ],
   "Replacement": "other id",
+  "Ids": [
+    "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ",
+    "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39"
+  ],
   "PublicKey": {
     "Type": "ssh-rsa",
     "Data": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
@@ -173,9 +179,8 @@ func TestSSHJSon(t *testing.T) {
 	var newkey Key = new(SSHKey)
 	e :=json.Unmarshal([]byte(expected), &newkey)
 	checke(t, e)
-	//newkey := ReadJson(sJson)
 
-	//fmt.Printf("Recovered key is %s\n", newkey)
+	fmt.Printf("Recovered key is %v\n", newkey)
 
 	assertStringsEquals(t, string(key.Id()), string(newkey.Id()))
 	assertStringsEquals(t, string(key.ReplacementID()), string(newkey.ReplacementID()))
@@ -183,8 +188,12 @@ func TestSSHJSon(t *testing.T) {
 
 	assertTrue(t, "Correct comment", newkey.(*SSHKey).Comments.Contains("dewey@FlynnRyder"))
 
+	var sk strippedSSHKey = strippedSSHKey(*newkey.(*SSHKey))
 
-	sJson2, error := json.MarshalIndent(newkey, "", "  ")
-	checke(t, error)
+	fmt.Println("List is ", sk, "with IDs", sk.Ids, "type", reflect.TypeOf(sk.Ids))
+	sJson2, err := json.MarshalIndent(newkey, "", "  ")
+	checke(t, err)
 	assertStringsEquals(t, expected, string(sJson2))
 }
+
+type strippedSSHKey SSHKey

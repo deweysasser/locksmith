@@ -44,11 +44,10 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
  */
 type SSHKey struct {
 	keyImpl
-	ids []ID
-	// A place fo stupid Amazon fingerprints
-	ExtraIds []ID `json:",omitempty"`
+	Ids IDList
 	PublicKey PublicKey
 	Comments  StringSet
+	haveIdsBeenAdded bool
 }
 
 /* Use of a public Key, e.g. in an authorized_keys file
@@ -70,7 +69,7 @@ func (s *SSHKey) Merge(k Key) {
 }
 
 func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},nil, nil,PublicKey{pub}, StringSet{},}
+	return &SSHKey{keyImpl{"SSHKey",StringSet{}, false, ""},IDList{},PublicKey{pub}, StringSet{},false,}
 }
 
 func (key *SSHKey) Id() ID {
@@ -78,13 +77,13 @@ func (key *SSHKey) Id() ID {
 }
 
 func (key *SSHKey) Identifiers() []ID {
-	if key.ids == nil {
-		key.ids = append(key.ids, ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
-		key.ids = append(key.ids, ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
-		key.ids = append(key.ids, key.ExtraIds...)
+	if !key.haveIdsBeenAdded {
+		key.Ids.Add(ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
+		key.Ids.Add(ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
+		key.haveIdsBeenAdded = true
 	}
 
-	return key.ids
+	return key.Ids.Ids
 }
 
 func (key *SSHKey) String() string {
@@ -146,15 +145,19 @@ func parseSshPublicKey(content string, names ...string) Key {
 
 
 	check(err)
-	return &SSHKey{
+	s := SSHKey{
 		keyImpl: keyImpl{
 			Type:        "SSHKey",
 			Names:       sNames,
 			Deprecated:  false,
 			Replacement: ""},
+		Ids: IDList{},
 		PublicKey: PublicKey{pub},
 		Comments:  comments,
 	}
+	s.Identifiers() // Ensure the IDs are calculated
+
+	return &s
 }
 
 

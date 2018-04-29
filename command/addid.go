@@ -29,7 +29,7 @@ func CmdAddId(c *cli.Context) error {
 
 	if key, err :=  findKey(keys, filter); err  == nil {
 		output.Debug("Adding ID", idToAdd, "to key", key)
-			key.ExtraIds = append(key.ExtraIds, data.ID(idToAdd))
+			key.Ids.Add(data.ID(idToAdd))
 			keys.Store(key)
 	} else {
 		output.Error("Failed to find 1 key:", err)
@@ -42,23 +42,25 @@ func CmdAddId(c *cli.Context) error {
 func findKey(library lib.Library, filter Filter) (*data.SSHKey, error) {
 	var keys []data.Key
 
-	for k:= range library.List() {
+	for k := range library.List() {
 		if filter(k) {
 			output.Debug("Found matching key ", k)
 			keys = append(keys, k.(data.Key))
 		}
 	}
 
-	if len(keys) > 1 {
+	switch {
+	case len(keys) > 1:
 		return nil, errors.New("Only a single key result permitted")
+	case len(keys) == 1:
+		k0 := keys[0];
+		if sshKey, ok := k0.(*data.SSHKey); ok {
+			return sshKey, nil
+		} else {
+			return nil, errors.New("Can only add extra IDs to SSHKey")
+		}
+	case len(keys) == 0:
+		return nil, errors.New("No keys found")
 	}
-
-	k0 := keys[0];
-
-	if sshKey, ok := k0.(*data.SSHKey); ok {
-		return sshKey,  nil
-	} else {
-		return nil, errors.New("Can only add extra IDs to SSHKey")
-	}
-
+	return nil, errors.New("Internal error")
 }
