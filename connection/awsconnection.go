@@ -41,14 +41,11 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 
 			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
 				for _, r := range dro.Regions {
-					wg.Add(2)
+					wg.Add(1)
 					go func(region *string) {
 						defer wg.Done()
-						a.fetchKeyPairs(region, sharedCredentials, cAccounts)
-					}(r.RegionName)
-					go func(region *string) {
-						defer wg.Done()
-						a.fetchInstances(region, sharedCredentials, cAccounts)
+						keys := a.fetchKeyPairs(region, sharedCredentials, cAccounts)
+						a.fetchInstances(region, sharedCredentials, cAccounts, keys)
 					}(r.RegionName)
 
 				}
@@ -69,20 +66,26 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 	return cKeys, cAccounts
 }
 
-func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) {
+func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account, keymap map[string]data.ID) {
 	output.Debug(a, "fetching instances from", *region)
 	if sess, err := session.NewSession(&aws.Config{
 		Region:      region,
 		Credentials: sharedCredentials,
 	}); err == nil {
 		e := ec2.New(sess)
-		//ec2.DescribeInstancesOutput{}.Reservations[0].Instances[0].Tags
+		//ec2.DescribeInstancesOutput{}.Reservations[0].Instances[0].k
 		if dio, err := e.DescribeInstances(&ec2.DescribeInstancesInput{}); err == nil {
 			output.Debug(a, *region, "reservations:", len(dio.Reservations))
 			for _, res := range dio.Reservations {
 				output.Debug(a, *region, "instances:", len(res.Instances))
 				for _, instance := range res.Instances {
-					keys := []data.KeyBinding{}
+					keyID := keymap[*instance.KeyName]
+					keys := []data.KeyBinding{
+						{
+							KeyID: keyID,
+							Location: data.INSTANCE_ROOT_CREDENTIALS,
+						},
+					}
 
 					acct := data.NewAWSInstanceAccount(instance, a.Id(), keys)
 					output.Debug("Found instance account", acct)
@@ -98,8 +101,10 @@ func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *creden
 	}
 }
 
-func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) {
+func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) (keymap map[string]data.ID) {
 	output.Debug(a, "fetching key pairs from", *region)
+	keymap = make(map[string]data.ID)
+
 	if sess, err := session.NewSession(&aws.Config{
 		Region:      region,
 		Credentials: sharedCredentials,
@@ -112,6 +117,7 @@ func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credent
 				fp := p.KeyFingerprint
 				name := p.KeyName
 				bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
+				keymap[*name] = data.ID(*fp)
 			}
 
 			acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
@@ -124,6 +130,8 @@ func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credent
 	} else {
 		output.Error("Failed to connect to", a)
 	}
+
+	return
 }
 
 func (a *AWSConnection) Id() data.ID {

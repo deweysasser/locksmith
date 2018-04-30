@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"strings"
 )
 
 type accountImpl struct {
@@ -52,10 +53,18 @@ func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding)
 
 func (a *AWSInstanceAccount) String() string {
 	s := a.accountImpl.String()
-	if a.NameTag == "" {
+	var parts []string
+	if a.NameTag != "" {
+		parts = append(parts, a.NameTag)
+	}
+	if a.PublicDNS != "" {
+		parts = append(parts, a.PublicDNS)
+	}
+
+	if len(parts) == 0 {
 		return s
 	} else {
-		return fmt.Sprintf("%s (%s)", s, a.NameTag)
+		return fmt.Sprintf("%s (%s)", s, strings.Join(parts, ", "))
 	}
 }
 

@@ -26,13 +26,14 @@ const (
 	FILE            BindingLocation = "FILE"
 	AUTHORIZED_KEYS BindingLocation = "AUTHORIZED_KEYS"
 	AWS_CREDENTIALS BindingLocation = "CREDENTIALS"
+	INSTANCE_ROOT_CREDENTIALS BindingLocation = "INSTANCE ROOT"
 )
 
 type KeyBinding struct {
 	KeyID ID
 	//AccountID ID `json:",omitempty"`
 	Location BindingLocation `json:",omitempty"`
-	Type     BindingAction   `json:",omitempty"`
+	Action   BindingAction   `json:",omitempty"`
 	Name     string          `json:",omitempty"`
 }
 
