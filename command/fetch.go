@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli"
 	"reflect"
 	"sync"
+	"fmt"
 )
 
 func CmdFetch(c *cli.Context) error {
@@ -58,9 +59,13 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 		i++
 		id := alib.Id(k)
 		if existing, err := alib.Fetch(id); err == nil {
-			existing.(data.Account).Merge(k)
-			if e := alib.Store(existing); e != nil {
-				output.Error(e)
+			if existingacct, ok := existing.(data.Account); ok {
+				existingacct.Merge(k)
+				if e := alib.Store(existingacct); e != nil {
+					output.Error(e)
+				}
+			} else {
+				panic(fmt.Sprint("type for", id, " was not Account"))
 			}
 		} else {
 			if e := alib.Store(k); e != nil {

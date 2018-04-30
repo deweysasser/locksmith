@@ -9,6 +9,7 @@ import (
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
 	"sync"
+	"github.com/aws/aws-sdk-go/service/iam"
 )
 
 type AWSConnection struct {
@@ -37,7 +38,15 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 			Region:      region,
 			Credentials: sharedCredentials,
 		}); err == nil {
+
 			e := ec2.New(sess)
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				a.fetchAccessKeys(sess, cAccounts, cKeys)
+				a.fetchAccounts(sess, cAccounts, cKeys)
+			}()
 
 			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
 				for _, r := range dro.Regions {
@@ -65,6 +74,34 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 
 	return cKeys, cAccounts
 }
+
+func (a *AWSConnection) fetchAccessKeys(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key) {
+
+	i := iam.New(sess)
+
+	if lako, err := i.ListAccessKeys(&iam.ListAccessKeysInput{}); err == nil {
+		for _, md := range lako.AccessKeyMetadata {
+			keys <- data.NewAwsKey(*md.AccessKeyId, *md.UserName, *md.CreateDate)
+			accounts <- data.NewIAMAccountFromKey(md, a.Id())
+		}
+	}  else {
+		output.Error(a, "failed to list IAM users")
+	}
+}
+
+func (a *AWSConnection) fetchAccounts(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key) {
+
+	i := iam.New(sess)
+
+	if r, err := i.ListUsers(&iam.ListUsersInput{}); err == nil {
+		for _, user := range r.Users {
+			accounts <- data.NewIAMAccount(user, a.Id())
+		}
+	}  else {
+		output.Error(a, "failed to list IAM users")
+	}
+}
+
 
 func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account, keymap map[string]data.ID) {
 	output.Debug(a, "fetching instances from", *region)

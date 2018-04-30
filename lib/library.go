@@ -77,8 +77,14 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 					no := reflect.New(p).Interface()
 					e := json.Unmarshal(bytes, &no)
 					return no, e
+				} else {
+					panic(fmt.Sprint("Type ", t, " not in type map"))
 				}
+			} else {
+				panic(fmt.Sprint("Type is not a string"))
 			}
+		} else {
+			panic(fmt.Sprint("Object for", id, " has no type"))
 		}
 		return o, e
 	}

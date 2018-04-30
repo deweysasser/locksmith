@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"strings"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"time"
 )
 
 type accountImpl struct {
@@ -22,6 +24,11 @@ type AWSAccount struct {
 	accountImpl
 }
 
+type AWSIamAccount struct {
+	accountImpl
+	CreateDate time.Time
+}
+
 type AWSInstanceAccount struct {
 	accountImpl
 	NameTag, PublicDNS string
@@ -31,6 +38,42 @@ type Account interface {
 	Ider
 	Bindings() []KeyBinding
 	Merge(a Account)
+}
+
+func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
+	return &AWSIamAccount{
+		accountImpl{
+			"AWSIamAccount",
+			*md.UserName,
+			conn,
+			[]KeyBinding{},
+		},
+		*md.CreateDate,
+	}
+}
+
+func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, conn ID) *AWSIamAccount{
+	return &AWSIamAccount{
+		accountImpl{
+			"AWSIamAccount",
+			*md.UserName,
+			conn,
+			[]KeyBinding{
+				{
+					KeyID: ID(*md.AccessKeyId),
+				},
+			},
+		},
+		time.Time{},
+	}
+}
+
+func (a *AWSIamAccount) Merge(other Account) {
+	otherAcc := other.(*AWSIamAccount)
+	a.accountImpl.Merge(otherAcc.accountImpl)
+	if a.CreateDate.IsZero() {
+		a.CreateDate = otherAcc.CreateDate
+	}
 }
 
 func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding) *AWSInstanceAccount {

@@ -6,15 +6,17 @@ import (
 	"github.com/deweysasser/locksmith/output"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type AWSKey struct {
 	keyImpl
 	AwsKeyId, AwsSecretKey string
 	Active                 bool
+	CreateDate time.Time
 }
 
-func NewAwsKey(id, name string) *AWSKey {
+func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
 	names := StringSet{}
 	if name != "" {
 		names.Add(name)
@@ -24,16 +26,22 @@ func NewAwsKey(id, name string) *AWSKey {
 			Type:        "AWSKey",
 			Names:       names,
 			Deprecated:  false,
-			Replacement: ""},
+			Replacement: "",
+	},
 		AwsKeyId:     id,
 		AwsSecretKey: "",
-		Active:       true}
+		Active:       true,
+	CreateDate: createDate,
+	}
 }
 
 // Does nothing for AWS keys
 func (key *AWSKey) Merge(k Key) {
 	if ak, ok := k.(*AWSKey); ok {
 		key.keyImpl.Merge(&ak.keyImpl)
+		if key.CreateDate.IsZero() {
+			key.CreateDate = ak.CreateDate
+		}
 	}
 }
 
@@ -63,7 +71,7 @@ func ParseAWSCredentials(bytes []byte, keys chan Key) {
 
 	for name, fields := range config {
 		output.Debug("Reading key", name)
-		key := NewAwsKey(fields["aws_access_key_id"], name)
+		key := NewAwsKey(fields["aws_access_key_id"], name, time.Time{})
 		keys <- key
 	}
 }
