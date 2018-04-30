@@ -166,7 +166,7 @@ func (l *library) pathOfId(s string) string {
 func (l *library) Store(o interface{}) error {
 	_, e := os.Stat(l.Path)
 	if e != nil {
-		e = os.MkdirAll(l.Path, 777)
+		e = os.MkdirAll(l.Path, 0777)
 		if e != nil {
 			return e
 		}
@@ -178,7 +178,7 @@ func (l *library) Store(o interface{}) error {
 	if e != nil {
 		return e
 	}
-	e = ioutil.WriteFile(path, bytes, 666)
+	e = ioutil.WriteFile(path, bytes, 0666)
 
 	if e == nil {
 		l.addToCache(o)

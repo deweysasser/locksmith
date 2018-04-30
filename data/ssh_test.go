@@ -176,7 +176,7 @@ func TestSSHJSon(t *testing.T) {
 
 	sJson, error := json.MarshalIndent(key, "", "  ")
 	checke(t, error)
-	ioutil.WriteFile("temp", sJson, 666)
+	ioutil.WriteFile("temp", sJson, 0666)
 	assertStringsEquals(t, expected, string(sJson))
 
 	var newkey Key = new(SSHKey)

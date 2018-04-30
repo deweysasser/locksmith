@@ -1,23 +1,26 @@
 TODO
 
-* parse multiple keys from a local file (e.g. known hosts)
-* remove instances that have been terminated during fetch
+* Add a docker build file
+* Create github release process
+
+* Fix directory permission on creation
+* remove accounts for instances that have been terminated during AWS fetch
 * be able to handle key references with no public key (e.g. when Amazon has a key fingerprint we don't recognize)
 * should comment and names share the same namespace?
 * implement "recursive connect" for SSH (i.e. sudo)
 * implement "recursive connect" for AWS (i.e. SSH to all of the instances)
 
 * "find" things by filtering on not top level
-* Add a docker build file
-* Move SSH fetch to pure-go implementation (must work with OpenSSH agent)
+* Move SSH fetch to pure golang implementation (must work with OpenSSH agent)
 * Make SSH fetch work with PLINK on Windows
 * test on MacOS
-* allow override of data repository
+* allow override of data repository location
 * document commands
 
 * handle key options
 * add an account
 * add keys to an account
+* remove keys from accounts via connections
 * replace a key wherever it is
 * deprecate a key wherever it is
 * Record first date of notice for SSH key (and make it the date of the file) so we can semi-track key age
@@ -43,6 +46,8 @@ TODO
 * Handle AWS accounts (not keys)???
 * AWS key age/expiration
 * parse the private key to generate the #$%#$%!@#$ Amazon fingerprint crap.  Must handle encrypted private keys.  Amazon has destroyed more productivity with this stupid decision than should be tolerated.
+
+* parse multiple keys from a local file (e.g. known hosts)
 
 DONE
 * remove a key/connection/account/whatever
