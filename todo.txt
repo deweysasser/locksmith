@@ -1,0 +1,71 @@
+TODO
+
+* Add a docker build file
+* Create github release process
+
+* test on MacOS
+* sanity check on Linux
+* "find" things by filtering on not top level
+* implement "recursive connect" for SSH (i.e. sudo)
+* implement "recursive connect" for AWS (i.e. SSH to all of the
+  instances)
+* implement "recursive connect" for AWS credentials flie
+* remove accounts for instances that have been terminated during AWS fetch
+* be able to handle key references with no public key (e.g. when
+  Amazon has a key fingerprint we don't recognize)
+
+* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+
+
+* should comment and names share the same namespace?
+
+* Move SSH fetch to pure golang implementation (must work with OpenSSH agent)
+* Make SSH fetch work with PLINK on Windows
+* allow override of data repository location
+* document commands
+
+* handle key options in bindings
+* remove keys from accounts via connections
+* replace a key wherever it is
+* deprecate a key wherever it is
+* Do something with key aging
+
+* Rotate SSH key in AWS
+
+* import SSH keys from gitlab
+* replace SSH keys in gitlab
+
+* import SSH keys from github
+* replace SSH keys in github
+
+* import SSH keys from GCP
+* replace SSH keys in GCP
+
+* import SSH keys from DO
+* replace SSH keys in DO
+
+* generate AWS key for a given user
+* remove given AWS key
+* rotate given AWS key
+
+* change key comment everywhere???
+
+* Handle AWS accounts (not keys)???
+* AWS key age/expiration
+* parse the private key to generate the #$%#$%!@#$ Amazon fingerprint crap.  Must handle encrypted private keys.  Amazon has destroyed more productivity with this stupid decision than should be tolerated.
+
+* parse multiple keys from a local file (e.g. known hosts)
+
+DONE
+* remove a key/connection/account/whatever
+* AWS iterate over all regions
+* verbose listing which shows keys for account (and accounts for key?)
+* record flie name as key 'Name'
+* record AWS name as key 'Name'
+* display key names on listing
+* display keys by account
+* display accounts by key
+* Import SSH keys from AWS
+* import AWS keys from file
+* report on instances using SSH key (can we build ssh access URLs?)
+* import AWS keys from AWS account

@@ -1,0 +1,6 @@
+*.test
+*~
+*.exe
+test-output
+*.bak
+\#*
