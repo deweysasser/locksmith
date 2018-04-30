@@ -123,6 +123,10 @@ func (a *accountImpl) Merge(account accountImpl) {
 	a.Keys = mergeBindings(a.Keys, account.Keys)
 }
 
+func (a *AWSIamAccount) String() string{
+	return fmt.Sprintf("iam:%s", a.Name)
+}
+
 func (a *SSHAccount) Merge(account Account) {
 	a.accountImpl.Merge(account.(*SSHAccount).accountImpl)
 }
