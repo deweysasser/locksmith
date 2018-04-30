@@ -86,6 +86,8 @@ func fetchFile(path string) chan data.Key {
 			switch {
 			case strings.Contains(s, "aws_access_key_id"):
 				data.ParseAWSCredentials(bytes, keys)
+			case strings.Contains(path, "known_hosts"):
+				output.Debug("Skipping known hosts file", path)
 			default:
 				readSSHKey(bytes, keys, info.ModTime(), basename(path))
 			}
