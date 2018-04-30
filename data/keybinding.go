@@ -37,6 +37,7 @@ type KeyBinding struct {
 	Name     string          `json:",omitempty"`
 }
 
+// Describe returns a key binding description and the key described
 func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 	if k.Name != "" {
 		s = k.Name + " = "

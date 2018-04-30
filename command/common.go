@@ -42,10 +42,10 @@ func buildFilter(args []string) Filter {
 
 func outputLevel(c *cli.Context) {
 	switch {
-	case c.Bool("verbose"):
-		output.Level = output.VerboseLevel
 	case c.Bool("debug"):
 		output.Level = output.DebugLevel
+	case c.Bool("verbose"):
+		output.Level = output.VerboseLevel
 	case c.Bool("silent"):
 		output.Level = output.SilentLevel
 	}
