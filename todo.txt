@@ -3,39 +3,46 @@ TODO
 * Add a docker build file
 * Create github release process
 
-* Fix directory permission on creation
-* remove accounts for instances that have been terminated during AWS fetch
-* be able to handle key references with no public key (e.g. when Amazon has a key fingerprint we don't recognize)
-* should comment and names share the same namespace?
-* implement "recursive connect" for SSH (i.e. sudo)
-* implement "recursive connect" for AWS (i.e. SSH to all of the instances)
-
+* test on MacOS
+* sanity check on Linux
 * "find" things by filtering on not top level
+* implement "recursive connect" for SSH (i.e. sudo)
+* implement "recursive connect" for AWS (i.e. SSH to all of the
+  instances)
+* implement "recursive connect" for AWS credentials flie
+* remove accounts for instances that have been terminated during AWS fetch
+* be able to handle key references with no public key (e.g. when
+  Amazon has a key fingerprint we don't recognize)
+
+* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+
+
+* should comment and names share the same namespace?
+
 * Move SSH fetch to pure golang implementation (must work with OpenSSH agent)
 * Make SSH fetch work with PLINK on Windows
-* test on MacOS
 * allow override of data repository location
 * document commands
 
-* handle key options
-* add an account
-* add keys to an account
+* handle key options in bindings
 * remove keys from accounts via connections
 * replace a key wherever it is
 * deprecate a key wherever it is
-* Record first date of notice for SSH key (and make it the date of the file) so we can semi-track key age
+* Do something with key aging
 
 * Rotate SSH key in AWS
-
 
 * import SSH keys from gitlab
 * replace SSH keys in gitlab
 
 * import SSH keys from github
-* replace SSH keys in githubp
+* replace SSH keys in github
 
-* import all SSH keys via a remote acocunt using 'sudo'
-* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+* import SSH keys from GCP
+* replace SSH keys in GCP
+
+* import SSH keys from DO
+* replace SSH keys in DO
 
 * generate AWS key for a given user
 * remove given AWS key

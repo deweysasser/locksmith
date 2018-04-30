@@ -19,13 +19,14 @@ Overview
 
 A tool for managing SSH keys on remote servers.
 
-* Ingest SSH and AWS keys from disk, remote SSH servers, Amazon AWS,
-  Github, Gitlab
+* Ingest SSH *Public* keys and AWS keys *IDs* from disk, remote SSH
+  servers, Amazon AWS, Github, Gitlab (does not store private keys)
 * Delete and Rotate keys, including handling previously expired key in
   newly encountered systems.
 * Handle key accessiblity mechanism including bastion hosts/jump
   boxes, sudo and hosts ony reachable within certain networks
-* Works well at large and small scale
+* Suitable for use with a few keys only
+* Highly performant at large scale
 
 Target Users
 ------------
@@ -37,6 +38,19 @@ The tool is targeted at several use cases:
   
 * An operations engineer who needs to manage sets of SSH keys across
   thousands of systems
+  
+Usage
+-----
+
+```
+locksmith connect ubuntu@somewhere.example.com
+locksmtih connect aws:default
+locksmith connect ~/.ssh
+locksmith fetch
+locksmith list
+```
+
+Run `locksmith` for details on subcommands and options.
   
 
 Getting the tool
@@ -55,7 +69,7 @@ As with the current state of golang technology, the `master` branch is
 the release branch.  That means it should be (relatively) workable.
 Active development is happening on the `development` branch.
 
-There are 2 branches in this code:
+There are 3 branches in this code:
 
 * master -- the 'release' branch (such as it is)
 
@@ -72,6 +86,18 @@ If you would like to try out the prototype, a much more extensive
 Readme is availabe on the "prototype" branch at
 https://github.com/dmsasser/locksmith/tree/prototype
 
+Data Storage
+------------
+
+Data is stored in `~/.x-locksmith`.  It will eventually move to
+`~/.locksmith` when the data format is stable.
+
+SSH Private keys and AWS secret key ids are *NOT* stored, so the
+repository is suitable for sharing amongst e.g. an operations team via
+GIT.  Repository objects are stored in individual JSON files and
+should be fairly save to have GIT merge -- in case on conflicts you
+can manually resolve or just allow one side of the merge to win (and
+then `fetch` updated data).
 
 Road Map
 --------
