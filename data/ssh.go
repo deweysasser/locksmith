@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type PublicKey struct {
@@ -54,6 +55,7 @@ type SSHKey struct {
 	Ids              IDList
 	PublicKey        PublicKey
 	Comments         StringSet
+	FirstNotice		 time.Time
 	haveIdsBeenAdded bool
 }
 
@@ -67,10 +69,17 @@ type SSHBinding struct {
 
 func (s *SSHKey) Merge(k Key) {
 	if other, ok := k.(*SSHKey); ok {
-		s.Deprecated = s.Deprecated || other.Deprecated
-		s.Names.AddSet(other.Names)
+		s.keyImpl.Merge(&other.keyImpl)
 		s.Comments.AddSet(other.Comments)
 		s.Ids.AddList(&other.Ids)
+
+		switch {
+		case other.FirstNotice.IsZero():
+		case s.FirstNotice.IsZero():
+			s.FirstNotice = other.FirstNotice
+		case other.FirstNotice.Before(s.FirstNotice):
+			s.FirstNotice = other.FirstNotice
+		}
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
@@ -101,8 +110,18 @@ func mergeIDArrays(a []ID, b []ID) []ID {
 	return ra
 }
 
-func NewSshKey(pub ssh.PublicKey) *SSHKey {
-	return &SSHKey{keyImpl{"SSHKey", StringSet{}, false, ""}, IDList{}, PublicKey{pub}, StringSet{}, false}
+func NewSshKey(pub ssh.PublicKey, t time.Time) *SSHKey {
+	return &SSHKey{
+		keyImpl{
+			"SSHKey",
+			StringSet{},
+			false, "",
+		},
+		IDList{},
+		PublicKey{pub},
+		StringSet{},
+		t,
+		false}
 }
 
 func (key *SSHKey) Id() ID {
@@ -146,7 +165,7 @@ func getId(pub ssh.PublicKey) ID {
 	return ID(ssh.FingerprintSHA256(pub))
 }
 
-func parseSshPrivateKey(content string, names ...string) Key {
+func parseSshPrivateKey(content string, t time.Time, names ...string) Key {
 	setNames := StringSet{}
 	for _, s := range names {
 		setNames.Add(s)
@@ -169,6 +188,7 @@ func parseSshPrivateKey(content string, names ...string) Key {
 			Ids:       IDList{},
 			PublicKey: PublicKey{pub},
 			Comments:  StringSet{},
+			FirstNotice: t,
 		}
 	}
 	//}
@@ -203,7 +223,7 @@ func asHex(bytes [20]byte) string {
 	return strings.Join(s, ":")
 }
 
-func parseSshPublicKey(content string, names ...string) Key {
+func parseSshPublicKey(content string, t time.Time, names []string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	comments := StringSet{}
@@ -228,6 +248,7 @@ func parseSshPublicKey(content string, names ...string) Key {
 		Ids:       IDList{},
 		PublicKey: PublicKey{pub},
 		Comments:  comments,
+		FirstNotice: t,
 	}
 	s.Identifiers() // Ensure the IDs are calculated
 

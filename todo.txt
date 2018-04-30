@@ -4,8 +4,16 @@ TODO
 * remove instances that have been terminated during fetch
 * be able to handle key references with no public key (e.g. when Amazon has a key fingerprint we don't recognize)
 * should comment and names share the same namespace?
+* implement "recursive connect" for SSH (i.e. sudo)
+* implement "recursive connect" for AWS (i.e. SSH to all of the instances)
 
+* "find" things by filtering on not top level
 * Add a docker build file
+* Move SSH fetch to pure-go implementation (must work with OpenSSH agent)
+* Make SSH fetch work with PLINK on Windows
+* test on MacOS
+* allow override of data repository
+* document commands
 
 * handle key options
 * add an account

@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type FileConnection struct {
@@ -74,18 +75,22 @@ func fetchFile(path string) chan data.Key {
 		defer close(keys)
 		output.Debug("Reading", path)
 
-		bytes, err := ioutil.ReadFile(path)
-		if err != nil {
-			return
-		}
+		if info, err := os.Stat(path); err == nil {
+			bytes, err := ioutil.ReadFile(path)
+			if err != nil {
+				return
+			}
 
-		s := string(bytes)
+			s := string(bytes)
 
-		switch {
-		case strings.Contains(s, "aws_access_key_id"):
-			data.ParseAWSCredentials(bytes, keys)
-		default:
-			readSSHKey(bytes, keys, basename(path))
+			switch {
+			case strings.Contains(s, "aws_access_key_id"):
+				data.ParseAWSCredentials(bytes, keys)
+			default:
+				readSSHKey(bytes, keys, info.ModTime(), basename(path))
+			}
+		}else {
+			output.Error("Failed to read", path)
 		}
 	}()
 	return keys
@@ -100,8 +105,8 @@ func basename(path string) string {
 	}
 }
 
-func readSSHKey(bytes []byte, keys chan data.Key, names ...string) {
-	k := data.NewKey(string(bytes), names...)
+func readSSHKey(bytes []byte, keys chan data.Key, time time.Time, names ...string) {
+	k := data.NewKey(string(bytes), time, names...)
 	if k != nil {
 		keys <- k
 	}

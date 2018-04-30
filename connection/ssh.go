@@ -5,6 +5,7 @@ import (
 	"github.com/deweysasser/locksmith/output"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type SSHHostConnection struct {
@@ -60,7 +61,7 @@ func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	keys := make([]data.Key, 0)
 
 	for _, line := range lines {
-		key := parseAuthorizedKey(line)
+		key := parseAuthorizedKey(line, time.Now())
 		if key != nil {
 			keys = append(keys, key)
 		}
@@ -69,8 +70,8 @@ func (remote *SSHHostConnection) RetrieveKeys() []data.Key {
 	return keys
 }
 
-func parseAuthorizedKey(line string) data.Key {
-	key := data.NewKey(line)
+func parseAuthorizedKey(line string, t time.Time) data.Key {
+	key := data.NewKey(line, t)
 	if key != nil {
 		return key
 	}

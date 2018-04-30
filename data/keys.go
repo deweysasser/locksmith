@@ -5,6 +5,8 @@ import (
 	"github.com/deweysasser/locksmith/output"
 	"io/ioutil"
 	"strings"
+	"time"
+	"os"
 )
 
 type keyImpl struct {
@@ -59,23 +61,28 @@ func LoadJsonFile(path string) Key {
 
 // Create a new Key from the given path
 func Read(path string) Key {
-	bytes, err := ioutil.ReadFile(path)
-	check(err)
+	if s, e := os.Stat(path); e == nil {
+		bytes, err := ioutil.ReadFile(path)
+		check(err)
 
-	return NewKey(string(bytes))
+		return NewKey(string(bytes), s.ModTime())
+	} else {
+		output.Error("Failed to read", path)
+		return nil
+	}
 }
 
 // Create a new Key from the given content
-func NewKey(content string, names ...string) Key {
+func NewKey(content string, t time.Time, names ...string) Key {
 
 	switch {
 	case strings.Contains(content, "PuTTY"):
 		return nil
 	case strings.Contains(content, "ssh-"):
-		return parseSshPublicKey(content, names...)
+		return parseSshPublicKey(content, t, names)
 	case strings.Contains(content, "PRIVATE KEY"):
 		output.Debug("Parsing private key from", names)
-		return parseSshPrivateKey(content, names...)
+		return parseSshPrivateKey(content, t, names...)
 	default:
 		return nil
 	}
