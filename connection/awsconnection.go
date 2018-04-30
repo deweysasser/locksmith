@@ -41,11 +41,16 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 
 			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
 				for _, r := range dro.Regions {
-					wg.Add(1)
-					go func() {
+					wg.Add(2)
+					go func(region *string) {
 						defer wg.Done()
-						a.fetchKeyPairs(r.RegionName, sharedCredentials, cAccounts)
-					}()
+						a.fetchKeyPairs(region, sharedCredentials, cAccounts)
+					}(r.RegionName)
+					go func(region *string) {
+						defer wg.Done()
+						a.fetchInstances(region, sharedCredentials, cAccounts)
+					}(r.RegionName)
+
 				}
 			} else {
 				output.Error(a, "failed to lookup EC2 regions")
@@ -62,6 +67,35 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 	}()
 
 	return cKeys, cAccounts
+}
+
+func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) {
+	output.Debug(a, "fetching instances from", *region)
+	if sess, err := session.NewSession(&aws.Config{
+		Region:      region,
+		Credentials: sharedCredentials,
+	}); err == nil {
+		e := ec2.New(sess)
+		//ec2.DescribeInstancesOutput{}.Reservations[0].Instances[0].Tags
+		if dio, err := e.DescribeInstances(&ec2.DescribeInstancesInput{}); err == nil {
+			output.Debug(a, *region, "reservations:", len(dio.Reservations))
+			for _, res := range dio.Reservations {
+				output.Debug(a, *region, "instances:", len(res.Instances))
+				for _, instance := range res.Instances {
+					keys := []data.KeyBinding{}
+
+					acct := data.NewAWSInstanceAccount(instance, a.Id(), keys)
+					output.Debug("Found instance account", acct)
+					cAccounts <- acct
+				}
+			}
+		} else {
+			output.Error(a, "Failed to fetch instances")
+		}
+
+	}  else {
+		output.Error(a, "Failed to connect")
+	}
 }
 
 func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) {

@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 type accountImpl struct {
@@ -20,10 +21,42 @@ type AWSAccount struct {
 	accountImpl
 }
 
+type AWSInstanceAccount struct {
+	accountImpl
+	NameTag, PublicDNS string
+}
+
 type Account interface {
 	Ider
 	Bindings() []KeyBinding
 	Merge(a Account)
+}
+
+func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding) *AWSInstanceAccount {
+	acct := &AWSInstanceAccount{
+		accountImpl{
+			"AWSInstanceAccount",
+			*instance.InstanceId,
+			connID,
+			keys},
+		"",
+		*instance.PublicDnsName}
+	for _, tag := range instance.Tags {
+		if "Name" == *tag.Key {
+			acct.NameTag = *tag.Value
+		}
+	}
+
+	return acct
+}
+
+func (a *AWSInstanceAccount) String() string {
+	s := a.accountImpl.String()
+	if a.NameTag == "" {
+		return s
+	} else {
+		return fmt.Sprintf("%s (%s)", s, a.NameTag)
+	}
 }
 
 func NewSSHAccount(name string, connID ID, keys []KeyBinding) *SSHAccount {
@@ -40,6 +73,12 @@ func (a *accountImpl) Merge(account accountImpl) {
 
 func (a *SSHAccount) Merge(account Account) {
 	a.accountImpl.Merge(account.(*SSHAccount).accountImpl)
+}
+
+func (a *AWSInstanceAccount) Merge(account Account) {
+	other := account.(*AWSInstanceAccount)
+	a.accountImpl.Merge(other.accountImpl)
+	a.PublicDNS = other.PublicDNS
 }
 
 func (a *SSHAccount) String() string {

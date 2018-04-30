@@ -21,6 +21,7 @@ func init() {
 	AddType(reflect.TypeOf(connection.AWSConnection{}))
 	AddType(reflect.TypeOf(data.SSHAccount{}))
 	AddType(reflect.TypeOf(data.AWSAccount{}))
+	AddType(reflect.TypeOf(data.AWSInstanceAccount{}))
 }
 
 func (l *MainLibrary) Connections() Library {
