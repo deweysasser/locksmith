@@ -39,6 +39,7 @@ func CmdFetch(c *cli.Context) error {
 	fKeys.Wait()
 	fAccounts.Wait()
 	libWG.Wait()
+
 	return nil
 }
 

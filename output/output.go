@@ -1,6 +1,9 @@
 package output
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type OutputLevel int
 
@@ -12,6 +15,26 @@ const (
 	DebugLevel
 )
 
+var errorWG sync.WaitGroup = sync.WaitGroup{}
+var errorCount int
+var errorChannel chan bool = make(chan bool)
+
+func init() {
+	errorWG.Add(1)
+	go func() {
+		defer errorWG.Done()
+		for range errorChannel {
+			errorCount++
+		}
+	}()
+}
+
+func ErrorCount() int {
+	close(errorChannel)
+	errorWG.Wait()
+	return errorCount
+}
+
 var Level OutputLevel = NormalLevel
 
 func IsLevel(l OutputLevel) bool {
@@ -19,12 +42,18 @@ func IsLevel(l OutputLevel) bool {
 }
 
 func output(l OutputLevel, s ...interface{}) {
+	if l > ErrorLevel {
+		errorChannel <- true
+	}
 	if Level >= l {
 		fmt.Println(s...)
 	}
 }
 
 func outputf(l OutputLevel, fs string, s ...interface{}) {
+	if l > ErrorLevel {
+		errorChannel <- true
+	}
 	if Level > l {
 		fmt.Printf(fs, s...)
 	}

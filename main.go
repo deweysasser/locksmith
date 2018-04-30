@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/urfave/cli"
+	"github.com/deweysasser/locksmith/output"
 )
 
 func main() {
@@ -20,4 +21,8 @@ func main() {
 	app.CommandNotFound = CommandNotFound
 
 	app.Run(os.Args)
+
+	if output.ErrorCount() >0 {
+		os.Exit(1)
+	}
 }
