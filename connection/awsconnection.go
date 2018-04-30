@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
+	"sync"
 )
 
 type AWSConnection struct {
@@ -23,43 +24,72 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
+	sharedCredentials := credentials.NewSharedCredentials("", a.Profile)
+	region := aws.String("us-east-1")
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
 	go func() {
-		defer close(cKeys)
-		defer close(cAccounts)
+		defer wg.Done()
 
-		sess, err := session.NewSession(&aws.Config{
-			Region:      aws.String("us-east-1"),
-			Credentials: credentials.NewSharedCredentials("", a.Profile),
-		})
+		if sess, err := session.NewSession(&aws.Config{
+			Region:      region,
+			Credentials: sharedCredentials,
+		}); err == nil {
+			e := ec2.New(sess)
 
-		if err != nil {
-			output.Error("Failed to connect")
-			return
+			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
+				for _, r := range dro.Regions {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						a.fetchKeyPairs(r.RegionName, sharedCredentials, cAccounts)
+					}()
+				}
+			} else {
+				output.Error(a, "failed to lookup EC2 regions")
+			}
+
 		}
-
-		e := ec2.New(sess)
-
-		out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{})
-
-		if err != nil {
-			output.Warn(a.String()+":", "Failed to find key pairs:", err)
-			return
-		}
-
-		bindings := make([]data.KeyBinding, 0)
-		for _, p := range out.KeyPairs {
-			fp := p.KeyFingerprint
-			name := p.KeyName
-			bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
-		}
-
-		acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
-
-		cAccounts <- acct
 
 	}()
 
+	go func() {
+		wg.Wait()
+		defer close(cKeys)
+		defer close(cAccounts)
+	}()
+
 	return cKeys, cAccounts
+}
+
+func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) {
+	output.Debug(a, "fetching key pairs from", *region)
+	if sess, err := session.NewSession(&aws.Config{
+		Region:      region,
+		Credentials: sharedCredentials,
+	}); err == nil {
+		e := ec2.New(sess)
+
+		if out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{}); err == nil {
+			bindings := make([]data.KeyBinding, 0)
+			for _, p := range out.KeyPairs {
+				fp := p.KeyFingerprint
+				name := p.KeyName
+				bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
+			}
+
+			acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
+
+			cAccounts <- acct
+		} else {
+			output.Warn(a.String()+":", "Failed to find key pairs:", err)
+		}
+
+	} else {
+		output.Error("Failed to connect to", a)
+	}
 }
 
 func (a *AWSConnection) Id() data.ID {
