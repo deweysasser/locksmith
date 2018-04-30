@@ -2,13 +2,18 @@ OSES=darwin windows linux
 
 THISPACKAGE=github.com/deweysasser/locksmith
 
+all: build test
+
+test:
+	go test ./...
+
 build:
 	go build .
 
-install:
+install: test
 	go install $(THISPACKAGE)
 
-install-all:
+install-all: test
 	for os in ${OSES}; do GOOS=$$os go install $(THISPACKAGE); done
 
 package: install-all dist 
