@@ -3,10 +3,11 @@ package data
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestBasic(t *testing.T) {
-	impl := NewAwsKey("12345", "")
+	impl := NewAwsKey("12345", "",  time.Time{})
 
 	var key Key
 	key = impl
@@ -19,7 +20,8 @@ func TestBasic(t *testing.T) {
   "Names": [],
   "AwsKeyId": "12345",
   "AwsSecretKey": "",
-  "Active": true
+  "Active": true,
+  "CreateDate": "0001-01-01T00:00:00Z"
 }`, string(s))
 	} else {
 		t.Error("json failed", e)

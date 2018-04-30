@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type entry struct {
@@ -130,7 +131,7 @@ func TestAWSKey(t *testing.T) {
 
 	lib := ml.Keys()
 
-	k := data.NewAwsKey("testing", "test")
+	k := data.NewAwsKey("testing",  "test", time.Now())
 
 	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).Id(k), "testing")
 
@@ -180,6 +181,7 @@ func TestIdConversion(t *testing.T) {
 
 func init() {
 	AddType(reflect.TypeOf(Type1{}))
+	AddType(reflect.TypeOf(Type2{}))
 }
 
 func TestReflectionDeserialize(t *testing.T) {
@@ -216,7 +218,7 @@ func (m *multiID) Id() data.ID {
 	return m.Ids[0]
 }
 
-func (m *multiID) Identifers() []data.ID {
+func (m *multiID) Identifiers() []data.ID {
 	return m.Ids
 }
 
@@ -247,6 +249,9 @@ func verifyMultiIDs(lib library, m multiID, t *testing.T) {
 	} else {
 		t.Error("Failed to fetch by primary ID", e)
 	}
+
+	fmt.Println(lib.cache)
+
 	if m2, e := lib.Fetch("id2"); e == nil {
 		m2a := m2.(*multiID)
 		if fmt.Sprintf("%s", m.Ids) == fmt.Sprintf("%s", m2a) {

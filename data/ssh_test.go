@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 )
 
 func checke(t *testing.T, e error) {
@@ -130,7 +131,7 @@ func TestReadAuthorizedKeys(t *testing.T) {
 	scanner.Scan()
 	text := scanner.Text()
 
-	key := NewKey(text)
+	key := NewKey(text, time.Time{})
 
 	if key == nil {
 		t.Errorf("Key is nil")
@@ -166,10 +167,13 @@ func TestSSHJSon(t *testing.T) {
   },
   "Comments": [
     "dewey@FlynnRyder"
-  ]
+  ],
+  "FirstNotice": "0001-01-01T00:00:00Z"
 }`
 
 	key := Read("test-data/rsa.pub")
+	// Override the first notice time so the test can pass consistently
+	key.(*SSHKey).FirstNotice = time.Time{}
 
 	key.(*SSHKey).Names.Add("test name")
 	key.(*SSHKey).Replacement = "other id"
