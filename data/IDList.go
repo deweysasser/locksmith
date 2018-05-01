@@ -20,6 +20,13 @@ func (l *IDList) AddList(other *IDList) {
 	}
 }
 
+func (l *IDList) AddArray(other []ID) {
+	for _, id := range other {
+		l.Add(id)
+	}
+}
+
+
 func (l *IDList) Contains(i ID) bool {
 	for _, id := range l.Ids {
 		if id == i {

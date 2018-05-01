@@ -178,10 +178,10 @@ func (l *library) Store(o interface{}) error {
 	if e != nil {
 		return e
 	}
-	e = ioutil.WriteFile(path, bytes, 0666)
-
-	if e == nil {
+	if e = ioutil.WriteFile(path, bytes, 0666); e == nil  {
 		l.addToCache(o)
+	}	else {
+		output.Error("Error storing", path)
 	}
 	return e
 }
@@ -252,6 +252,8 @@ func (l *library) Delete(id string) error {
 		for i := range l.ids(o) {
 			delete(l.cache, i)
 		}
+	} else {
+		output.Debug("Did not find key on disk at", path, " to delete")
 	}
 
 	return os.Remove(path)

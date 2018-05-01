@@ -4,8 +4,9 @@ TODO
 * Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
 * make an SSH key placeholder with just a fingerprint (Note:  how do we handle changing IDs when we finally discover a public key for it?)
-* Do some scale testing
 
+* Record AWS account ID# and alias
+* make IAM accounts use ARN or alias
 * Add a docker build file
 * Create github release process
 
@@ -76,3 +77,4 @@ DONE
 * import AWS keys from AWS account
 * test on MacOS
 * allow specification of different key repo location
+* Do some scale testing

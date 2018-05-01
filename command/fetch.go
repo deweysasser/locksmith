@@ -89,6 +89,19 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 			if e := klib.Store(existing); e != nil {
 				output.Error(e)
 			}
+			// It's possible for a key primary ID to change if we didn't before have a public key.
+			if klib.Id(existing) != id {
+				output.Debug("Updating key id from", id, "to", klib.Id(existing))
+				// If so, delete the previous key file.  This, however, takes they key out of the cache so we need to
+				// re-cache it.  Storing it again puts it back in the cache at the cost of a bit more disk I/O (but code
+				// simplicity)
+				if e := klib.Delete(id); e == nil {
+					if e := klib.Store(existing); e != nil {
+						output.Error("Error re-storing", klib.Id(existing))
+					}
+				} 
+			}
+
 		} else {
 			if e := klib.Store(k); e != nil {
 				output.Error(e)

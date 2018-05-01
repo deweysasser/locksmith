@@ -10,6 +10,7 @@ import (
 	"github.com/deweysasser/locksmith/output"
 	"sync"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"time"
 )
 
 type AWSConnection struct {
@@ -52,8 +53,8 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 					wg.Add(1)
 					go func(region *string) {
 						defer wg.Done()
-						keys := a.fetchKeyPairs(region, sharedCredentials, cAccounts)
-						a.fetchInstances(region, sharedCredentials, cAccounts, keys)
+						keymap := a.fetchKeyPairs(region, sharedCredentials, cKeys, cAccounts)
+						a.fetchInstances(region, sharedCredentials, cAccounts, keymap)
 					}(r.RegionName)
 
 				}
@@ -137,7 +138,7 @@ func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *creden
 	}
 }
 
-func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cAccounts chan data.Account) (keymap map[string]data.ID) {
+func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cKeys chan data.Key, cAccounts chan data.Account) (keymap map[string]data.ID) {
 	output.Debug(a, "fetching key pairs from", *region)
 	keymap = make(map[string]data.ID)
 
@@ -152,6 +153,8 @@ func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credent
 			for _, p := range out.KeyPairs {
 				fp := p.KeyFingerprint
 				name := p.KeyName
+				key := data.NewSSHKeyFromFingerprint(*name, time.Now(), data.ID(*fp))
+				cKeys <- key
 				bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
 				keymap[*name] = data.ID(*fp)
 			}
