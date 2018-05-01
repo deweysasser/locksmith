@@ -8,7 +8,7 @@ import (
 
 func CmdRemove(c *cli.Context) error {
 
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 
 	filter := buildFilterFromContext(c)
 

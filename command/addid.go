@@ -13,7 +13,7 @@ import (
  */
 func CmdAddId(c *cli.Context) error {
 	outputLevel(c)
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 
 	if len(c.Args()) < 2 {
 		output.Error("Requires 2 arguments")

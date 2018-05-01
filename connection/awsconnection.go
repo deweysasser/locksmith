@@ -47,7 +47,6 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 				a.fetchAccessKeys(sess, cAccounts, cKeys)
 				a.fetchAccounts(sess, cAccounts, cKeys)
 			}()
-
 			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
 				for _, r := range dro.Regions {
 					wg.Add(1)

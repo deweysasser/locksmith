@@ -14,7 +14,7 @@ import (
 func CmdFetch(c *cli.Context) error {
 	outputLevel(c)
 	libWG := sync.WaitGroup{}
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 
 	fKeys := data.NewFanInKey(nil)
 	fAccounts := data.NewFanInAccount()

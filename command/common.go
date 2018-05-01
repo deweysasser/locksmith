@@ -9,9 +9,20 @@ import (
 )
 
 // Return the locksmith data directory
-func datadir() string {
+func datadir(c *cli.Context) string {
+	if s := c.GlobalString("repo"); s != "" {
+		output.Debug("Repo from --repo flag:", s)
+		return s
+	}
+	if repo := os.Getenv("LOCKSMITH_REPO"); repo != "" {
+		output.Debug("Repo from env:", repo)
+		return repo
+	}
+
 	home := os.Getenv("HOME")
-	return home + "/" + ".x-locksmith"
+	r := home + "/" + ".x-locksmith"
+	output.Debug("Repo in home directory:", r)
+	return r
 }
 
 type Filter func(interface{}) bool

@@ -13,6 +13,10 @@ var GlobalFlags = []cli.Flag{
 		Name:  "debug, d",
 		Usage: "Debug output",
 	},
+	cli.StringFlag{
+		Name: "repo, r",
+		Usage: "Location of locksmith repository",
+	},
 }
 
 var outputFlags = []cli.Flag{

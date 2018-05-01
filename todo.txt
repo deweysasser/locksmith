@@ -1,9 +1,14 @@
 TODO
 
+* Grab AWS keys from AWS, relate to user accounts
+* Don't record accounts for which we have no keys (?)
+* Fix the !@#$%# AWS Fingerprints!
+* make an SSH key placeholder with just a fingerprint (Note:  how do we handle changing IDs when we finally discover a public key for it?)
+* Do some scale testing
+
 * Add a docker build file
 * Create github release process
 
-* test on MacOS
 * sanity check on Linux
 * "find" things by filtering on not top level
 * implement "recursive connect" for SSH (i.e. sudo)
@@ -21,10 +26,10 @@ TODO
 
 * Move SSH fetch to pure golang implementation (must work with OpenSSH agent)
 * Make SSH fetch work with PLINK on Windows
-* allow override of data repository location
 * document commands
 
 * handle key options in bindings
+* mirror terraform's plan/apply for changes
 * remove keys from accounts via connections
 * replace a key wherever it is
 * deprecate a key wherever it is
@@ -69,3 +74,5 @@ DONE
 * import AWS keys from file
 * report on instances using SSH key (can we build ssh access URLs?)
 * import AWS keys from AWS account
+* test on MacOS
+* allow specification of different key repo location
