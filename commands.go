@@ -53,7 +53,7 @@ var Commands = []cli.Command{
 		Name:   "remove",
 		Usage:  "remove the given objects",
 		Action: command.CmdRemove,
-		Flags:  []cli.Flag{},
+		Flags:  outputFlags,
 	},
 	{
 		Name:   "add-id",
