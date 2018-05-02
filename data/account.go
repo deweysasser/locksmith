@@ -182,7 +182,7 @@ func (a *accountImpl) AddBinding(k Key) {
 }
 
 func (a *accountImpl) Id() ID {
-	return ID(a.Type + a.Name)
+	return ID(a.Type + "_" + a.Name)
 }
 
 // mergeBindings merges 2 arrays of keybindings resulting in an array of unique keyBindings

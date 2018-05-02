@@ -208,7 +208,7 @@ func (l *library) Fetch(id string) (interface{}, error) {
 
 func sanitize(path string) string {
 	re := regexp.MustCompile(`\W+`)
-	return re.ReplaceAllString(path, "")
+	return re.ReplaceAllString(path, "_")
 
 }
 
