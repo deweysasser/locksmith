@@ -26,6 +26,7 @@ type AWSAccount struct {
 
 type AWSIamAccount struct {
 	accountImpl
+	Arn string
 	CreateDate time.Time
 }
 
@@ -40,6 +41,17 @@ type Account interface {
 	Merge(a Account)
 }
 
+func (a *AWSIamAccount) Id() ID {
+	return ID(a.Arn)
+}
+
+func (a *AWSIamAccount) Identifiers() []ID {
+	return []ID {
+		ID(a.Arn),
+		a.accountImpl.Id(),
+	}
+}
+
 func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	return &AWSIamAccount{
 		accountImpl{
@@ -48,6 +60,7 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 			conn,
 			[]KeyBinding{},
 		},
+		*md.Arn,
 		*md.CreateDate,
 	}
 }
@@ -64,6 +77,7 @@ func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, conn ID) *AWSIamAccount{
 				},
 			},
 		},
+		"",
 		time.Time{},
 	}
 }
@@ -73,6 +87,9 @@ func (a *AWSIamAccount) Merge(other Account) {
 	a.accountImpl.Merge(otherAcc.accountImpl)
 	if a.CreateDate.IsZero() {
 		a.CreateDate = otherAcc.CreateDate
+	}
+	if a.Arn == "" {
+		a.Arn = otherAcc.Arn
 	}
 }
 
@@ -124,6 +141,9 @@ func (a *accountImpl) Merge(account accountImpl) {
 }
 
 func (a *AWSIamAccount) String() string{
+	if a.Arn != "" {
+		return a.Arn
+	}
 	return fmt.Sprintf("iam:%s", a.Name)
 }
 
