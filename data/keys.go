@@ -22,6 +22,7 @@ type Key interface {
 	Identifiers() []ID
 	GetNames() StringSet
 	IsDeprecated() bool
+	Expire()
 	ReplacementID() ID
 	Merge(Key)
 }
@@ -32,6 +33,10 @@ func (key *keyImpl) GetNames() StringSet {
 
 func (key *keyImpl) ReplacementID() ID {
 	return key.Replacement
+}
+
+func (key *keyImpl) Expire() {
+	key.Deprecated = true
 }
 
 func (key *keyImpl) IsDeprecated() bool {

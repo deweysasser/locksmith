@@ -67,6 +67,13 @@ var Commands = []cli.Command{
 		Action: command.CmdDisplayLib,
 		Flags:  []cli.Flag{},
 	},
+	{
+		Name:   "expire",
+		Usage:  "Expire the matching keys",
+		Action: command.CmdExpire,
+		Flags:  outputFlags,
+	},
+
 }
 
 func CommandNotFound(c *cli.Context, command string) {
