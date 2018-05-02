@@ -65,21 +65,14 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	}
 }
 
-func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, conn ID) *AWSIamAccount{
-	return &AWSIamAccount{
-		accountImpl{
-			"AWSIamAccount",
-			*md.UserName,
-			conn,
-			[]KeyBinding{
-				{
-					KeyID: ID(*md.AccessKeyId),
-				},
-			},
+func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, userMd *iam.User, conn ID) *AWSIamAccount{
+	a := NewIAMAccount(userMd, conn)
+	a.Keys =  []KeyBinding{
+		{
+			KeyID: ID(*md.AccessKeyId),
 		},
-		"",
-		time.Time{},
 	}
+	return a
 }
 
 func (a *AWSIamAccount) Merge(other Account) {

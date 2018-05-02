@@ -21,6 +21,8 @@ func (a *AWSConnection) String() string {
 	return fmt.Sprintf("aws://%s", a.Profile)
 }
 
+type userMap map[string]*iam.User
+
 func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
 	output.Debug("Fetching from aws", a.Profile)
 	cKeys := make(chan data.Key)
@@ -45,8 +47,8 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				a.fetchAccessKeys(sess, cAccounts, cKeys)
-				a.fetchAccounts(sess, cAccounts, cKeys)
+				usermap := a.fetchAccounts(sess, cAccounts, cKeys)
+				a.fetchAccessKeys(sess, cAccounts, cKeys, usermap)
 			}()
 			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
 				for _, r := range dro.Regions {
@@ -75,31 +77,34 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 	return cKeys, cAccounts
 }
 
-func (a *AWSConnection) fetchAccessKeys(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key) {
+func (a *AWSConnection) fetchAccessKeys(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key, usermap userMap) {
 
 	i := iam.New(sess)
 
 	if lako, err := i.ListAccessKeys(&iam.ListAccessKeysInput{}); err == nil {
 		for _, md := range lako.AccessKeyMetadata {
 			keys <- data.NewAwsKey(*md.AccessKeyId, *md.UserName, *md.CreateDate)
-			accounts <- data.NewIAMAccountFromKey(md, a.Id())
+			//accounts <- data.NewIAMAccount(usermap[*md.UserName], a.Id(), md)
+			accounts <- data.NewIAMAccountFromKey(md, usermap[*md.UserName], a.Id())
 		}
 	}  else {
 		output.Error(a, "failed to list IAM users")
 	}
 }
 
-func (a *AWSConnection) fetchAccounts(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key) {
-
+func (a *AWSConnection) fetchAccounts(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key) userMap{
+	usermap := make(userMap)
 	i := iam.New(sess)
 
 	if r, err := i.ListUsers(&iam.ListUsersInput{}); err == nil {
 		for _, user := range r.Users {
-			accounts <- data.NewIAMAccount(user, a.Id())
+			usermap[*user.UserName] = user
 		}
 	}  else {
 		output.Error(a, "failed to list IAM users")
 	}
+
+	return usermap
 }
 
 
