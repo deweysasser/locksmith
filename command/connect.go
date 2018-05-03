@@ -7,7 +7,7 @@ import (
 )
 
 func CmdConnect(c *cli.Context) error {
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 	clib := ml.Connections()
 
 	for _, a := range c.Args() {

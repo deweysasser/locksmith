@@ -22,6 +22,14 @@ type PublicKey struct {
 }
 
 func (p *PublicKey) MarshalJSON() ([]byte, error) {
+	if p.Key == nil {
+		return json.Marshal(&struct {
+			Type string
+		}{
+			Type:"UNKNOWN",
+		})
+	}
+
 	return json.Marshal(&struct {
 		Type, Data string
 	}{
@@ -34,6 +42,10 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
 	temp := make(map[string]interface{})
 	if e := json.Unmarshal(bytes, &temp); e != nil {
 		return e
+	}
+
+	if "UNKNOWN" == temp["Type"].(string) {
+		return nil
 	}
 
 	if bKey, e := base64.StdEncoding.DecodeString(temp["Data"].(string)); e == nil {
@@ -57,6 +69,28 @@ type SSHKey struct {
 	Comments         StringSet
 	FirstNotice		 time.Time
 	haveIdsBeenAdded bool
+}
+
+func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey{
+	lIDs := IDList{}
+	lIDs.AddArray(ids)
+
+	names := StringSet{}
+	names.Add(name)
+
+	return &SSHKey{
+		keyImpl{
+			"SSHKey",
+			names,
+			false,
+			"",
+		},
+		lIDs,
+		PublicKey{}, // this will have a nil underlying public key
+		StringSet{},
+		tm,
+		false,
+	}
 }
 
 /* Use of a public Key, e.g. in an authorized_keys file
@@ -130,8 +164,11 @@ func (key *SSHKey) Id() ID {
 
 func (key *SSHKey) Identifiers() []ID {
 	if !key.haveIdsBeenAdded {
-		key.Ids.Add(ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
-		key.Ids.Add(ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
+		// We can only compute these if we have a public key
+		if key.PublicKey.Key != nil {
+			key.Ids.Add(ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
+			key.Ids.Add(ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
+		}
 		key.haveIdsBeenAdded = true
 	}
 

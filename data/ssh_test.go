@@ -249,3 +249,20 @@ func skipTestAWSIds(t *testing.T) {
 		}
 	}
 }
+
+
+func TestNewSSHKeyFromFingerprint(t *testing.T) {
+	key := NewSSHKeyFromFingerprint("testing", time.Time{}, "id1")
+
+	if bytes , e:= json.Marshal(key); e != nil {
+		t.Error("Failed to marshal: ", e)
+	} else {
+		key2 := SSHKey{}
+		if e := json.Unmarshal(bytes, &key2); e != nil {
+			t.Error("Failed to unmarshal: ", e)
+		} else {
+			assertStringsEquals(t, "id1", string(key2.Id()))
+			assertStringsEquals(t, "testing", key2.Names.StringArray()[0])
+		}
+	}
+}

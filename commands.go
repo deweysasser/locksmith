@@ -13,6 +13,10 @@ var GlobalFlags = []cli.Flag{
 		Name:  "debug, d",
 		Usage: "Debug output",
 	},
+	cli.StringFlag{
+		Name: "repo, r",
+		Usage: "Location of locksmith repository",
+	},
 }
 
 var outputFlags = []cli.Flag{
@@ -49,7 +53,7 @@ var Commands = []cli.Command{
 		Name:   "remove",
 		Usage:  "remove the given objects",
 		Action: command.CmdRemove,
-		Flags:  []cli.Flag{},
+		Flags:  outputFlags,
 	},
 	{
 		Name:   "add-id",
@@ -63,6 +67,13 @@ var Commands = []cli.Command{
 		Action: command.CmdDisplayLib,
 		Flags:  []cli.Flag{},
 	},
+	{
+		Name:   "expire",
+		Usage:  "Expire the matching keys",
+		Action: command.CmdExpire,
+		Flags:  outputFlags,
+	},
+
 }
 
 func CommandNotFound(c *cli.Context, command string) {

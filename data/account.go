@@ -26,6 +26,7 @@ type AWSAccount struct {
 
 type AWSIamAccount struct {
 	accountImpl
+	Arn string
 	CreateDate time.Time
 }
 
@@ -40,6 +41,17 @@ type Account interface {
 	Merge(a Account)
 }
 
+func (a *AWSIamAccount) Id() ID {
+	return ID(a.Arn)
+}
+
+func (a *AWSIamAccount) Identifiers() []ID {
+	return []ID {
+		ID(a.Arn),
+		a.accountImpl.Id(),
+	}
+}
+
 func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	return &AWSIamAccount{
 		accountImpl{
@@ -48,24 +60,19 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 			conn,
 			[]KeyBinding{},
 		},
+		*md.Arn,
 		*md.CreateDate,
 	}
 }
 
-func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, conn ID) *AWSIamAccount{
-	return &AWSIamAccount{
-		accountImpl{
-			"AWSIamAccount",
-			*md.UserName,
-			conn,
-			[]KeyBinding{
-				{
-					KeyID: ID(*md.AccessKeyId),
-				},
-			},
+func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, userMd *iam.User, conn ID) *AWSIamAccount{
+	a := NewIAMAccount(userMd, conn)
+	a.Keys =  []KeyBinding{
+		{
+			KeyID: ID(*md.AccessKeyId),
 		},
-		time.Time{},
 	}
+	return a
 }
 
 func (a *AWSIamAccount) Merge(other Account) {
@@ -73,6 +80,9 @@ func (a *AWSIamAccount) Merge(other Account) {
 	a.accountImpl.Merge(otherAcc.accountImpl)
 	if a.CreateDate.IsZero() {
 		a.CreateDate = otherAcc.CreateDate
+	}
+	if a.Arn == "" {
+		a.Arn = otherAcc.Arn
 	}
 }
 
@@ -124,6 +134,9 @@ func (a *accountImpl) Merge(account accountImpl) {
 }
 
 func (a *AWSIamAccount) String() string{
+	if a.Arn != "" {
+		return a.Arn
+	}
 	return fmt.Sprintf("iam:%s", a.Name)
 }
 
@@ -162,7 +175,7 @@ func (a *accountImpl) AddBinding(k Key) {
 }
 
 func (a *accountImpl) Id() ID {
-	return ID(a.Type + a.Name)
+	return ID(a.Type + "_" + a.Name)
 }
 
 // mergeBindings merges 2 arrays of keybindings resulting in an array of unique keyBindings

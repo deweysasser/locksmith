@@ -9,7 +9,7 @@ import (
 func CmdDisplayLib(c *cli.Context) error {
 	output.Level = output.DebugLevel
 
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 
 	output.Debug("Loading files")
 	ml.Keys().Load()

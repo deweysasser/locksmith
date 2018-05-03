@@ -99,6 +99,15 @@ should be fairly save to have GIT merge -- in case on conflicts you
 can manually resolve or just allow one side of the merge to win (and
 then `fetch` updated data).
 
+Performance
+-----------
+
+Current rough performance:
+
+* ingest 10000 SSH keys from disk in 208 seconds on 2-core,
+  hyperthreaded 2.8GHz system with 16G of RAM (fully consumes CPU,
+  memory usage no apparant at system level).
+
 Road Map
 --------
 

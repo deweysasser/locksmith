@@ -11,7 +11,7 @@ import (
 func CmdList(c *cli.Context) error {
 
 	outputLevel(c)
-	ml := lib.MainLibrary{Path: datadir()}
+	ml := lib.MainLibrary{Path: datadir(c)}
 
 	keyToAccounts := make(map[data.ID][]data.ID)
 
