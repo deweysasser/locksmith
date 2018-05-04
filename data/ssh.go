@@ -176,6 +176,10 @@ func (key *SSHKey) Identifiers() []ID {
 }
 
 func (key *SSHKey) String() string {
+	if key.IsDeprecated() {
+		return fmt.Sprintf("%s *EXPIRED* %s %s (%s)", key.Type, key.Id(), key.Comments.Join(", "), key.Names.Join(", "))
+	}
+
 	return fmt.Sprintf("%s %s %s (%s)", key.Type, key.Id(), key.Comments.Join(", "), key.Names.Join(", "))
 }
 

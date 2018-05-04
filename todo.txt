@@ -9,12 +9,20 @@ TODO
 
 * Create github release process
 
-* sanity check on Linux
 * implement "recursive connect" for AWS (i.e. SSH to all of the
-  instances)
+  instances with public DNSes)
+  - How do we determine login account name?
+  - Should we check the current ssh-agent to see if it has the key
+  loaded or if the key is otherwise available?
+  
 * implement "recursive connect" for AWS credentials file
 * remove accounts for instances that have been terminated during AWS fetch
 
+* can we somehow detect gitolite so we don't do the usual thing with
+  those keys?
+
+* record hostname when recording key name by path.  Should we record
+  the entire path?
 
 * should comment and names share the same namespace?
 
