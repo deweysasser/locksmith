@@ -67,7 +67,6 @@ type SSHKey struct {
 	Ids              IDList
 	PublicKey        PublicKey
 	Comments         StringSet
-	FirstNotice		 time.Time
 	haveIdsBeenAdded bool
 }
 
@@ -84,11 +83,11 @@ func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey{
 			names,
 			false,
 			"",
+			tm,
 		},
 		lIDs,
 		PublicKey{}, // this will have a nil underlying public key
 		StringSet{},
-		tm,
 		false,
 	}
 }
@@ -107,13 +106,6 @@ func (s *SSHKey) Merge(k Key) {
 		s.Comments.AddSet(other.Comments)
 		s.Ids.AddList(&other.Ids)
 
-		switch {
-		case other.FirstNotice.IsZero():
-		case s.FirstNotice.IsZero():
-			s.FirstNotice = other.FirstNotice
-		case other.FirstNotice.Before(s.FirstNotice):
-			s.FirstNotice = other.FirstNotice
-		}
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
@@ -150,11 +142,11 @@ func NewSshKey(pub ssh.PublicKey, t time.Time) *SSHKey {
 			"SSHKey",
 			StringSet{},
 			false, "",
+			t,
 		},
 		IDList{},
 		PublicKey{pub},
 		StringSet{},
-		t,
 		false}
 }
 
@@ -223,11 +215,11 @@ func parseSshPrivateKey(content string, t time.Time, names ...string) Key {
 				Type:        "SSHKey",
 				Names:       setNames,
 				Deprecated:  false,
-				Replacement: ""},
+				Replacement: "",
+				Earliest: t},
 			Ids:       IDList{},
 			PublicKey: PublicKey{pub},
 			Comments:  StringSet{},
-			FirstNotice: t,
 		}
 	}
 	//}
@@ -283,11 +275,12 @@ func parseSshPublicKey(content string, t time.Time, names []string) Key {
 				Type:        "SSHKey",
 				Names:       sNames,
 				Deprecated:  false,
-				Replacement: ""},
+				Replacement: "",
+				Earliest: t,
+		},
 			Ids:         IDList{},
 			PublicKey:   PublicKey{pub},
 			Comments:    comments,
-			FirstNotice: t,
 		}
 		s.Identifiers() // Ensure the IDs are calculated
 

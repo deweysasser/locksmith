@@ -12,7 +12,6 @@ type AWSKey struct {
 	keyImpl
 	AwsKeyId, AwsSecretKey string
 	Active                 bool
-	CreateDate time.Time
 }
 
 func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
@@ -26,11 +25,11 @@ func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
 			Names:       names,
 			Deprecated:  false,
 			Replacement: "",
+			Earliest: createDate,
 	},
 		AwsKeyId:     id,
 		AwsSecretKey: "",
 		Active:       true,
-	CreateDate: createDate,
 	}
 }
 
@@ -38,9 +37,6 @@ func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
 func (key *AWSKey) Merge(k Key) {
 	if ak, ok := k.(*AWSKey); ok {
 		key.keyImpl.Merge(&ak.keyImpl)
-		if key.CreateDate.IsZero() {
-			key.CreateDate = ak.CreateDate
-		}
 	}
 }
 
