@@ -29,7 +29,7 @@ func CmdFetch(c *cli.Context) error {
 
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
-			output.Debugf("Fetching from %s\n", conn)
+			output.Verbosef("Fetching from %s\n", conn)
 			k, a := fetchFrom(conn)
 			fKeys.Add(k)
 			fAccounts.Add(a)
