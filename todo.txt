@@ -1,6 +1,5 @@
 TODO
 
-* Grab AWS keys from AWS, relate to user accounts
 * Record AWS account ID# and alias
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
@@ -91,3 +90,4 @@ DONE
 * implement "recursive connect" for SSH (i.e. sudo)
 * Add a docker build file
 * automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+* Grab AWS keys from AWS, relate to user accounts

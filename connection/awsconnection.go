@@ -83,9 +83,11 @@ func (a *AWSConnection) fetchAccessKeys(sess *session.Session, accounts chan <- 
 
 	if lako, err := i.ListAccessKeys(&iam.ListAccessKeysInput{}); err == nil {
 		for _, md := range lako.AccessKeyMetadata {
-			keys <- data.NewAwsKey(*md.AccessKeyId, *md.UserName, *md.CreateDate)
+			output.Debug("Found acces key", *md.AccessKeyId)
+			userName := *md.UserName
+			keys <- data.NewAwsKey(*md.AccessKeyId, *md.CreateDate, *md.Status=="Active", userName, *usermap[userName].Arn)
 			//accounts <- data.NewIAMAccount(usermap[*md.UserName], a.Id(), md)
-			accounts <- data.NewIAMAccountFromKey(md, usermap[*md.UserName], a.Id())
+			accounts <- data.NewIAMAccountFromKey(md, usermap[userName], a.Id())
 		}
 	}  else {
 		output.Error(a, "failed to list IAM users")

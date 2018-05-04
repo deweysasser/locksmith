@@ -31,6 +31,18 @@ func (set *StringSet) AddSet(other StringSet) {
 	}
 }
 
+func (set *StringSet) AddArray(a []string) {
+	if set.strings == nil {
+		set.strings = make(map[string]bool)
+	}
+
+	for _, v := range a {
+		if v != "" {
+			set.strings[v] = true
+		}
+	}
+}
+
 func (s *StringSet) Count() int {
 	if nil == s.strings {
 		return 0
