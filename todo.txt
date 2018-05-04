@@ -1,12 +1,19 @@
 TODO
 
-* Record AWS account ID# and alias
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
-* Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
 
+* decorate AWS accounts with the profile name used to reach them if
+  three are no aliases
+* decorate AWS Iam accounts with the account alias of the AWS account
+* decorate AWS instances with the AWS account to which they belong
+
 * Create github release process
+
+* fetch -v should show the accounts/keys it creates
+
+* deal with "Failed to parse key" error message
 
 * implement "recursive connect" for AWS (i.e. SSH to all of the
   instances with public DNSes)
@@ -91,3 +98,5 @@ DONE
 * Add a docker build file
 * automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
 * Grab AWS keys from AWS, relate to user accounts
+* Record AWS account ID# and alias
+* Don't record accounts for which we have no keys (?)
