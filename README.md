@@ -43,7 +43,8 @@ Usage
 -----
 
 ```
-locksmith connect ubuntu@somewhere.example.com
+locksmith connect -sudo ubuntu@somewhere.example.com
+locksmith connect somebody@somewhereelse.example.com
 locksmtih connect aws:default
 locksmith connect ~/.ssh
 locksmith fetch
@@ -123,8 +124,8 @@ longer under development.
 * (DONE) Report on which keys are found on which systems
 * (DONE) Refresh state of all known systems.  (CAVEAT:  we do not yet
   handle auto-removing AWS instances which have been terminated)
+* (DONE) Ingest SSH keys for other accounts via a sudo capable account
 * Remove or replace SSH keys on remote systems
-* Ingest SSH keys for other accounts via a sudo capable account
 * Manage SSH keys in AWS
 * Manage SSH keys in Gitlab and Github
 * Manage SSH keys in GCP

@@ -35,7 +35,11 @@ var Commands = []cli.Command{
 		Name:   "connect",
 		Usage:  "Connect a new source of keys",
 		Action: command.CmdConnect,
-		Flags:  []cli.Flag{},
+		Flags: append(outputFlags,
+			cli.BoolFlag{
+				Name:  "sudo, s",
+				Usage: "Use sudo to retrieve keys from all accounts",
+			}),
 	},
 	{
 		Name:   "fetch",
