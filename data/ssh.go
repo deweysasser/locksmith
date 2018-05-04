@@ -67,7 +67,6 @@ type SSHKey struct {
 	Ids              IDList
 	PublicKey        PublicKey
 	Comments         StringSet
-	FirstNotice		 time.Time
 	haveIdsBeenAdded bool
 }
 
@@ -84,11 +83,11 @@ func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey{
 			names,
 			false,
 			"",
+			tm,
 		},
 		lIDs,
 		PublicKey{}, // this will have a nil underlying public key
 		StringSet{},
-		tm,
 		false,
 	}
 }
@@ -107,13 +106,6 @@ func (s *SSHKey) Merge(k Key) {
 		s.Comments.AddSet(other.Comments)
 		s.Ids.AddList(&other.Ids)
 
-		switch {
-		case other.FirstNotice.IsZero():
-		case s.FirstNotice.IsZero():
-			s.FirstNotice = other.FirstNotice
-		case other.FirstNotice.Before(s.FirstNotice):
-			s.FirstNotice = other.FirstNotice
-		}
 	} else {
 		panic("SSH asked to merge non-SSH key")
 	}
@@ -150,11 +142,11 @@ func NewSshKey(pub ssh.PublicKey, t time.Time) *SSHKey {
 			"SSHKey",
 			StringSet{},
 			false, "",
+			t,
 		},
 		IDList{},
 		PublicKey{pub},
 		StringSet{},
-		t,
 		false}
 }
 
@@ -176,7 +168,9 @@ func (key *SSHKey) Identifiers() []ID {
 }
 
 func (key *SSHKey) String() string {
-	return fmt.Sprintf("%s %s %s (%s)", key.Type, key.Id(), key.Comments.Join(", "), key.Names.Join(", "))
+	return key.keyImpl.StandardString(key.Id(), key.Comments.StringArray()...)
+
+	//return fmt.Sprintf("%s %s %s (%s)", key.Type, key.Id(), key.Comments.Join(", "), key.Names.Join(", "))
 }
 
 func (key *SSHKey) KeyType() string {
@@ -221,11 +215,11 @@ func parseSshPrivateKey(content string, t time.Time, names ...string) Key {
 				Type:        "SSHKey",
 				Names:       setNames,
 				Deprecated:  false,
-				Replacement: ""},
+				Replacement: "",
+				Earliest: t},
 			Ids:       IDList{},
 			PublicKey: PublicKey{pub},
 			Comments:  StringSet{},
-			FirstNotice: t,
 		}
 	}
 	//}
@@ -262,34 +256,39 @@ func asHex(bytes [20]byte) string {
 
 func parseSshPublicKey(content string, t time.Time, names []string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
-	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
-	comments := StringSet{}
-	if comment != "" {
-		comments.Add(comment)
-	}
+	if pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content)); err == nil {
 
-	sNames := StringSet{}
-	for _, s := range names {
-		if s != "" {
-			sNames.Add(s)
+		comments := StringSet{}
+		if comment != "" {
+			comments.Add(comment)
 		}
-	}
 
-	check(err)
-	s := SSHKey{
-		keyImpl: keyImpl{
-			Type:        "SSHKey",
-			Names:       sNames,
-			Deprecated:  false,
-			Replacement: ""},
-		Ids:       IDList{},
-		PublicKey: PublicKey{pub},
-		Comments:  comments,
-		FirstNotice: t,
-	}
-	s.Identifiers() // Ensure the IDs are calculated
+		sNames := StringSet{}
+		for _, s := range names {
+			if s != "" {
+				sNames.Add(s)
+			}
+		}
 
-	return &s
+		s := SSHKey{
+			keyImpl: keyImpl{
+				Type:        "SSHKey",
+				Names:       sNames,
+				Deprecated:  false,
+				Replacement: "",
+				Earliest: t,
+		},
+			Ids:         IDList{},
+			PublicKey:   PublicKey{pub},
+			Comments:    comments,
+		}
+		s.Identifiers() // Ensure the IDs are calculated
+
+		return &s
+	} else {
+		output.Error("Failed to parse key", names)
+	}
+	return nil
 }
 
 func SSHLoadJson(s []byte) Key {

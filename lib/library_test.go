@@ -131,7 +131,7 @@ func TestAWSKey(t *testing.T) {
 
 	lib := ml.Keys()
 
-	k := data.NewAwsKey("testing",  "test", time.Now())
+	k := data.NewAwsKey("testing", time.Now(), true,  "test")
 
 	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).Id(k), "testing")
 

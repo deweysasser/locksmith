@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"time"
 )
+type AWSAccountID string
+type ARN string
 
 type accountImpl struct {
 	Type       string
@@ -22,11 +24,12 @@ type SSHAccount struct {
 
 type AWSAccount struct {
 	accountImpl
+	Aliases StringSet
 }
 
 type AWSIamAccount struct {
 	accountImpl
-	Arn string
+	Arn ARN
 	CreateDate time.Time
 }
 
@@ -60,7 +63,7 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 			conn,
 			[]KeyBinding{},
 		},
-		*md.Arn,
+		ARN(*md.Arn),
 		*md.CreateDate,
 	}
 }
@@ -125,17 +128,20 @@ func NewSSHAccount(name string, connID ID, keys []KeyBinding) *SSHAccount {
 	return &SSHAccount{accountImpl{"SSHAccount", name, connID, keys}}
 }
 
-func NewAWSAccount(name string, connID ID, keys []KeyBinding) *AWSAccount {
-	return &AWSAccount{accountImpl{"AWSAccount", name, connID, keys}}
+func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBinding, aliases ...string) *AWSAccount {
+	sAliases := StringSet{}
+	sAliases.AddArray(aliases)
+	return &AWSAccount{accountImpl{"AWSAccount", string(arn), connID, keys}, sAliases}
 }
 
 func (a *accountImpl) Merge(account accountImpl) {
 	a.Keys = mergeBindings(a.Keys, account.Keys)
 }
 
+
 func (a *AWSIamAccount) String() string{
 	if a.Arn != "" {
-		return a.Arn
+		return string(a.Arn)
 	}
 	return fmt.Sprintf("iam:%s", a.Name)
 }
@@ -159,8 +165,13 @@ func (a *AWSAccount) Merge(account Account) {
 }
 
 func (a *AWSAccount) String() string {
-	return fmt.Sprintf("aws %s", a.Name)
+	if a.Aliases.Count() < 1 {
+		return fmt.Sprintf("aws %s", a.Name)
+	} else {
+		return fmt.Sprintf("%s (%s)", a.accountImpl.String(), a.Aliases.Join(", "))
+	}
 }
+
 
 func (a *accountImpl) Bindings() []KeyBinding {
 	return a.Keys

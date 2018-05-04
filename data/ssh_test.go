@@ -157,6 +157,7 @@ func TestSSHJSon(t *testing.T) {
     "test name"
   ],
   "Replacement": "other id",
+  "Earliest": "0001-01-01T00:00:00Z",
   "Ids": [
     "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ",
     "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39"
@@ -167,13 +168,12 @@ func TestSSHJSon(t *testing.T) {
   },
   "Comments": [
     "dewey@FlynnRyder"
-  ],
-  "FirstNotice": "0001-01-01T00:00:00Z"
+  ]
 }`
 
 	key := Read("test-data/rsa.pub")
 	// Override the first notice time so the test can pass consistently
-	key.(*SSHKey).FirstNotice = time.Time{}
+	key.(*SSHKey).Earliest = time.Time{}
 
 	key.(*SSHKey).Names.Add("test name")
 	key.(*SSHKey).Replacement = "other id"

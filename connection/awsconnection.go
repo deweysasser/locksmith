@@ -11,6 +11,7 @@ import (
 	"sync"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"time"
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 type AWSConnection struct {
@@ -44,26 +45,33 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 
 			e := ec2.New(sess)
 
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				usermap := a.fetchAccounts(sess, cAccounts, cKeys)
-				a.fetchAccessKeys(sess, cAccounts, cKeys, usermap)
-			}()
-			if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
-				for _, r := range dro.Regions {
-					wg.Add(1)
-					go func(region *string) {
-						defer wg.Done()
-						keymap := a.fetchKeyPairs(region, sharedCredentials, cKeys, cAccounts)
-						a.fetchInstances(region, sharedCredentials, cAccounts, keymap)
-					}(r.RegionName)
+			if arn, err := a.fetchAccountInfo(sess, cAccounts) ; err == nil {
 
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					usermap := a.fetchAccounts(sess, cAccounts, cKeys)
+					a.fetchAccessKeys(sess, cAccounts, cKeys, usermap)
+				}()
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					a.fetchAccountInfo(sess, cAccounts)
+				}()
+				if dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{}); err == nil {
+					for _, r := range dro.Regions {
+						wg.Add(1)
+						go func(region *string) {
+							defer wg.Done()
+							keymap := a.fetchKeyPairs(arn, region, sharedCredentials, cKeys, cAccounts)
+							a.fetchInstances(region, sharedCredentials, cAccounts, keymap)
+						}(r.RegionName)
+
+					}
+				} else {
+					output.Error(a, "failed to lookup EC2 regions")
 				}
-			} else {
-				output.Error(a, "failed to lookup EC2 regions")
 			}
-
 		}
 
 	}()
@@ -77,15 +85,40 @@ func (a *AWSConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Ac
 	return cKeys, cAccounts
 }
 
+func (a *AWSConnection) fetchAccountInfo(sess *session.Session, accounts chan <- data.Account) (data.AWSAccountID, error){
+	s := sts.New(sess)
+	i := iam.New(sess)
+
+	if  out, err := s.GetCallerIdentity(&sts.GetCallerIdentityInput{}); err == nil {
+		arn := data.AWSAccountID(*out.Account)
+		if iout, err := i.ListAccountAliases(&iam.ListAccountAliasesInput{}); err == nil {
+			aliases := make([]string, len(iout.AccountAliases))
+			for _, a := range iout.AccountAliases {
+				aliases = append(aliases, *a)
+			}
+			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBinding{}, aliases...)
+		} else {
+			output.Warn("Failed to get accont alias for", a.Profile, "account", arn)
+			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBinding{})
+		}
+		return arn, nil
+	}else {
+		output.Error("Failed to get account identity for", a.Profile)
+		return data.AWSAccountID(""), err
+	}
+}
+
 func (a *AWSConnection) fetchAccessKeys(sess *session.Session, accounts chan <- data.Account, keys chan <- data.Key, usermap userMap) {
 
 	i := iam.New(sess)
 
 	if lako, err := i.ListAccessKeys(&iam.ListAccessKeysInput{}); err == nil {
 		for _, md := range lako.AccessKeyMetadata {
-			keys <- data.NewAwsKey(*md.AccessKeyId, *md.UserName, *md.CreateDate)
+			output.Debug("Found acces key", *md.AccessKeyId)
+			userName := *md.UserName
+			keys <- data.NewAwsKey(*md.AccessKeyId, *md.CreateDate, *md.Status=="Active", userName, *usermap[userName].Arn)
 			//accounts <- data.NewIAMAccount(usermap[*md.UserName], a.Id(), md)
-			accounts <- data.NewIAMAccountFromKey(md, usermap[*md.UserName], a.Id())
+			accounts <- data.NewIAMAccountFromKey(md, usermap[userName], a.Id())
 		}
 	}  else {
 		output.Error(a, "failed to list IAM users")
@@ -143,7 +176,7 @@ func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *creden
 	}
 }
 
-func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credentials.Credentials, cKeys chan data.Key, cAccounts chan data.Account) (keymap map[string]data.ID) {
+func (a *AWSConnection) fetchKeyPairs(arn data.AWSAccountID, region *string, sharedCredentials *credentials.Credentials, cKeys chan data.Key, cAccounts chan data.Account) (keymap map[string]data.ID) {
 	output.Debug(a, "fetching key pairs from", *region)
 	keymap = make(map[string]data.ID)
 
@@ -164,7 +197,7 @@ func (a *AWSConnection) fetchKeyPairs(region *string, sharedCredentials *credent
 				keymap[*name] = data.ID(*fp)
 			}
 
-			acct := data.NewAWSAccount(a.Profile, a.Id(), bindings)
+			acct := data.NewAWSAccount(arn, a.Id(), bindings)
 
 			cAccounts <- acct
 		} else {

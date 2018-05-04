@@ -2,7 +2,6 @@ package data
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/deweysasser/locksmith/output"
 	"regexp"
 	"strings"
@@ -13,25 +12,22 @@ type AWSKey struct {
 	keyImpl
 	AwsKeyId, AwsSecretKey string
 	Active                 bool
-	CreateDate time.Time
 }
 
-func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
-	names := StringSet{}
-	if name != "" {
-		names.Add(name)
-	}
+func NewAwsKey(id string, createDate time.Time, active bool, aNames ...string) *AWSKey {
+	sNames := StringSet{}
+	sNames.AddArray(aNames)
 	return &AWSKey{
 		keyImpl: keyImpl{
 			Type:        "AWSKey",
-			Names:       names,
+			Names:       sNames,
 			Deprecated:  false,
 			Replacement: "",
+			Earliest:    createDate,
 	},
 		AwsKeyId:     id,
 		AwsSecretKey: "",
-		Active:       true,
-	CreateDate: createDate,
+		Active:       active,
 	}
 }
 
@@ -39,9 +35,6 @@ func NewAwsKey(id, name string, createDate time.Time) *AWSKey {
 func (key *AWSKey) Merge(k Key) {
 	if ak, ok := k.(*AWSKey); ok {
 		key.keyImpl.Merge(&ak.keyImpl)
-		if key.CreateDate.IsZero() {
-			key.CreateDate = ak.CreateDate
-		}
 	}
 }
 
@@ -54,7 +47,7 @@ func (key *AWSKey) Identifiers() []ID {
 }
 
 func (key *AWSKey) String() string {
-	return fmt.Sprintf("AWS %s (%s)", key.Id(), key.Names.Join(", "))
+	return key.keyImpl.StandardString(key.Id())
 }
 
 func (key *AWSKey) Ids() []string {
@@ -71,7 +64,7 @@ func ParseAWSCredentials(bytes []byte, keys chan Key) {
 
 	for name, fields := range config {
 		output.Debug("Reading key", name)
-		key := NewAwsKey(fields["aws_access_key_id"], name, time.Time{})
+		key := NewAwsKey(fields["aws_access_key_id"], time.Time{}, true, name)
 		keys <- key
 	}
 }

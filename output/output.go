@@ -42,7 +42,7 @@ func IsLevel(l OutputLevel) bool {
 }
 
 func output(l OutputLevel, s ...interface{}) {
-	if l > ErrorLevel {
+	if l >= ErrorLevel {
 		errorChannel <- true
 	}
 	if Level >= l {
@@ -51,10 +51,10 @@ func output(l OutputLevel, s ...interface{}) {
 }
 
 func outputf(l OutputLevel, fs string, s ...interface{}) {
-	if l > ErrorLevel {
+	if l >= ErrorLevel {
 		errorChannel <- true
 	}
-	if Level > l {
+	if Level >= l {
 		fmt.Printf(fs, s...)
 	}
 }

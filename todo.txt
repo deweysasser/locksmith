@@ -2,21 +2,33 @@ TODO
 
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
-* Grab AWS keys from AWS, relate to user accounts
-* Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
 
-* Record AWS account ID# and alias
-* Add a docker build file
+* decorate AWS accounts with the profile name used to reach them if
+  three are no aliases
+* decorate AWS Iam accounts with the account alias of the AWS account
+* decorate AWS instances with the AWS account to which they belong
+
 * Create github release process
 
-* sanity check on Linux
+* fetch -v should show the accounts/keys it creates
+
+* deal with "Failed to parse key" error message
+
 * implement "recursive connect" for AWS (i.e. SSH to all of the
-  instances)
+  instances with public DNSes)
+  - How do we determine login account name?
+  - Should we check the current ssh-agent to see if it has the key
+  loaded or if the key is otherwise available?
+  
 * implement "recursive connect" for AWS credentials file
 * remove accounts for instances that have been terminated during AWS fetch
 
-* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+* can we somehow detect gitolite so we don't do the usual thing with
+  those keys?
+
+* record hostname when recording key name by path.  Should we record
+  the entire path?
 
 * should comment and names share the same namespace?
 
@@ -83,3 +95,8 @@ DONE
 * be able to handle key references with no public key (e.g. when  Amazon has a key fingerprint we don't recognize)
 * make IAM accounts use ARN or alias
 * implement "recursive connect" for SSH (i.e. sudo)
+* Add a docker build file
+* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
+* Grab AWS keys from AWS, relate to user accounts
+* Record AWS account ID# and alias
+* Don't record accounts for which we have no keys (?)

@@ -9,7 +9,7 @@ import (
 )
 
 func CmdExpire(c *cli.Context) error {
-	output.Level = output.DebugLevel
+	outputLevel(c)
 	ml := lib.MainLibrary{Path: datadir(c)}
 
 	filter := buildFilterFromContext(c)

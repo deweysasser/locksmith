@@ -39,7 +39,12 @@ var Commands = []cli.Command{
 			cli.BoolFlag{
 				Name:  "sudo, s",
 				Usage: "Use sudo to retrieve keys from all accounts",
-			}),
+			},
+			cli.BoolFlag{
+				Name:  "no-sudo",
+				Usage: "Do *NOT* use sudo even for root, ubuntu or ec2-user users",
+			},
+		),
 	},
 	{
 		Name:   "fetch",
