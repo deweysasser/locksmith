@@ -55,10 +55,12 @@ func fetchFrom(conn interface{}) (keys <-  chan data.Key, accounts <- chan data.
 
 func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitGroup) {
 	defer wg.Done()
+	idmap := make(map[string] bool)
 	i := 0
 	for k := range accounts {
 		i++
 		id := alib.Id(k)
+		idmap[id]=true
 		if existing, err := alib.Fetch(id); err == nil {
 			if existingacct, ok := existing.(data.Account); ok {
 				existingacct.Merge(k)
@@ -75,15 +77,17 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 		}
 	}
 
-	output.Normalf("Discovered %d accounts\n", i)
+	output.Normalf("Discovered %d accounts in %d references\n", len(idmap), i)
 }
 
 func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 	defer wg.Done()
+	idmap := make(map[string] bool)
 	i := 0
 	for k := range keys {
 		i++
 		id := klib.Id(k)
+		idmap[id]=true
 		if existing, err := klib.Fetch(id); err == nil {
 			existing.(data.Key).Merge(k)
 			if e := klib.Store(existing); e != nil {
@@ -109,5 +113,5 @@ func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
 		}
 	}
 
-	output.Normalf("Discovered %d keys\n", i)
+	output.Normalf("Discovered %d keys in %d locations\n", len(idmap), i)
 }
