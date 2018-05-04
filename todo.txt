@@ -1,13 +1,12 @@
 TODO
 
+* Grab AWS keys from AWS, relate to user accounts
+* Record AWS account ID# and alias
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
-* Grab AWS keys from AWS, relate to user accounts
 * Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
 
-* Record AWS account ID# and alias
-* Add a docker build file
 * Create github release process
 
 * sanity check on Linux
@@ -16,7 +15,6 @@ TODO
 * implement "recursive connect" for AWS credentials file
 * remove accounts for instances that have been terminated during AWS fetch
 
-* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'
 
 * should comment and names share the same namespace?
 
@@ -83,3 +81,5 @@ DONE
 * be able to handle key references with no public key (e.g. when  Amazon has a key fingerprint we don't recognize)
 * make IAM accounts use ARN or alias
 * implement "recursive connect" for SSH (i.e. sudo)
+* Add a docker build file
+* automatically try sudo when we're 'root' or 'ubuntu' or 'ec2-user'

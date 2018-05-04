@@ -262,34 +262,38 @@ func asHex(bytes [20]byte) string {
 
 func parseSshPublicKey(content string, t time.Time, names []string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
-	pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content))
-	comments := StringSet{}
-	if comment != "" {
-		comments.Add(comment)
-	}
+	if pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content)); err == nil {
 
-	sNames := StringSet{}
-	for _, s := range names {
-		if s != "" {
-			sNames.Add(s)
+		comments := StringSet{}
+		if comment != "" {
+			comments.Add(comment)
 		}
-	}
 
-	check(err)
-	s := SSHKey{
-		keyImpl: keyImpl{
-			Type:        "SSHKey",
-			Names:       sNames,
-			Deprecated:  false,
-			Replacement: ""},
-		Ids:       IDList{},
-		PublicKey: PublicKey{pub},
-		Comments:  comments,
-		FirstNotice: t,
-	}
-	s.Identifiers() // Ensure the IDs are calculated
+		sNames := StringSet{}
+		for _, s := range names {
+			if s != "" {
+				sNames.Add(s)
+			}
+		}
 
-	return &s
+		s := SSHKey{
+			keyImpl: keyImpl{
+				Type:        "SSHKey",
+				Names:       sNames,
+				Deprecated:  false,
+				Replacement: ""},
+			Ids:         IDList{},
+			PublicKey:   PublicKey{pub},
+			Comments:    comments,
+			FirstNotice: t,
+		}
+		s.Identifiers() // Ensure the IDs are calculated
+
+		return &s
+	} else {
+		output.Error("Failed to parse key", names)
+	}
+	return nil
 }
 
 func SSHLoadJson(s []byte) Key {

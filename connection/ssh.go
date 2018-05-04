@@ -22,6 +22,9 @@ func (c *SSHHostConnection) Id() data.ID {
 }
 
 func (c *SSHHostConnection) String() string {
+	if c.Sudo {
+		return "ssh://" + c.Connection + "?sudo=true"
+	}
 	return "ssh://" + c.Connection
 }
 
@@ -55,7 +58,7 @@ func (c *SSHHostConnection) retreiveSystemUsers() <- chan remoteAccount {
 		lines := strings.Split(string(out), "\n")
 		for _, l := range lines {
 			if parts := strings.Split(l, ":"); len(parts)>5 {
-				output.Debug(fmt.Sprintf("Remote %s found user %s", c.Connection, parts[0]))
+				//output.Debug(fmt.Sprintf("Remote %s found user %s", c.Connection, parts[0]))
 				users <- remoteAccount{parts[0], parts[5]}
 			}
 		}

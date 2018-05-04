@@ -31,7 +31,18 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 	case strings.HasPrefix(a, "aws:"):
 		return &connection.AWSConnection{"AWSConnection", a[4:]}
 	default:
-		return &connection.SSHHostConnection{"SSHHostConnection", a, c.Bool("sudo")}
+		sudo := !c.Bool("no-sudo") &&
+			(
+				c.Bool("sudo") ||
+					strings.HasPrefix(a,"ubuntu@") ||
+					strings.HasPrefix(a,"root@") ||
+						strings.HasPrefix(a,"ec2-user@"))
+
+		return &connection.SSHHostConnection{
+			"SSHHostConnection",
+			a,
+			sudo,
+		}
 	}
 }
 
