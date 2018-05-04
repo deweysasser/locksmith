@@ -2,7 +2,6 @@ package data
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/deweysasser/locksmith/output"
 	"regexp"
 	"strings"
@@ -54,7 +53,7 @@ func (key *AWSKey) Identifiers() []ID {
 }
 
 func (key *AWSKey) String() string {
-	return fmt.Sprintf("AWS %s (%s)", key.Id(), key.Names.Join(", "))
+	return key.keyImpl.StandardString(key.Id())
 }
 
 func (key *AWSKey) Ids() []string {

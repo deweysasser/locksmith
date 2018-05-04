@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 	"os"
+	"fmt"
 )
 
 type keyImpl struct {
@@ -25,6 +26,20 @@ type Key interface {
 	Expire()
 	ReplacementID() ID
 	Merge(Key)
+}
+
+func (key *keyImpl) StandardString(id ID, other ...string) string {
+	ex := ""
+	if key.IsDeprecated() {
+		ex = "*EX*"
+	}
+
+	id2 := id
+	if len(id) > 25 {
+		id2 = id[:22] + "..."
+	}
+
+	return fmt.Sprintf("%6s %4s %-25.25s %s (%s)", key.Type, ex, id2, key.Names.Join(", "), strings.Join(other, ", "))
 }
 
 func (key *keyImpl) GetNames() StringSet {
