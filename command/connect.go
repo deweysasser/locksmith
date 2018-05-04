@@ -20,6 +20,7 @@ func CmdConnect(c *cli.Context) error {
 
 	return nil
 }
+
 /** Determine the proper type of connection from the string given and create it
  */
 func NewConnection(a string, c *cli.Context) connection.Connection {
@@ -32,11 +33,10 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 		return &connection.AWSConnection{"AWSConnection", a[4:]}
 	default:
 		sudo := !c.Bool("no-sudo") &&
-			(
-				c.Bool("sudo") ||
-					strings.HasPrefix(a,"ubuntu@") ||
-					strings.HasPrefix(a,"root@") ||
-						strings.HasPrefix(a,"ec2-user@"))
+			(c.Bool("sudo") ||
+				strings.HasPrefix(a, "ubuntu@") ||
+				strings.HasPrefix(a, "root@") ||
+				strings.HasPrefix(a, "ec2-user@"))
 
 		return &connection.SSHHostConnection{
 			"SSHHostConnection",
@@ -45,4 +45,3 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 		}
 	}
 }
-

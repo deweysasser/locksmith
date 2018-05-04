@@ -5,7 +5,6 @@ import (
 )
 
 type Connection interface {
-	Fetch() (keys <- chan data.Key, accounts <- chan data.Account)
+	Fetch() (keys <-chan data.Key, accounts <-chan data.Account)
 	Id() data.ID
 }
-

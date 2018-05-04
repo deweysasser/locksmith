@@ -1,20 +1,20 @@
 package connection
 
 import (
+	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
+	"github.com/remeh/sizedwaitgroup"
+	"math/rand"
 	"os/exec"
 	"strings"
 	"time"
-	"fmt"
-	"math/rand"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 type SSHHostConnection struct {
 	Type       string
 	Connection string
-	Sudo 		bool `json:",omitempty"`
+	Sudo       bool `json:",omitempty"`
 }
 
 func (c *SSHHostConnection) Id() data.ID {
@@ -28,7 +28,7 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
+func (c *SSHHostConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
 	if c.Sudo {
 		return c.fetchSudo()
 	} else {
@@ -40,7 +40,7 @@ type remoteAccount struct {
 	User, Home string
 }
 
-func (c *SSHHostConnection) retreiveSystemUsers() <- chan remoteAccount {
+func (c *SSHHostConnection) retreiveSystemUsers() <-chan remoteAccount {
 	users := make(chan remoteAccount)
 
 	go func() {
@@ -57,7 +57,7 @@ func (c *SSHHostConnection) retreiveSystemUsers() <- chan remoteAccount {
 
 		lines := strings.Split(string(out), "\n")
 		for _, l := range lines {
-			if parts := strings.Split(l, ":"); len(parts)>5 {
+			if parts := strings.Split(l, ":"); len(parts) > 5 {
 				//output.Debug(fmt.Sprintf("Remote %s found user %s", c.Connection, parts[0]))
 				users <- remoteAccount{parts[0], parts[5]}
 			}
@@ -72,12 +72,12 @@ func (c *SSHHostConnection) retreiveSystemUsers() <- chan remoteAccount {
 func buildAccountName(account remoteAccount, connection string) string {
 	c := connection
 	if i := strings.Index(connection, "@"); i > -1 {
-		c = connection[(i+1):]
+		c = connection[(i + 1):]
 	}
 	return fmt.Sprintf("%s@%s", account.User, c)
 }
 
-func (c *SSHHostConnection) fetchSudo() (keys <- chan data.Key, accounts <- chan data.Account) {
+func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
@@ -85,7 +85,6 @@ func (c *SSHHostConnection) fetchSudo() (keys <- chan data.Key, accounts <- chan
 		output.Debugf("Retrieving from %s\n", c.Connection)
 
 		accounts := c.retreiveSystemUsers()
-
 
 		wg := sizedwaitgroup.New(10)
 		for account := range accounts {
@@ -119,7 +118,7 @@ func (c *SSHHostConnection) fetchSudo() (keys <- chan data.Key, accounts <- chan
 	return cKeys, cAccounts
 }
 
-func (c *SSHHostConnection) fetchNonSudo() (keys <- chan data.Key, accounts <- chan data.Account) {
+func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
@@ -156,7 +155,7 @@ func (remote *SSHHostConnection) retrieveKeysFrom(file string, prefix string) []
 	remoteCmd := fmt.Sprintf("%s test -f %s && %s cat %s || exit 0", prefix, file, prefix, file)
 	output.Debug("Running ssh", remote.Connection, remoteCmd)
 
-	delay := time.Duration(rand.Int31()%500)
+	delay := time.Duration(rand.Int31() % 500)
 	time.Sleep(delay * time.Millisecond)
 	cmd := exec.Command("ssh", remote.Connection, remoteCmd)
 

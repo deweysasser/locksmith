@@ -19,7 +19,7 @@ func (c *FileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *FileConnection) Fetch() (keys <- chan data.Key, accounts <- chan data.Account) {
+func (c *FileConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
 	fKeys := data.NewFanInKey(nil)
 	defer fKeys.DoneAdding()
 	keys = fKeys.Output()
@@ -91,7 +91,7 @@ func fetchFile(path string) chan data.Key {
 			default:
 				readSSHKey(bytes, keys, info.ModTime(), basename(path))
 			}
-		}else {
+		} else {
 			output.Error("Failed to read", path)
 		}
 	}()

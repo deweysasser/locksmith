@@ -28,7 +28,7 @@ func CmdList(c *cli.Context) error {
 	filter := buildFilterFromContext(c)
 
 	printConnections(ml.Connections(), filter)
-	printAccounts(ml.Accounts(),filter, ml)
+	printAccounts(ml.Accounts(), filter, ml)
 	printKeys(ml.Keys(), ml.Accounts(), keyToAccounts, filter)
 
 	return nil
@@ -96,7 +96,7 @@ func keyString(i interface{}, prefix string) string {
 
 func outputKeysFor(a data.Account, keys lib.Library) {
 	for _, k := range a.Bindings() {
-		s, _:= k.Describe(keys)
+		s, _ := k.Describe(keys)
 		output.Verbose("  ", s)
 	}
 }

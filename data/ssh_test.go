@@ -250,11 +250,10 @@ func skipTestAWSIds(t *testing.T) {
 	}
 }
 
-
 func TestNewSSHKeyFromFingerprint(t *testing.T) {
 	key := NewSSHKeyFromFingerprint("testing", time.Time{}, "id1")
 
-	if bytes , e:= json.Marshal(key); e != nil {
+	if bytes, e := json.Marshal(key); e != nil {
 		t.Error("Failed to marshal: ", e)
 	} else {
 		key2 := SSHKey{}

@@ -24,7 +24,7 @@ func NewAwsKey(id string, createDate time.Time, active bool, aNames ...string) *
 			Deprecated:  false,
 			Replacement: "",
 			Earliest:    createDate,
-	},
+		},
 		AwsKeyId:     id,
 		AwsSecretKey: "",
 		Active:       active,

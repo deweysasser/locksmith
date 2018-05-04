@@ -7,7 +7,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
-	impl := NewAwsKey("12345",  time.Time{}, true, "")
+	impl := NewAwsKey("12345", time.Time{}, true, "")
 
 	var key Key
 	key = impl

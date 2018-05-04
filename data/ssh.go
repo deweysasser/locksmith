@@ -26,7 +26,7 @@ func (p *PublicKey) MarshalJSON() ([]byte, error) {
 		return json.Marshal(&struct {
 			Type string
 		}{
-			Type:"UNKNOWN",
+			Type: "UNKNOWN",
 		})
 	}
 
@@ -70,7 +70,7 @@ type SSHKey struct {
 	haveIdsBeenAdded bool
 }
 
-func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey{
+func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey {
 	lIDs := IDList{}
 	lIDs.AddArray(ids)
 
@@ -216,7 +216,7 @@ func parseSshPrivateKey(content string, t time.Time, names ...string) Key {
 				Names:       setNames,
 				Deprecated:  false,
 				Replacement: "",
-				Earliest: t},
+				Earliest:    t},
 			Ids:       IDList{},
 			PublicKey: PublicKey{pub},
 			Comments:  StringSet{},
@@ -276,11 +276,11 @@ func parseSshPublicKey(content string, t time.Time, names []string) Key {
 				Names:       sNames,
 				Deprecated:  false,
 				Replacement: "",
-				Earliest: t,
-		},
-			Ids:         IDList{},
-			PublicKey:   PublicKey{pub},
-			Comments:    comments,
+				Earliest:    t,
+			},
+			Ids:       IDList{},
+			PublicKey: PublicKey{pub},
+			Comments:  comments,
 		}
 		s.Identifiers() // Ensure the IDs are calculated
 

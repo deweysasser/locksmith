@@ -178,9 +178,9 @@ func (l *library) Store(o interface{}) error {
 	if e != nil {
 		return e
 	}
-	if e = ioutil.WriteFile(path, bytes, 0666); e == nil  {
+	if e = ioutil.WriteFile(path, bytes, 0666); e == nil {
 		l.addToCache(o)
-	}	else {
+	} else {
 		output.Error("Error storing", path)
 	}
 	return e

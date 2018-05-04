@@ -23,9 +23,9 @@ const (
 type BindingLocation string
 
 const (
-	FILE            BindingLocation = "FILE"
-	AUTHORIZED_KEYS BindingLocation = "AUTHORIZED_KEYS"
-	AWS_CREDENTIALS BindingLocation = "CREDENTIALS"
+	FILE                      BindingLocation = "FILE"
+	AUTHORIZED_KEYS           BindingLocation = "AUTHORIZED_KEYS"
+	AWS_CREDENTIALS           BindingLocation = "CREDENTIALS"
 	INSTANCE_ROOT_CREDENTIALS BindingLocation = "INSTANCE ROOT"
 )
 

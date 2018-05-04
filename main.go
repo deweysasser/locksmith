@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/urfave/cli"
 	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 
 	app.Run(os.Args)
 
-	if output.ErrorCount() >0 {
+	if output.ErrorCount() > 0 {
 		os.Exit(1)
 	}
 }
