@@ -11,9 +11,12 @@ import (
 
 func CmdPlan(c *cli.Context) error {
 	outputLevel(c)
+
+	filter := buildFilterFromContext(c)
+
 	ml := lib.MainLibrary{Path: datadir(c)}
 
-	calculateChanges(ml.Accounts(), ml.Keys(), ml.Changes())
+	calculateChanges(ml.Accounts(), ml.Keys(), ml.Changes(), filter)
 
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
 	return nil
@@ -53,9 +56,12 @@ func printChange(keylib lib.Library, add data.KeyBinding, s string) {
 	}
 }
 
-func calculateChanges(accountLib lib.Library, keylib lib.Library, changelib lib.ChangeLibrary) {
+func calculateChanges(accountLib lib.Library, keylib lib.Library, changelib lib.ChangeLibrary, filter Filter) {
 	for a := range accountLib.List() {
 		if account, ok := a.(data.Account); ok {
+			if !filter(account) {
+				continue
+			}
 			output.Debug("Working on account", account)
 			var additions []data.KeyBinding
 			var removals []data.KeyBinding

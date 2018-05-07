@@ -43,6 +43,11 @@ type Account interface {
 	Ider
 	Bindings() []KeyBinding
 	Merge(a Account)
+	ConnectionID() ID
+}
+
+func (a *accountImpl) ConnectionID() ID {
+	return a.Connection
 }
 
 func (a *AWSIamAccount) Id() ID {
