@@ -11,6 +11,7 @@ type MainLibrary struct {
 	connections Library
 	keys        Library
 	accounts    Library
+	changes     ChangeLibrary
 }
 
 func init() {
@@ -23,6 +24,7 @@ func init() {
 	AddType(reflect.TypeOf(data.AWSAccount{}))
 	AddType(reflect.TypeOf(data.AWSInstanceAccount{}))
 	AddType(reflect.TypeOf(data.AWSIamAccount{}))
+	AddType(reflect.TypeOf(data.Change{}))
 }
 
 func (l *MainLibrary) Connections() Library {
@@ -53,6 +55,16 @@ func (l *MainLibrary) Accounts() Library {
 	}
 
 	return l.accounts
+}
+
+func (l *MainLibrary) Changes() ChangeLibrary {
+	if l.changes == nil {
+		klib := new(changelib)
+		klib.Init(l.Path+"/changes", nil, nil)
+		l.changes = klib
+	}
+
+	return l.changes
 }
 
 type keyReadError struct {

@@ -1,8 +1,8 @@
 TODO
 
+* Fix the !@#$%# AWS Fingerprints!
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
-* Fix the !@#$%# AWS Fingerprints!
 
 * decorate AWS accounts with the profile name used to reach them if
   three are no aliases
@@ -14,6 +14,8 @@ TODO
 * fetch -v should show the accounts/keys it creates
 
 * deal with "Failed to parse key" error message
+
+* improve SSH root handling to avoid creating so many connections
 
 * implement "recursive connect" for AWS (i.e. SSH to all of the
   instances with public DNSes)

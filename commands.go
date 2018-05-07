@@ -82,6 +82,12 @@ var Commands = []cli.Command{
 		Action: command.CmdExpire,
 		Flags:  outputFlags,
 	},
+	{
+		Name:   "plan",
+		Usage:  "Calculate changes",
+		Action: command.CmdPlan,
+		Flags:  outputFlags,
+	},
 }
 
 func CommandNotFound(c *cli.Context, command string) {

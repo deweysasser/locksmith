@@ -27,9 +27,12 @@ func CmdFetch(c *cli.Context) error {
 
 	filter := buildFilterFromContext(c)
 
+	var connCount int
+
 	for conn := range ml.Connections().List() {
 		if filter(conn) {
 			output.Verbosef("Fetching from %s\n", conn)
+			connCount++
 			k, a := fetchFrom(conn)
 			fKeys.Add(k)
 			fAccounts.Add(a)
@@ -39,6 +42,8 @@ func CmdFetch(c *cli.Context) error {
 	fKeys.Wait()
 	fAccounts.Wait()
 	libWG.Wait()
+
+	output.Normalf("Fetched from %d connections", connCount)
 
 	return nil
 }
