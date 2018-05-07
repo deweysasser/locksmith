@@ -1,11 +1,12 @@
 package command
 
 import (
-	"github.com/deweysasser/locksmith/lib"
-	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/output"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
 	"reflect"
+	"fmt"
 )
 
 func CmdPlan(c *cli.Context) error {
@@ -14,21 +15,24 @@ func CmdPlan(c *cli.Context) error {
 
 	calculateChanges(ml.Accounts(), ml.Keys(), ml.Changes())
 
-	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts())
+	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
 	return nil
 }
 
-func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.Library, accountlib lib.Library) {
-	for ch:= range changelib.List() {
-		if change, ok := ch.(*data.Change) ; ok {
+func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.Library, accountlib lib.Library, filter Filter) {
+	for ch := range changelib.List() {
+		if change, ok := ch.(*data.Change); ok {
 			if acct, err := accountlib.Fetch(string(change.Account)); err == nil {
-				output.Normal("change",  acct)
-				if output.IsLevel(output.VerboseLevel) {
-					for _, add := range change.Add {
-						printChange(keylib, add, "add")
-					}
-					for _, remove := range change.Remove {
-						printChange(keylib, remove, "remove")
+				s := fmt.Sprint("change ", acct)
+				if filter(s) {
+					output.Normal(s)
+					if output.IsLevel(output.VerboseLevel) {
+						for _, add := range change.Add {
+							printChange(keylib, add, "add")
+						}
+						for _, remove := range change.Remove {
+							printChange(keylib, remove, "remove")
+						}
 					}
 				}
 			} else {
@@ -70,7 +74,7 @@ func calculateChanges(accountLib lib.Library, keylib lib.Library, changelib lib.
 						output.Error("Discovered key which is not a key", bk)
 					}
 				} else {
-					output.Error("Failed to lookup key", binding.KeyID,  err)
+					output.Error("Failed to lookup key", binding.KeyID, err)
 				}
 			}
 			if len(additions) > 0 || len(removals) > 0 {

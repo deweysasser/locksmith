@@ -1,8 +1,8 @@
 package data
 
 type Change struct {
-	Type		string
-	Account		ID
+	Type        string
+	Account     ID
 	Add, Remove []KeyBinding
 }
 

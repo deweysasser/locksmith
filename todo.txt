@@ -1,5 +1,6 @@
 TODO
 
+* filters should accept regular expressions
 * Fix the !@#$%# AWS Fingerprints!
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
@@ -8,6 +9,8 @@ TODO
   three are no aliases
 * decorate AWS Iam accounts with the account alias of the AWS account
 * decorate AWS instances with the AWS account to which they belong
+
+* remove should remove changes as well
 
 * Create github release process
 

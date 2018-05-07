@@ -1,13 +1,11 @@
 package lib
 
-
 //go:generate touch foo
-
 
 import (
 	"github.com/deweysasser/locksmith/output"
-	"os"
 	"io/ioutil"
+	"os"
 )
 
 type ChangeLibrary interface {
@@ -36,7 +34,7 @@ func (l *changelib) Clear() error {
 				return e
 			}
 		}
-	}	else {
+	} else {
 		return e
 	}
 

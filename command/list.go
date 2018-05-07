@@ -30,6 +30,7 @@ func CmdList(c *cli.Context) error {
 	printConnections(ml.Connections(), filter)
 	printAccounts(ml.Accounts(), filter, ml)
 	printKeys(ml.Keys(), ml.Accounts(), keyToAccounts, filter)
+	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), filter)
 
 	return nil
 }

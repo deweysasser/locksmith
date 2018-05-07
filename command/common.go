@@ -31,10 +31,12 @@ func buildFilterFromContext(c *cli.Context) Filter {
 	return buildFilter(c.Args())
 }
 
+func AcceptAll(a interface{}) bool {
+	return true
+}
+
 func buildFilter(args []string) Filter {
-	filter := func(a interface{}) bool {
-		return true
-	}
+	filter := AcceptAll
 
 	if len(args) > 0 {
 		filter = func(i interface{}) bool {
