@@ -90,17 +90,17 @@ func TestSave(t *testing.T) {
 		t.Error("Should have failed to find")
 	}
 
-	s, err2 := lib.Ensure("id2")
-
-	check(t, err2, "Ensure errored")
-
-	if s.(*entry).IdString() != "id2" {
-		t.Error("Wrong ID: " + s.(*entry).IdString())
-	}
-
-	if s.(*entry).Content != "" {
-		t.Error("Should not have value")
-	}
+	//s, err2 := lib.Ensure("id2")
+	//
+	//check(t, err2, "Ensure errored")
+	//
+	//if s.(*entry).IdString() != "id2" {
+	//	t.Error("Wrong ID: " + s.(*entry).IdString())
+	//}
+	//
+	//if s.(*entry).Content != "" {
+	//	t.Error("Should not have value")
+	//}
 
 	_, err3 := os.Stat(testDirectory + "/id2.json")
 	if err3 == nil {
