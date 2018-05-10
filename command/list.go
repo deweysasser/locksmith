@@ -35,7 +35,7 @@ func CmdList(c *cli.Context) error {
 	return nil
 }
 
-func printKeys(keys lib.Library, accounts lib.Library, keyToAccounts map[data.ID][]data.ID, filter Filter) {
+func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, keyToAccounts map[data.ID][]data.ID, filter Filter) {
 	for i := range keys.List() {
 		s := keyString(i, "")
 		if filter(s) {
@@ -43,7 +43,7 @@ func printKeys(keys lib.Library, accounts lib.Library, keyToAccounts map[data.ID
 			if output.IsLevel(output.VerboseLevel) {
 				accts := keyToAccounts[i.(data.Ider).Id()]
 				for _, a := range accts {
-					if acct, err := accounts.Fetch(string(a)); err == nil {
+					if acct, err := accounts.Fetch(a); err == nil {
 						output.Verbose(accountString(acct, "  "))
 					} else {
 						output.Debug("Unable to fetch account ID", a)
@@ -59,7 +59,7 @@ func printKeys(keys lib.Library, accounts lib.Library, keyToAccounts map[data.ID
 	}
 }
 
-func printAccounts(accounts lib.Library, filter Filter, ml lib.MainLibrary) {
+func printAccounts(accounts lib.AccountLibrary, filter Filter, ml lib.MainLibrary) {
 	for i := range accounts.List() {
 		s := accountString(i, "")
 		if filter(s) {
@@ -71,7 +71,7 @@ func printAccounts(accounts lib.Library, filter Filter, ml lib.MainLibrary) {
 	}
 }
 
-func printConnections(connections lib.Library, filter Filter) {
+func printConnections(connections lib.ConnectionLibrary, filter Filter) {
 	for i := range connections.List() {
 
 		s := connectionString(i, "")
@@ -95,7 +95,7 @@ func keyString(i interface{}, prefix string) string {
 	return fmt.Sprintf("%skey %s", prefix, i)
 }
 
-func outputKeysFor(a data.Account, keys lib.Library) {
+func outputKeysFor(a data.Account, keys lib.KeyLibrary) {
 	for _, k := range a.Bindings() {
 		s, _ := k.Describe(keys)
 		output.Verbose("  ", s)

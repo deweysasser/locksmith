@@ -3,6 +3,7 @@ package lib
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"errors"
 )
 
 var TypeMap = make(map[string]reflect.Type)

@@ -1,10 +1,11 @@
 package command
 
 import (
+	"github.com/deweysasser/locksmith/connection"
+	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/data"
 )
 
 func CmdRemove(c *cli.Context) error {
@@ -15,44 +16,38 @@ func CmdRemove(c *cli.Context) error {
 	filter := buildFilterFromContext(c)
 
 	accounts := ml.Accounts()
+	connections := ml.Connections()
+	keys := ml.Keys()
+	changes := ml.Changes()
 
-	process(ml.Connections(), filter)
-	process(accounts, filter)
-	process(ml.Keys(), filter)
-	processObject(ml.Changes(), filter, func(x interface{}) interface{} {
-		if change, ok := x.(*data.Change); ok {
-			if r, err := accounts.Fetch(string(change.Account)); err == nil {
-				return r
-			} else {
-				return x
-			}
-		} else {
-			return x
-		}
-	})
+	// Why golang, why???  DRY!!!
+	for conn := range connections.ListMatching(func(connection connection.Connection) bool { return filter(connection) }) {
+		output.Verbose("Deleting", conn)
+		connections.DeleteObject(conn)
+	}
+
+	for account := range accounts.ListMatching(func(account data.Account) bool { return filter(account) }) {
+		output.Verbose("Deleting", account)
+		accounts.DeleteObject(account)
+	}
+
+	for key := range keys.ListMatching(func(key data.Key) bool { return filter(key) }) {
+		output.Verbose("Deleting", key)
+		keys.DeleteObject(key)
+	}
+
+	for change := range changes.ListMatching(func(change data.Change) bool { return filter(changestr(accounts, change)) }) {
+		output.Verbose("Deleting", change)
+		changes.DeleteObject(change)
+	}
 
 	return nil
 }
 
-type Stringer func(interface{}) interface{}
-
-func processObject(l lib.Library, filter Filter, stringer Stringer) {
-	for obj := range l.List() {
-		o := stringer(obj)
-		if filter(o) {
-			output.Verbose("Removing ", o)
-			if e := l.DeleteObject(o); e == nil {
-				output.Debug(o, "removed")
-			} else {
-				output.Errorf("Failed to delete '%s' with id '%s': %s", o, l.Id(o), e)
-			}
-		}
+func changestr(accounts lib.AccountLibrary, change data.Change) interface{} {
+	if r, err := accounts.Fetch(change.Account); err == nil {
+		return r
+	} else {
+		return change
 	}
 }
-
-
-func process(l lib.Library, filter Filter) {
-	var s Stringer = func (x interface{}) interface{} { return x }
-	processObject(l, filter, s)
-}
-

@@ -133,7 +133,7 @@ func TestAWSKey(t *testing.T) {
 
 	k := data.NewAwsKey("testing", time.Now(), true, "test")
 
-	assertStringEquals(t, "ID of aws key is wrong", lib.(*library).Id(k), "testing")
+	assertStringEquals(t, "ID of aws key is wrong", string(lib.Id(k)), "testing")
 
 	lib.Store(k)
 
@@ -147,7 +147,7 @@ func TestAWSKey(t *testing.T) {
 
 	check(t, err, "Failed to fetch key")
 
-	if k.Id() != i2.(data.Key).Id() {
+	if k.Id() != i2.Id() {
 		t.Error("Keys did not match")
 	}
 

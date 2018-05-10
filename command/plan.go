@@ -1,12 +1,11 @@
 package command
 
 import (
+	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"reflect"
-	"fmt"
 )
 
 func CmdPlan(c *cli.Context) error {
@@ -22,41 +21,36 @@ func CmdPlan(c *cli.Context) error {
 	return nil
 }
 
-func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.Library, accountlib lib.Library, filter Filter) {
-	for ch := range changelib.List() {
-		if change, ok := ch.(*data.Change); ok {
-			if acct, err := accountlib.Fetch(string(change.Account)); err == nil {
-				s := fmt.Sprint("change ", acct)
-				if filter(s) {
-					output.Normal(s)
-					if output.IsLevel(output.VerboseLevel) {
-						for _, add := range change.Add {
-							printChange(keylib, add, "add")
-						}
-						for _, remove := range change.Remove {
-							printChange(keylib, remove, "remove")
-						}
+func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.KeyLibrary, accountlib lib.AccountLibrary, filter Filter) {
+	for change := range changelib.List() {
+		if acct, err := accountlib.Fetch(change.Account); err == nil {
+			s := fmt.Sprint("change ", acct)
+			if filter(s) {
+				output.Normal(s)
+				if output.IsLevel(output.VerboseLevel) {
+					for _, add := range change.Add {
+						printChange(keylib, add, "add")
+					}
+					for _, remove := range change.Remove {
+						printChange(keylib, remove, "remove")
 					}
 				}
-			} else {
-				output.Error("Could not find account", change.Account)
 			}
 		} else {
-			output.Error("Change is not a change: ", ch, reflect.TypeOf(ch))
+			output.Error("Could not find account", change.Account)
 		}
-
 	}
 }
 
-func printChange(keylib lib.Library, add data.KeyBinding, s string) {
-	if key, err := keylib.Fetch(string(add.KeyID)); err == nil {
+func printChange(keylib lib.KeyLibrary, add data.KeyBinding, s string) {
+	if key, err := keylib.Fetch(add.KeyID); err == nil {
 		output.Verbose("  ", s, key)
 	} else {
 		output.Error("Cannot find key", add, "in change")
 	}
 }
 
-func calculateChanges(accountLib lib.Library, keylib lib.Library, changelib lib.ChangeLibrary, filter Filter) {
+func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, changelib lib.ChangeLibrary, filter Filter) {
 	for a := range accountLib.List() {
 		if account, ok := a.(data.Account); ok {
 			if !filter(account) {
@@ -68,7 +62,7 @@ func calculateChanges(accountLib lib.Library, keylib lib.Library, changelib lib.
 
 			for _, binding := range account.Bindings() {
 				output.Debug("Examining binding", binding)
-				if bk, err := keylib.Fetch(string(binding.KeyID)); err == nil {
+				if bk, err := keylib.Fetch(binding.KeyID); err == nil {
 					if key, ok := bk.(data.Key); ok {
 						if key.IsDeprecated() {
 							removals = append(removals, binding)

@@ -58,9 +58,9 @@ func fetchFrom(conn interface{}) (keys <-chan data.Key, accounts <-chan data.Acc
 	}
 }
 
-func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitGroup) {
+func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *sync.WaitGroup) {
 	defer wg.Done()
-	idmap := make(map[string]bool)
+	idmap := make(map[data.ID]bool)
 	i := 0
 	for k := range accounts {
 		i++
@@ -85,9 +85,9 @@ func ingestAccounts(alib lib.Library, accounts chan data.Account, wg *sync.WaitG
 	output.Normalf("Discovered %d accounts in %d references\n", len(idmap), i)
 }
 
-func ingestKeys(klib lib.Library, keys chan data.Key, wg *sync.WaitGroup) {
+func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
 	defer wg.Done()
-	idmap := make(map[string]bool)
+	idmap := make(map[data.ID]bool)
 	i := 0
 	for k := range keys {
 		i++
