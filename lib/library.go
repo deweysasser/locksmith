@@ -3,6 +3,7 @@ package lib
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
@@ -44,16 +45,12 @@ type Library interface {
 	Id(object interface{}) string
 	// Fetch the data given by ID from the disk
 	Fetch(id string) (interface{}, error)
-	// Ensure that the object exists
-	Ensure(id string) (interface{}, error)
 	// Delete the object with the given ID from the disk
 	Delete(id string) error
 	// Delete the object given
 	DeleteObject(o interface{}) error
 	// List the objects
 	List() chan interface{}
-	// Load all objects from disk into cache
-	Load()
 	// Print the cache, for debugging purposes
 	PrintCache()
 }
@@ -178,10 +175,10 @@ func (l *library) Store(o interface{}) error {
 	if e != nil {
 		return e
 	}
-	if e = ioutil.WriteFile(path, bytes, 0666); e == nil  {
+	if e = ioutil.WriteFile(path, bytes, 0666); e == nil {
 		l.addToCache(o)
-	}	else {
-		output.Error("Error storing", path)
+	} else {
+		return errors.New(fmt.Sprint("Error storing ", path))
 	}
 	return e
 }
@@ -224,7 +221,7 @@ func (l *library) fetchFrom(id, path string) (interface{}, error) {
 	if e == nil {
 		//l.cache[Id] = o
 	} else {
-		output.Error("Failed to read key in " + path)
+		return nil, errors.New(fmt.Sprint("Failed to read key in ", path))
 	}
 
 	//fmt.Printf("Read %s\n", o)
@@ -235,16 +232,6 @@ func (l *library) Flush() error {
 	return nil
 }
 
-func (l *library) Ensure(id string) (interface{}, error) {
-	o, e := l.Fetch(id)
-	if e == nil {
-		return o, nil
-	}
-
-	o, e = l.deserialize(id, []byte("{}"))
-	return o, e
-}
-
 func (l *library) Delete(id string) error {
 	path := l.pathOfId(id)
 
@@ -253,7 +240,7 @@ func (l *library) Delete(id string) error {
 			delete(l.cache, i)
 		}
 	} else {
-		output.Debug("Did not find key on disk at", path, " to delete")
+		return errors.New(fmt.Sprint("Did not find key on disk at ", path, " to delete"))
 	}
 
 	return os.Remove(path)

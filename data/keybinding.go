@@ -9,7 +9,7 @@ import (
 type BindingAction string
 
 type Fetcher interface {
-	Fetch(id string) (interface{}, error)
+	Fetch(id ID) (Key, error)
 }
 
 const (
@@ -23,9 +23,9 @@ const (
 type BindingLocation string
 
 const (
-	FILE            BindingLocation = "FILE"
-	AUTHORIZED_KEYS BindingLocation = "AUTHORIZED_KEYS"
-	AWS_CREDENTIALS BindingLocation = "CREDENTIALS"
+	FILE                      BindingLocation = "FILE"
+	AUTHORIZED_KEYS           BindingLocation = "AUTHORIZED_KEYS"
+	AWS_CREDENTIALS           BindingLocation = "CREDENTIALS"
 	INSTANCE_ROOT_CREDENTIALS BindingLocation = "INSTANCE ROOT"
 )
 
@@ -43,7 +43,7 @@ func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 		s = k.Name + " = "
 	}
 
-	if key, err := keylib.Fetch(string(k.KeyID)); err != nil {
+	if key, err := keylib.Fetch(k.KeyID); err != nil {
 		s = fmt.Sprintf("%s%s", s, "Unknown key "+k.KeyID)
 	} else {
 		s = fmt.Sprintf("%s%s", s, key)

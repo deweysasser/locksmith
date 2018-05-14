@@ -14,7 +14,7 @@ var GlobalFlags = []cli.Flag{
 		Usage: "Debug output",
 	},
 	cli.StringFlag{
-		Name: "repo, r",
+		Name:  "repo, r",
 		Usage: "Location of locksmith repository",
 	},
 }
@@ -82,7 +82,18 @@ var Commands = []cli.Command{
 		Action: command.CmdExpire,
 		Flags:  outputFlags,
 	},
-
+	{
+		Name:   "plan",
+		Usage:  "Calculate changes",
+		Action: command.CmdPlan,
+		Flags:  outputFlags,
+	},
+	{
+		Name:   "apply",
+		Usage:  "Apply pending chnages",
+		Action: command.CmdApply,
+		Flags:  outputFlags,
+	},
 }
 
 func CommandNotFound(c *cli.Context, command string) {

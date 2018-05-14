@@ -1,6 +1,8 @@
 package command
 
 import (
+	"github.com/deweysasser/locksmith/connection"
+	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
@@ -13,22 +15,39 @@ func CmdRemove(c *cli.Context) error {
 
 	filter := buildFilterFromContext(c)
 
-	process(ml.Connections(), filter)
-	process(ml.Accounts(), filter)
-	process(ml.Keys(), filter)
+	accounts := ml.Accounts()
+	connections := ml.Connections()
+	keys := ml.Keys()
+	changes := ml.Changes()
+
+	// Why golang, why???  DRY!!!
+	for conn := range connections.ListMatching(func(connection connection.Connection) bool { return filter(connection) }) {
+		output.Verbose("Deleting", conn)
+		connections.DeleteObject(conn)
+	}
+
+	for account := range accounts.ListMatching(func(account data.Account) bool { return filter(account) }) {
+		output.Verbose("Deleting", account)
+		accounts.DeleteObject(account)
+	}
+
+	for key := range keys.ListMatching(func(key data.Key) bool { return filter(key) }) {
+		output.Verbose("Deleting", key)
+		keys.DeleteObject(key)
+	}
+
+	for change := range changes.ListMatching(func(change data.Change) bool { return filter(changestr(accounts, change)) }) {
+		output.Verbose("Deleting", change)
+		changes.DeleteObject(change)
+	}
 
 	return nil
 }
 
-func process(l lib.Library, filter Filter) {
-	for o := range l.List() {
-		if filter(o) {
-			output.Verbose("Removing ", o)
-			if e := l.DeleteObject(o); e == nil {
-				output.Debug(o, "removed")
-			} else {
-				output.Errorf("Failed to delete '%s' with id '%s': %s", o, l.Id(o), e)
-			}
-		}
+func changestr(accounts lib.AccountLibrary, change data.Change) interface{} {
+	if r, err := accounts.Fetch(change.Account); err == nil {
+		return r
+	} else {
+		return change
 	}
 }

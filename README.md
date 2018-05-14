@@ -1,7 +1,7 @@
 locksmith
 =========
 
-Current Status:  Early Alpha
+Current Status:  Alpha
 ----------------------------
 
 This project is early Alpha quality only.
@@ -93,10 +93,10 @@ Data Storage
 Data is stored in `~/.x-locksmith`.  It will eventually move to
 `~/.locksmith` when the data format is stable.
 
-SSH Private keys and AWS secret key ids are *NOT* stored, so the
+SSH Private keys and AWS secret key ids are *NOT* stored so the
 repository is suitable for sharing amongst e.g. an operations team via
 GIT.  Repository objects are stored in individual JSON files and
-should be fairly save to have GIT merge -- in case on conflicts you
+should be fairly safe to have GIT merge -- in case on conflicts you
 can manually resolve or just allow one side of the merge to win (and
 then `fetch` updated data).
 

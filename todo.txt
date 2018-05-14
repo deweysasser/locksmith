@@ -1,19 +1,24 @@
 TODO
 
+* filters should accept regular expressions
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
-* Fix the !@#$%# AWS Fingerprints!
 
 * decorate AWS accounts with the profile name used to reach them if
   three are no aliases
 * decorate AWS Iam accounts with the account alias of the AWS account
 * decorate AWS instances with the AWS account to which they belong
 
+* remove should remove changes as well
+
 * Create github release process
+* compute AWS format fingerprints of private keys
 
 * fetch -v should show the accounts/keys it creates
 
 * deal with "Failed to parse key" error message
+
+* improve SSH root handling to avoid creating so many connections
 
 * implement "recursive connect" for AWS (i.e. SSH to all of the
   instances with public DNSes)
@@ -26,6 +31,8 @@ TODO
 
 * can we somehow detect gitolite so we don't do the usual thing with
   those keys?
+
+* handle pkcs8 format public keys?  ssh-keygen -f <key> -y -e -m PKCS8
 
 * record hostname when recording key name by path.  Should we record
   the entire path?
@@ -100,3 +107,4 @@ DONE
 * Grab AWS keys from AWS, relate to user accounts
 * Record AWS account ID# and alias
 * Don't record accounts for which we have no keys (?)
+* Fix the !@#$%# AWS Fingerprints!

@@ -26,7 +26,6 @@ func (l *IDList) AddArray(other []ID) {
 	}
 }
 
-
 func (l *IDList) Contains(i ID) bool {
 	for _, id := range l.Ids {
 		if id == i {

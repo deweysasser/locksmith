@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"strings"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"strings"
 	"time"
 )
+
 type AWSAccountID string
 type ARN string
 
@@ -29,7 +30,7 @@ type AWSAccount struct {
 
 type AWSIamAccount struct {
 	accountImpl
-	Arn ARN
+	Arn        ARN
 	CreateDate time.Time
 }
 
@@ -42,6 +43,11 @@ type Account interface {
 	Ider
 	Bindings() []KeyBinding
 	Merge(a Account)
+	ConnectionID() ID
+}
+
+func (a *accountImpl) ConnectionID() ID {
+	return a.Connection
 }
 
 func (a *AWSIamAccount) Id() ID {
@@ -49,7 +55,7 @@ func (a *AWSIamAccount) Id() ID {
 }
 
 func (a *AWSIamAccount) Identifiers() []ID {
-	return []ID {
+	return []ID{
 		ID(a.Arn),
 		a.accountImpl.Id(),
 	}
@@ -68,9 +74,9 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	}
 }
 
-func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, userMd *iam.User, conn ID) *AWSIamAccount{
+func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, userMd *iam.User, conn ID) *AWSIamAccount {
 	a := NewIAMAccount(userMd, conn)
-	a.Keys =  []KeyBinding{
+	a.Keys = []KeyBinding{
 		{
 			KeyID: ID(*md.AccessKeyId),
 		},
@@ -138,8 +144,7 @@ func (a *accountImpl) Merge(account accountImpl) {
 	a.Keys = mergeBindings(a.Keys, account.Keys)
 }
 
-
-func (a *AWSIamAccount) String() string{
+func (a *AWSIamAccount) String() string {
 	if a.Arn != "" {
 		return string(a.Arn)
 	}
@@ -171,7 +176,6 @@ func (a *AWSAccount) String() string {
 		return fmt.Sprintf("%s (%s)", a.accountImpl.String(), a.Aliases.Join(", "))
 	}
 }
-
 
 func (a *accountImpl) Bindings() []KeyBinding {
 	return a.Keys

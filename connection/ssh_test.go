@@ -32,7 +32,6 @@ func Test_buildAccountName(t *testing.T) {
 			args{remoteAccount{"foo", ""}, "ubuntu@bar.example.com"},
 			"foo@bar.example.com",
 		},
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

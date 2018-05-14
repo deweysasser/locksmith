@@ -26,7 +26,7 @@ func (p *PublicKey) MarshalJSON() ([]byte, error) {
 		return json.Marshal(&struct {
 			Type string
 		}{
-			Type:"UNKNOWN",
+			Type: "UNKNOWN",
 		})
 	}
 
@@ -70,7 +70,7 @@ type SSHKey struct {
 	haveIdsBeenAdded bool
 }
 
-func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey{
+func NewSSHKeyFromFingerprint(name string, tm time.Time, ids ...ID) *SSHKey {
 	lIDs := IDList{}
 	lIDs.AddArray(ids)
 
@@ -160,7 +160,17 @@ func (key *SSHKey) Identifiers() []ID {
 		if key.PublicKey.Key != nil {
 			key.Ids.Add(ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
 			key.Ids.Add(ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
-		}
+			// Complexity here:  we have an ssh.rsaPublicKey but need to turn it into an rsa.PublicKey
+			if cpker, ok := key.PublicKey.Key.(ssh.CryptoPublicKey); ok {
+				if rsapk, ok := cpker.CryptoPublicKey().(*rsa.PublicKey); ok {
+						if fp, err := ssh.FingerprintAWSPublic(rsapk); err == nil {
+							key.Ids.Add(ID(fp))
+						} else {
+							output.Warn("Failed to compute AWS format fingerprint:", err)
+						}
+					}
+				}
+			}
 		key.haveIdsBeenAdded = true
 	}
 
@@ -216,7 +226,7 @@ func parseSshPrivateKey(content string, t time.Time, names ...string) Key {
 				Names:       setNames,
 				Deprecated:  false,
 				Replacement: "",
-				Earliest: t},
+				Earliest:    t},
 			Ids:       IDList{},
 			PublicKey: PublicKey{pub},
 			Comments:  StringSet{},
@@ -276,11 +286,11 @@ func parseSshPublicKey(content string, t time.Time, names []string) Key {
 				Names:       sNames,
 				Deprecated:  false,
 				Replacement: "",
-				Earliest: t,
-		},
-			Ids:         IDList{},
-			PublicKey:   PublicKey{pub},
-			Comments:    comments,
+				Earliest:    t,
+			},
+			Ids:       IDList{},
+			PublicKey: PublicKey{pub},
+			Comments:  comments,
 		}
 		s.Identifiers() // Ensure the IDs are calculated
 

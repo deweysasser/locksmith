@@ -2,19 +2,19 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/deweysasser/locksmith/output"
 	"io/ioutil"
+	"os"
 	"strings"
 	"time"
-	"os"
-	"fmt"
 )
 
 type keyImpl struct {
 	Type        string
 	Names       StringSet
-	Deprecated  bool `json:",omitempty"`
-	Replacement ID   `json:",omitempty"`
+	Deprecated  bool      `json:",omitempty"`
+	Replacement ID        `json:",omitempty"`
 	Earliest    time.Time `json:",omitempty"`
 }
 
@@ -49,8 +49,8 @@ func (key *keyImpl) StandardString(id ID, other ...string) string {
 
 func formatAge(duration time.Duration) string {
 	hours := int(duration.Hours())
-	YEAR := 365*24
-	WEEK := 7*24
+	YEAR := 365 * 24
+	WEEK := 7 * 24
 
 	switch {
 	case hours == 0:
@@ -62,7 +62,7 @@ func formatAge(duration time.Duration) string {
 	case hours%YEAR/WEEK == 0:
 		return fmt.Sprintf("%dy", hours/YEAR)
 	default:
-		return fmt.Sprintf("%dy%02dw", hours/YEAR, (hours%YEAR)/WEEK, )
+		return fmt.Sprintf("%dy%02dw", hours/YEAR, (hours%YEAR)/WEEK)
 	}
 	return ""
 }

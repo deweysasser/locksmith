@@ -8,9 +8,10 @@ import (
 
 type MainLibrary struct {
 	Path        string
-	connections Library
-	keys        Library
-	accounts    Library
+	connections ConnectionLibrary
+	keys        KeyLibrary
+	accounts    AccountLibrary
+	changes     ChangeLibrary
 }
 
 func init() {
@@ -23,36 +24,43 @@ func init() {
 	AddType(reflect.TypeOf(data.AWSAccount{}))
 	AddType(reflect.TypeOf(data.AWSInstanceAccount{}))
 	AddType(reflect.TypeOf(data.AWSIamAccount{}))
+	AddType(reflect.TypeOf(data.Change{}))
 }
 
-func (l *MainLibrary) Connections() Library {
+func (l *MainLibrary) Connections() ConnectionLibrary {
 	if l.connections == nil {
-		clib := new(library)
-		clib.Init(l.Path+"/connections", nil, nil)
+		clib := NewConnectionLibrary(l.Path + "/connections")
 		l.connections = clib
 	}
 
 	return l.connections
 }
 
-func (l *MainLibrary) Keys() Library {
+func (l *MainLibrary) Keys() KeyLibrary {
 	if l.keys == nil {
-		klib := new(library)
-		klib.Init(l.Path+"/keys", keyid, nil)
+		klib := NewKeyLibrary(l.Path + "/keys")
 		l.keys = klib
 	}
 
 	return l.keys
 }
 
-func (l *MainLibrary) Accounts() Library {
+func (l *MainLibrary) Accounts() AccountLibrary {
 	if l.accounts == nil {
-		klib := new(library)
-		klib.Init(l.Path+"/accounts", nil, nil)
+		klib := NewAccountLibrary(l.Path + "/accounts")
 		l.accounts = klib
 	}
 
 	return l.accounts
+}
+
+func (l *MainLibrary) Changes() ChangeLibrary {
+	if l.changes == nil {
+		klib := NewChangeLibrary(l.Path + "/changes")
+		l.changes = klib
+	}
+
+	return l.changes
 }
 
 type keyReadError struct {

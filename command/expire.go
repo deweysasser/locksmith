@@ -1,11 +1,10 @@
 package command
 
-
 import (
+	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/data"
 )
 
 func CmdExpire(c *cli.Context) error {
@@ -20,10 +19,10 @@ func CmdExpire(c *cli.Context) error {
 	go func() {
 		for i := range library.List() {
 			if filter(keyString(i, "")) {
-				if k, ok := i.(data.Key) ; ok {
+				if k, ok := i.(data.Key); ok {
 					k.Expire()
 					keys <- k
-				}  else {
+				} else {
 					output.Error(i, "is not a key")
 				}
 			}
@@ -31,10 +30,9 @@ func CmdExpire(c *cli.Context) error {
 		close(keys)
 	}()
 
-	for k:= range keys {
+	for k := range keys {
 		library.Store(k)
 	}
 
 	return nil
 }
-

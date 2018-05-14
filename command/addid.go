@@ -39,7 +39,7 @@ func CmdAddId(c *cli.Context) error {
 	return nil
 }
 
-func findKey(library lib.Library, filter Filter) (*data.SSHKey, error) {
+func findKey(library lib.KeyLibrary, filter Filter) (*data.SSHKey, error) {
 	var keys []data.Key
 
 	for k := range library.List() {

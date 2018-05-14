@@ -16,7 +16,7 @@ func NewFanInKey(c chan Key) *FanInKeys {
 	return f
 }
 
-func (f *FanInKeys) Add(c <- chan Key) {
+func (f *FanInKeys) Add(c <-chan Key) {
 	f.wg.Add(1)
 	go func() {
 		for k := range c {
