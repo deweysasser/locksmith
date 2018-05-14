@@ -45,6 +45,7 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 
 			e := ec2.New(sess)
 
+			// TODO:  make this code still fetch keys and instances even if fetching the account ARN fails
 			if arn, err := a.fetchAccountInfo(sess, cAccounts); err == nil {
 
 				wg.Add(1)
@@ -66,12 +67,15 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 							keymap := a.fetchKeyPairs(arn, region, sharedCredentials, cKeys, cAccounts)
 							a.fetchInstances(region, sharedCredentials, cAccounts, keymap)
 						}(r.RegionName)
-
 					}
 				} else {
 					output.Error(a, "failed to lookup EC2 regions")
 				}
+			} else {
+				output.Error("Failed to get account identity for", a.Profile, ":", err)
 			}
+		} else {
+			output.Error("Failed to create AWS BOTO session:", err)
 		}
 
 	}()
@@ -103,7 +107,6 @@ func (a *AWSConnection) fetchAccountInfo(sess *session.Session, accounts chan<- 
 		}
 		return arn, nil
 	} else {
-		output.Error("Failed to get account identity for", a.Profile)
 		return data.AWSAccountID(""), err
 	}
 }
