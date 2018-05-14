@@ -10,6 +10,6 @@ type Connection interface {
 }
 
 type Changer interface {
-	Add(bindings []data.KeyBinding)
-	Remove(bindings []data.KeyBinding)
+	Add(account *data.Account, bindings []data.KeyBinding)
+	Remove(account *data.Account, bindings []data.KeyBinding)
 }

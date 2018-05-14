@@ -1,7 +1,6 @@
 package command
 
 import (
-	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
@@ -15,12 +14,10 @@ func CmdApply(c *cli.Context) error {
 	filter := buildFilterFromContext(c)
 
 	for change := range ml.Changes().List() {
-		aid := change.Account
-		if acct, err := ml.Accounts().Fetch(aid); err == nil {
+		if acct, err := ml.Accounts().Fetch(change.Account); err == nil {
 			if filter(acct) {
 				output.Debug("Applying changes for ", acct)
-				if account, ok := acct.(data.Account); ok {
-					cid := account.ConnectionID()
+					cid := acct.ConnectionID()
 					if conn, err := ml.Connections().Fetch(cid); err == nil {
 						if changer, ok := conn.(connection.Changer); ok {
 							// Finally, the main event
@@ -31,12 +28,9 @@ func CmdApply(c *cli.Context) error {
 					} else {
 						output.Error(cid, "is not a connection")
 					}
-				} else {
-					output.Error(acct, "is not an account")
-				}
 			}
 		} else {
-			output.Error("Failed to find account for", aid)
+			output.Error("Failed to find account for", change.Account)
 		}
 	}
 
