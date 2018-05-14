@@ -15,16 +15,21 @@ func CmdPlan(c *cli.Context) error {
 
 	ml := lib.MainLibrary{Path: datadir(c)}
 
+	output.Debug("Calculating changes")
 	calculateChanges(ml.Accounts(), ml.Keys(), ml.Changes(), filter)
 
+	output.Debug("Showing changes")
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
 	return nil
 }
 
 func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.KeyLibrary, accountlib lib.AccountLibrary, filter Filter) {
+	output.Debug("showing pending changes")
 	for change := range changelib.List() {
+		output.Debug("Change is", change)
 		if acct, err := accountlib.Fetch(change.Account); err == nil {
 			s := fmt.Sprint("change ", acct)
+			output.Debug("Checking change", s)
 			if filter(s) {
 				output.Normal(s)
 				if output.IsLevel(output.VerboseLevel) {

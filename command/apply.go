@@ -5,6 +5,7 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
+	"github.com/deweysasser/locksmith/connection"
 )
 
 func CmdApply(c *cli.Context) error {
@@ -21,12 +22,15 @@ func CmdApply(c *cli.Context) error {
 				if account, ok := acct.(data.Account); ok {
 					cid := account.ConnectionID()
 					if conn, err := ml.Connections().Fetch(cid); err == nil {
-						// Finally, the main event
-						output.Normal("via", conn)
+						if changer, ok := conn.(connection.Changer); ok {
+							// Finally, the main event
+							output.Normal("via", changer)
+						} else {
+							output.Warn("Connection", conn, "cannot change keys")
+						}
 					} else {
 						output.Error(cid, "is not a connection")
 					}
-					output.Normal("Connection", cid)
 				} else {
 					output.Error(acct, "is not an account")
 				}
