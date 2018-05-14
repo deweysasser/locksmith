@@ -39,7 +39,6 @@ func CmdAdd(c *cli.Context) error {
 			bindings = append(bindings, data.KeyBinding{
 				k,
 				data.AUTHORIZED_KEYS,
-				data.PENDING_ADD,
 				"",
 			})
 		}

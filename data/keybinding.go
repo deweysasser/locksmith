@@ -4,19 +4,11 @@ import (
 	"fmt"
 )
 
-/** What action to perform (if any) for a binding
- */
-type BindingAction string
 
 type Fetcher interface {
 	Fetch(id ID) (Key, error)
 }
 
-const (
-	EXISTS         BindingAction = ""
-	PENDING_ADD    BindingAction = "ADD"
-	PENDING_DELETE BindingAction = "REMOVE"
-)
 
 /** Where a Key is bound on an account
  */
@@ -33,7 +25,6 @@ type KeyBinding struct {
 	KeyID ID
 	//AccountID ID `json:",omitempty"`
 	Location BindingLocation `json:",omitempty"`
-	Action   BindingAction   `json:",omitempty"`
 	Name     string          `json:",omitempty"`
 }
 
