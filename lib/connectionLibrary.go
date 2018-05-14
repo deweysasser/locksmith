@@ -5,8 +5,8 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/output"
 )
 
@@ -83,9 +83,9 @@ func (l *connectionLibrary) ListMatching(predicate ConnectionPredicate) <-chan c
 			if k, ok := o.(connection.Connection); ok {
 				if predicate(k) {
 					c <- k
-				} else {
-					output.Error(fmt.Sprint("while listing keys, object ", o, " was not a Connection"))
 				}
+			} else {
+				output.Error(fmt.Sprint("while listing, object ", o, " was not a Connection"))
 			}
 		}
 	}()

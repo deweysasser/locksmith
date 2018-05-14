@@ -82,9 +82,9 @@ func (l *keyLibrary) ListMatching(predicate KeyPredicate) <-chan data.Key {
 			if k, ok := o.(data.Key); ok {
 				if predicate(k) {
 					c <- k
-				} else {
-					output.Error(fmt.Sprint("while listing keys, object ", o, " was not a Key"))
 				}
+			} else {
+				output.Error(fmt.Sprint("while listing, object ", o, " was not a Key"))
 			}
 		}
 	}()

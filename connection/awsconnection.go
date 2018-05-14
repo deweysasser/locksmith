@@ -45,7 +45,7 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 
 			e := ec2.New(sess)
 
-			// TODO:  make this code still fetch keys and instances even if fetching the account ARN fails
+			// TODO:  make this code still fetch keys and instances even if fetching the account ARN fails?
 			if arn, err := a.fetchAccountInfo(sess, cAccounts); err == nil {
 
 				wg.Add(1)

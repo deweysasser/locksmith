@@ -82,9 +82,9 @@ func (l *accountLibrary) ListMatching(predicate AccountPredicate) <-chan data.Ac
 			if k, ok := o.(data.Account); ok {
 				if predicate(k) {
 					c <- k
-				} else {
-					output.Error(fmt.Sprint("while listing keys, object ", o, " was not a Account"))
 				}
+			} else {
+				output.Error(fmt.Sprint("while listing, object ", o, " was not a Account"))
 			}
 		}
 	}()

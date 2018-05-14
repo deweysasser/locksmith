@@ -1,5 +1,6 @@
 TODO
 
+* implement object tags?
 * filters should accept regular expressions
 * improve on sudo error handling (detect when we can't sudo)
 * detect username on system for when we don't have a username
