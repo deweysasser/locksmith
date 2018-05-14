@@ -160,7 +160,8 @@ func TestSSHJSon(t *testing.T) {
   "Earliest": "0001-01-01T00:00:00Z",
   "Ids": [
     "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ",
-    "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39"
+    "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39",
+    "bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c"
   ],
   "PublicKey": {
     "Type": "ssh-rsa",
@@ -200,6 +201,21 @@ func TestSSHJSon(t *testing.T) {
 	assertStringsEquals(t, expected, string(sJson2))
 }
 
+func TestPublicKeyFingerprints(t *testing.T) {
+	k2 := Read("test-data/rsa.pub")
+
+	if k2 == nil {
+		t.Error("Failed to parse locally generated SSH key")
+	}
+
+	// This is the Amazon generated fingerprint for test-data/rsa
+	s2 := k2.(*SSHKey)
+	if !s2.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
+		fmt.Println("Keys: ", s2.Ids)
+		t.Error("Failed to contain AWS public ID")
+	}
+}
+
 func TestPrivateKeyParsing(t *testing.T) {
 	key := Read("test-data/locksmith-test-aws-generated.pem")
 	if bytes, err := json.MarshalIndent(key, "", "  "); err == nil {
@@ -212,23 +228,16 @@ func TestPrivateKeyParsing(t *testing.T) {
 		t.Error("Failed to parse RSA key")
 	}
 
-	/*
-		s := key.(*SSHKey)
+	s := key.(*SSHKey)
 
-		if !s.Ids.Contains(ID("6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b")) {
-			t.Error("Failed to contain AWS private ID")
-		}
+	//if len(s.Ids.Ids) <1 {
+	//	t.Error("No IDs from private key")
+	//}
 
-		k2 := Read("test-data/rsa")
+	//if !s.Ids.Contains(ID("6a:49:68:aa:d2:29:b2:e3:be:86:4a:6b:5f:e7:b6:fd:c8:7b:ad:3b")) {
+	//	t.Error("Failed to contain AWS private ID")
+	//}
 
-		if k2 == nil {
-			t.Error("Failed to parse locally generated SSH key")
-		}
-
-		if !s.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
-			t.Error("Failed to contain AWS public ID")
-		}
-	*/
 }
 
 func skipTestAWSIds(t *testing.T) {

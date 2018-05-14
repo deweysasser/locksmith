@@ -32,6 +32,8 @@ TODO
 * can we somehow detect gitolite so we don't do the usual thing with
   those keys?
 
+* handle pkcs8 format public keys?  ssh-keygen -f <key> -y -e -m PKCS8
+
 * record hostname when recording key name by path.  Should we record
   the entire path?
 
