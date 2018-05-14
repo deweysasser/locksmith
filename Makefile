@@ -48,7 +48,7 @@ release: .release .release/branch .release/merge .release/version .release/chang
 .release/version: .release
 	echo $(LAST) | awk -F . '{print $$1"."$$2+1}' > $@
 
-.release/build: version.go build test .release
+.release/build: version.go build test package .release
 	touch $@
 
 .release/update-version: .release/version
