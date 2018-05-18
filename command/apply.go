@@ -12,6 +12,8 @@ func CmdApply(c *cli.Context) error {
 	outputLevel(c)
 	ml := lib.MainLibrary{Path: datadir(c)}
 	filter := buildFilterFromContext(c)
+	accounts := ml.Accounts()
+	keys := ml.Keys()
 
 	for change := range ml.Changes().List() {
 		if acct, err := ml.Accounts().Fetch(change.Account); err == nil {
@@ -21,7 +23,15 @@ func CmdApply(c *cli.Context) error {
 					if conn, err := ml.Connections().Fetch(cid); err == nil {
 						if changer, ok := conn.(connection.Changer); ok {
 							// Finally, the main event
-							output.Normal("via", changer)
+							output.Debug("via", changer)
+							if account, err := accounts.Fetch(change.Account) ; err == nil {
+								if err := changer.Update(account, change.Add, change.Remove, keys); err != nil {
+									output.Error("Failed to add keys:", err)
+									continue
+								}
+							} else {
+								output.Error("Canot lookup account", change.Account)
+							}
 						} else {
 							output.Warn("Connection", conn, "cannot change keys")
 						}

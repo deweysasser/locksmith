@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"errors"
 )
 
 type SSHHostConnection struct {
@@ -34,6 +35,10 @@ func (c *SSHHostConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.
 	} else {
 		return c.fetchNonSudo()
 	}
+}
+
+func (c *SSHHostConnection) Update(account data.Account, bindings []data.KeyBinding, keylib data.Fetcher) error {
+	return errors.New("Unsupported")
 }
 
 type remoteAccount struct {
