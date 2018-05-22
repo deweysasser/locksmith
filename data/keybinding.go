@@ -2,6 +2,8 @@ package data
 
 import (
 	"fmt"
+	"errors"
+	"encoding/base64"
 )
 
 
@@ -41,4 +43,20 @@ func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 	}
 
 	return
+}
+
+func (k *KeyBinding) GetSshLine(keylib Fetcher) (string, error){
+	if key, err := keylib.Fetch(k.KeyID); err != nil {
+		return "", err
+	} else {
+		if sshKey, ok := key.(*SSHKey) ; !ok{
+			return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
+		} else {
+			Key2 := sshKey.PublicKey.Key
+			return fmt.Sprintf("%s %s %s %d",
+				Key2.Type(),
+				base64.StdEncoding.EncodeToString(Key2.Marshal()),
+				k.Name), nil
+		}
+	}
 }
