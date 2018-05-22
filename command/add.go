@@ -34,7 +34,7 @@ func CmdAdd(c *cli.Context) error {
 	for account := range ml.Accounts().ListMatching(accountFilter(buildFilterFromContext(c))) {
 		var bindings []data.KeyBinding
 		for _, k := range keys {
-			output.Debug("Adding", k, "to account", account)
+			output.Verbose("Adding", k, "to account", account)
 
 			bindings = append(bindings, data.KeyBinding{
 				k,
