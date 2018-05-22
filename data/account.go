@@ -21,6 +21,8 @@ type accountImpl struct {
 
 type SSHAccount struct {
 	accountImpl
+	Username, Host string
+
 }
 
 type AWSAccount struct {
@@ -130,8 +132,13 @@ func (a *AWSInstanceAccount) String() string {
 	}
 }
 
-func NewSSHAccount(name string, connID ID, keys []KeyBinding) *SSHAccount {
-	return &SSHAccount{accountImpl{"SSHAccount", name, connID, keys}}
+func NewSSHAccount(username string, name string, connID ID, keys []KeyBinding) *SSHAccount {
+	host := name
+	if i := strings.Index(name, "@"); i > -1 {
+		host =  name[(i+1):]
+	}
+
+	return &SSHAccount{accountImpl{"SSHAccount", host, connID, keys}, username, host}
 }
 
 func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBinding, aliases ...string) *AWSAccount {
@@ -162,7 +169,7 @@ func (a *AWSInstanceAccount) Merge(account Account) {
 }
 
 func (a *SSHAccount) String() string {
-	return fmt.Sprintf("SSH %s", a.Name)
+	return fmt.Sprintf("SSH %s@%s", a.Username, a.Host)
 }
 
 func (a *AWSAccount) Merge(account Account) {
