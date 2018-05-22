@@ -53,10 +53,10 @@ func (k *KeyBinding) GetSshLine(keylib Fetcher) (string, error){
 			return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
 		} else {
 			Key2 := sshKey.PublicKey.Key
-			return fmt.Sprintf("%s %s %s %d",
+			return fmt.Sprintf("%s %s %s",
 				Key2.Type(),
 				base64.StdEncoding.EncodeToString(Key2.Marshal()),
-				k.Name), nil
+				sshKey.Comments.StringArray()[0]), nil
 		}
 	}
 }

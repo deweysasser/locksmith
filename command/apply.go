@@ -28,9 +28,11 @@ func CmdApply(c *cli.Context) error {
 								if err := changer.Update(account, change.Add, change.Remove, keys); err != nil {
 									output.Error("Failed to add keys:", err)
 									continue
+								} else {
+									ml.Changes().DeleteObject(change)
 								}
 							} else {
-								output.Error("Canot lookup account", change.Account)
+								output.Error("Cannot lookup account", change.Account)
 							}
 						} else {
 							output.Warn("Connection", conn, "cannot change keys")

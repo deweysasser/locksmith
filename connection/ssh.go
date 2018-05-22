@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"errors"
+	"encoding/base64"
 )
 
 type SSHHostConnection struct {
@@ -36,23 +37,60 @@ func (c *SSHHostConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.
 }
 
 func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyBinding, removeBindings []data.KeyBinding, keylib data.Fetcher) error {
-	if c.Sudo {
-		if sAcct, ok := account.(*data.SSHAccount); ok {
-			return errors.New(fmt.Sprint("Unsupported account ", sAcct))
+	if sAcct, ok := account.(*data.SSHAccount); ok {
+		if c.Sudo {
+			if err := c.addKey("sudo", sAcct.Username, addBindings, keylib); err == nil {
+				return c.delKey("sudo", sAcct.Username, removeBindings, keylib)
+			} else {
+				return errors.New("Failed to add keys so aborting removal")
+			}
 		} else {
-			return errors.New("Account is not SSHAccount")
+			if err := c.addKey("", "", addBindings, keylib); err == nil {
+				return c.delKey("", "", removeBindings, keylib)
+			} else {
+				return errors.New("Failed to add keys so aborting removal")
+			}
 		}
 	} else {
-		if cmd, err := NewSshCmd(c.Connection); err != nil {
-			return err
-		} else {
-			for _, add := range addBindings {
-				if line, err := add.GetSshLine(keylib); err != nil {
-					return errors.New(fmt.Sprint("Error generating SSH line: ", err))
-				} else {
-					if _, err := cmd.Run(fmt.Sprintf("echo '%s' >> ~/.ssh/authorized_keys", line)); err != nil {
-						return err
+		return errors.New("Account is not SSHAccount")
+	}
+	return nil
+}
+
+func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBinding, keylib data.Fetcher) error {
+	if cmd, err := NewSshCmd(c.Connection); err != nil {
+		return err
+	} else {
+		for _, add := range bindings {
+			if key, err := keylib.Fetch(add.KeyID); err == nil {
+				if sshKey, ok := key.(*data.SSHKey); ok {
+					text := base64.StdEncoding.EncodeToString(sshKey.PublicKey.Key.Marshal())
+					removeLine := fmt.Sprintf("%s sed -i -e '/%s/d' ~%s/.ssh/authorized_keys", prefix, path, text)
+					if _, err := cmd.Run(removeLine); err != nil {
+						return errors.New(fmt.Sprintf("Failed to run '%s': %s", removeLine, err))
 					}
+				} else {
+					return errors.New(fmt.Sprint("Key " , add.KeyID, " is not an SSH key"))
+				}
+			} else {
+				return errors.New(fmt.Sprint("Error looking up key ", add.KeyID))
+			}
+		}
+	}
+	return nil
+}
+
+func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBinding, keylib data.Fetcher) error {
+	if cmd, err := NewSshCmd(c.Connection); err != nil {
+		return err
+	} else {
+		for _, add := range addBindings {
+			if line, err := add.GetSshLine(keylib); err != nil {
+				return errors.New(fmt.Sprint("Error generating SSH line: ", err))
+			} else {
+				addLine := fmt.Sprintf("echo '%s' | %s tee -a ~%s/.ssh/authorized_keys", line, prefix, path)
+				if _, err := cmd.Run(addLine); err != nil {
+					return errors.New(fmt.Sprintf("Failed to run '%s': %s", addLine, err))
 				}
 			}
 		}
