@@ -9,6 +9,7 @@ import (
 	"time"
 	"errors"
 	"encoding/base64"
+	"sync"
 )
 
 type SSHHostConnection struct {
@@ -137,37 +138,64 @@ func buildAccountName(account remoteAccount, connection string) string {
 	return fmt.Sprintf("%s@%s", account.User, c)
 }
 
+// 5 threads seems to be the optimum between connection overhead and command serilaization on a single threaded Ubuntu VM with ~30 users
+var ParallelSSHCount  int = 5
+
 func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
+	var cmd *SshCmd
+	var err error
+
+	if cmd, err = NewSshCmd(c.Connection); err != nil {
+		output.Error(fmt.Sprintf("Failed to open SSH connection to %s: %s", c.Connection, err))
+		close(cKeys)
+		close(cAccounts)
+		return cKeys, cAccounts
+	} else {
+		defer cmd.Close()
+	}
+
+	systemAccounts := c.retreiveSystemUsers(cmd)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(ParallelSSHCount)
+
+	for i:=0; i<ParallelSSHCount; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			output.Debugf("Retrieving from %s on thread %d\n", c.Connection, i)
+
+			if ssh, err := NewSshCmd(c.Connection); err != nil {
+				output.Error(fmt.Sprintf("Failed to open SSH connection to %s: %s", c.Connection, err))
+			} else {
+				defer ssh.Close()
+				for account := range systemAccounts {
+					output.Debugf("Fetching account %s on thread %d\n", account, i)
+					accountName := buildAccountName(account, c.Connection)
+					output.Debug("Retrieving keys for", accountName)
+					keys := c.retrieveKeysFor(ssh, account, "sudo")
+					acct := data.NewSSHAccount(account.User, accountName, c.Id(), nil)
+					output.Debug("Discovered", len(keys), "keys for account", accountName)
+					for _, k := range keys {
+						acct.AddBinding(k)
+						cKeys <- k
+					}
+					if len(acct.Bindings()) > 0 {
+						cAccounts <- acct
+					}
+				}
+			}
+		}(i)
+	}
+
 	go func() {
 		defer close(cKeys)
 		defer close(cAccounts)
-
-		output.Debugf("Retrieving from %s\n", c.Connection)
-
-		if ssh, err := NewSshCmd(c.Connection); err != nil {
-			output.Error(fmt.Sprintf("Failed to open SSH connection to %s: %s", c.Connection, err))
-		} else {
-
-			accounts := c.retreiveSystemUsers(ssh)
-
-			for account := range accounts {
-				accountName := buildAccountName(account, c.Connection)
-				output.Debug("Retrieving keys for", accountName)
-				keys := c.retrieveKeysFor(ssh, account, "sudo")
-				acct := data.NewSSHAccount(account.User, accountName, c.Id(), nil)
-				output.Debug("Discovered", len(keys), "keys for account", accountName)
-				for _, k := range keys {
-					acct.AddBinding(k)
-					cKeys <- k
-				}
-				if len(acct.Bindings()) > 0 {
-					cAccounts <- acct
-				}
-			}
-		}
+		wg.Wait()
 	}()
 
 	return cKeys, cAccounts
