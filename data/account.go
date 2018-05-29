@@ -43,7 +43,7 @@ type AWSInstanceAccount struct {
 
 type Account interface {
 	Ider
-	Bindings() []KeyBindingImpl
+	Bindings() <- chan KeyBindingImpl
 	Merge(a Account)
 	ConnectionID() ID
 }
@@ -195,8 +195,17 @@ func (a *AWSAccount) String() string {
 	}
 }
 
-func (a *accountImpl) Bindings() []KeyBindingImpl {
-	return a.Keys
+func (a *accountImpl) Bindings() <- chan KeyBindingImpl {
+	c := make(chan KeyBindingImpl)
+
+	go func() {
+		defer close(c)
+		for _, k := range a.Keys {
+			c <- k
+		}
+	}()
+
+	return c
 }
 
 //func (a *accountImpl) String() string {

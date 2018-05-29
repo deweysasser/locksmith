@@ -19,7 +19,7 @@ func CmdList(c *cli.Context) error {
 	if output.IsLevel(output.VerboseLevel) {
 		for a := range ml.Accounts().List() {
 			account := a.(data.Account)
-			for _, b := range account.Bindings() {
+			for b := range account.Bindings() {
 				keyToAccounts[b.KeyID] = append(keyToAccounts[b.KeyID], account.Id())
 			}
 		}
@@ -96,7 +96,7 @@ func keyString(i interface{}, prefix string) string {
 }
 
 func outputKeysFor(a data.Account, keys lib.KeyLibrary) {
-	for _, k := range a.Bindings() {
+	for k := range a.Bindings() {
 		s, _ := k.Describe(keys)
 		output.Verbose("  ", s)
 	}

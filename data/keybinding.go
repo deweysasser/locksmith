@@ -30,6 +30,12 @@ type KeyBindingImpl struct {
 	Name     string          `json:",omitempty"`
 }
 
+type KeyBinding interface {
+	Describe(keylib Fetcher) (s string, key interface{})
+	// TODO:  this should move into a speicfic binding type
+	GetSshLine(keylib Fetcher) (string, error)
+}
+
 // Describe returns a key binding description and the key described
 func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
 	if k.Name != "" {

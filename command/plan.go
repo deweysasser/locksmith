@@ -65,7 +65,7 @@ func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, chan
 			var additions []data.KeyBindingImpl
 			var removals []data.KeyBindingImpl
 
-			for _, binding := range account.Bindings() {
+			for binding := range account.Bindings() {
 				output.Debug("Examining binding", binding)
 				if bk, err := keylib.Fetch(binding.KeyID); err == nil {
 					if key, ok := bk.(data.Key); ok {
