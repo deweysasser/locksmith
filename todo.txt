@@ -3,7 +3,6 @@ TODO
 * implement object tags?
 * filters should accept regular expressions
 * improve on sudo error handling (detect when we can't sudo)
-* detect username on system for when we don't have a username
 
 * decorate AWS accounts with the profile name used to reach them if
   three are no aliases
@@ -109,3 +108,4 @@ DONE
 * Record AWS account ID# and alias
 * Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
+* detect username on system for when we don't have a username
