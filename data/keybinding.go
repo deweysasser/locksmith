@@ -23,7 +23,7 @@ const (
 	INSTANCE_ROOT_CREDENTIALS BindingLocation = "INSTANCE ROOT"
 )
 
-type KeyBinding struct {
+type KeyBindingImpl struct {
 	KeyID ID
 	//AccountID ID `json:",omitempty"`
 	Location BindingLocation `json:",omitempty"`
@@ -31,7 +31,7 @@ type KeyBinding struct {
 }
 
 // Describe returns a key binding description and the key described
-func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
+func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
 	if k.Name != "" {
 		s = k.Name + " = "
 	}
@@ -45,7 +45,7 @@ func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 	return
 }
 
-func (k *KeyBinding) GetSshLine(keylib Fetcher) (string, error){
+func (k *KeyBindingImpl) GetSshLine(keylib Fetcher) (string, error){
 	if key, err := keylib.Fetch(k.KeyID); err != nil {
 		return "", err
 	} else {

@@ -37,7 +37,7 @@ func (c *SSHHostConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.
 	}
 }
 
-func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyBinding, removeBindings []data.KeyBinding, keylib data.Fetcher) error {
+func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
 	if sAcct, ok := account.(*data.SSHAccount); ok {
 		if c.Sudo {
 			if err := c.addKey("sudo", sAcct.Username, addBindings, keylib); err == nil {
@@ -58,7 +58,7 @@ func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyB
 	return nil
 }
 
-func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBinding, keylib data.Fetcher) error {
+func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
 	if cmd, err := NewSshCmd(c.Connection); err != nil {
 		return err
 	} else {
@@ -81,7 +81,7 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 	return nil
 }
 
-func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBinding, keylib data.Fetcher) error {
+func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
 	if cmd, err := NewSshCmd(c.Connection); err != nil {
 		return err
 	} else {
