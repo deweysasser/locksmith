@@ -1,4 +1,4 @@
 package main
 
 const Name string = "locksmith"
-const Version string = "0.8"
+const Version string = "0.9"
