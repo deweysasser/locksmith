@@ -108,6 +108,18 @@ Current rough performance:
 * ingest 10000 SSH keys from disk in 208 seconds on 2-core,
   hyperthreaded 2.8GHz system with 16G of RAM (fully consumes CPU,
   memory usage no apparant at system level).
+  
+* Fetch from accounts in parallel:
+
+```
+time locksmith fetch
+Discovered 68 keys in 123 locations
+Discovered 122 accounts in 224 references
+Fetched from 8 connections
+real    0m4.401s
+user    0m0.000s
+sys     0m0.015s
+```
 
 Road Map
 --------

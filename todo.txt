@@ -1,5 +1,9 @@
 TODO
 
+
+* recursive fetch from credentials file (but only for keys that
+  haven't been deprecated)
+* recursive fetch for instances (but only if the key is loaded)
 * implement object tags?
 * filters should accept regular expressions
 * improve on sudo error handling (detect when we can't sudo)
