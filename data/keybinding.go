@@ -2,21 +2,15 @@ package data
 
 import (
 	"fmt"
+	"errors"
+	"encoding/base64"
 )
 
-/** What action to perform (if any) for a binding
- */
-type BindingAction string
 
 type Fetcher interface {
 	Fetch(id ID) (Key, error)
 }
 
-const (
-	EXISTS         BindingAction = ""
-	PENDING_ADD    BindingAction = "ADD"
-	PENDING_DELETE BindingAction = "REMOVE"
-)
 
 /** Where a Key is bound on an account
  */
@@ -33,7 +27,6 @@ type KeyBinding struct {
 	KeyID ID
 	//AccountID ID `json:",omitempty"`
 	Location BindingLocation `json:",omitempty"`
-	Action   BindingAction   `json:",omitempty"`
 	Name     string          `json:",omitempty"`
 }
 
@@ -50,4 +43,20 @@ func (k *KeyBinding) Describe(keylib Fetcher) (s string, key interface{}) {
 	}
 
 	return
+}
+
+func (k *KeyBinding) GetSshLine(keylib Fetcher) (string, error){
+	if key, err := keylib.Fetch(k.KeyID); err != nil {
+		return "", err
+	} else {
+		if sshKey, ok := key.(*SSHKey) ; !ok{
+			return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
+		} else {
+			Key2 := sshKey.PublicKey.Key
+			return fmt.Sprintf("%s %s %s",
+				Key2.Type(),
+				base64.StdEncoding.EncodeToString(Key2.Marshal()),
+				sshKey.Comments.StringArray()[0]), nil
+		}
+	}
 }

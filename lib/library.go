@@ -81,7 +81,7 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 				panic(fmt.Sprint("Type is not a string"))
 			}
 		} else {
-			panic(fmt.Sprint("Object for", id, " has no type"))
+			panic(fmt.Sprint("Object for ID '", id, "' has no type"))
 		}
 		return o, e
 	}

@@ -14,29 +14,31 @@ type ARN string
 
 type accountImpl struct {
 	Type       string
-	Name       string
 	Connection ID
 	Keys       []KeyBinding
 }
 
 type SSHAccount struct {
 	accountImpl
+	Username, Host string
 }
 
 type AWSAccount struct {
 	accountImpl
+	Arn AWSAccountID
 	Aliases StringSet
 }
 
 type AWSIamAccount struct {
 	accountImpl
 	Arn        ARN
+	Username string
 	CreateDate time.Time
 }
 
 type AWSInstanceAccount struct {
 	accountImpl
-	NameTag, PublicDNS string
+	InstanceId, NameTag, PublicDNS string
 }
 
 type Account interface {
@@ -57,7 +59,6 @@ func (a *AWSIamAccount) Id() ID {
 func (a *AWSIamAccount) Identifiers() []ID {
 	return []ID{
 		ID(a.Arn),
-		a.accountImpl.Id(),
 	}
 }
 
@@ -65,11 +66,11 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	return &AWSIamAccount{
 		accountImpl{
 			"AWSIamAccount",
-			*md.UserName,
 			conn,
 			[]KeyBinding{},
 		},
 		ARN(*md.Arn),
+		*md.UserName,
 		*md.CreateDate,
 	}
 }
@@ -99,9 +100,9 @@ func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding)
 	acct := &AWSInstanceAccount{
 		accountImpl{
 			"AWSInstanceAccount",
-			*instance.InstanceId,
 			connID,
 			keys},
+		*instance.InstanceId,
 		"",
 		*instance.PublicDnsName}
 	for _, tag := range instance.Tags {
@@ -114,7 +115,7 @@ func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding)
 }
 
 func (a *AWSInstanceAccount) String() string {
-	s := a.accountImpl.String()
+	s := a.InstanceId
 	var parts []string
 	if a.NameTag != "" {
 		parts = append(parts, a.NameTag)
@@ -130,14 +131,19 @@ func (a *AWSInstanceAccount) String() string {
 	}
 }
 
-func NewSSHAccount(name string, connID ID, keys []KeyBinding) *SSHAccount {
-	return &SSHAccount{accountImpl{"SSHAccount", name, connID, keys}}
+func NewSSHAccount(username string, name string, connID ID, keys []KeyBinding) *SSHAccount {
+	host := name
+	if i := strings.Index(name, "@"); i > -1 {
+		host =  name[(i+1):]
+	}
+
+	return &SSHAccount{accountImpl{"SSHAccount", connID, keys}, username, host}
 }
 
 func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBinding, aliases ...string) *AWSAccount {
 	sAliases := StringSet{}
 	sAliases.AddArray(aliases)
-	return &AWSAccount{accountImpl{"AWSAccount", string(arn), connID, keys}, sAliases}
+	return &AWSAccount{accountImpl{"AWSAccount", connID, keys}, arn,sAliases}
 }
 
 func (a *accountImpl) Merge(account accountImpl) {
@@ -148,11 +154,15 @@ func (a *AWSIamAccount) String() string {
 	if a.Arn != "" {
 		return string(a.Arn)
 	}
-	return fmt.Sprintf("iam:%s", a.Name)
+	return fmt.Sprintf("iam:%s", a.Arn)
 }
 
 func (a *SSHAccount) Merge(account Account) {
 	a.accountImpl.Merge(account.(*SSHAccount).accountImpl)
+}
+
+func (a *SSHAccount) Id() ID {
+	return ID(fmt.Sprintf("%s@%s", a.Username, a.Host))
 }
 
 func (a *AWSInstanceAccount) Merge(account Account) {
@@ -161,19 +171,27 @@ func (a *AWSInstanceAccount) Merge(account Account) {
 	a.PublicDNS = other.PublicDNS
 }
 
+func (a *AWSInstanceAccount) Id() ID {
+	return ID(a.InstanceId)
+}
+
 func (a *SSHAccount) String() string {
-	return fmt.Sprintf("SSH %s", a.Name)
+	return fmt.Sprintf("SSH %s@%s", a.Username, a.Host)
 }
 
 func (a *AWSAccount) Merge(account Account) {
 	a.accountImpl.Merge(account.(*AWSAccount).accountImpl)
 }
 
+func (a *AWSAccount) Id() ID {
+	return ID(a.Arn)
+}
+
 func (a *AWSAccount) String() string {
 	if a.Aliases.Count() < 1 {
-		return fmt.Sprintf("aws %s", a.Name)
+		return fmt.Sprintf("aws %s", a.Arn)
 	} else {
-		return fmt.Sprintf("%s (%s)", a.accountImpl.String(), a.Aliases.Join(", "))
+		return fmt.Sprintf("%s (%s)", a.Arn, a.Aliases.Join(", "))
 	}
 }
 
@@ -181,17 +199,17 @@ func (a *accountImpl) Bindings() []KeyBinding {
 	return a.Keys
 }
 
-func (a *accountImpl) String() string {
-	return fmt.Sprintf("%s", a.Name)
-}
+//func (a *accountImpl) String() string {
+//	return fmt.Sprintf("%s", a.Name)
+//}
 
 func (a *accountImpl) AddBinding(k Key) {
 	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id() /* AccountID: a.Id() */})
 }
 
-func (a *accountImpl) Id() ID {
-	return ID(a.Type + "_" + a.Name)
-}
+//func (a *accountImpl) Id() ID {
+//	return ID(a.Type + "_" + a.Name)
+//}
 
 // mergeBindings merges 2 arrays of keybindings resulting in an array of unique keyBindings
 // The implementation is a bit of a hack right now

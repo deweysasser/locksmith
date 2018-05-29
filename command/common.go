@@ -6,6 +6,8 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"strings"
+	"github.com/deweysasser/locksmith/lib"
+	"github.com/deweysasser/locksmith/data"
 )
 
 // Return the locksmith data directory
@@ -52,6 +54,20 @@ func buildFilter(args []string) Filter {
 
 	return filter
 }
+
+func accountFilter(filter Filter) lib.AccountPredicate {
+	return func(account data.Account) bool {
+		return filter(account)
+	}
+}
+
+func keyFilter(filter Filter) lib.KeyPredicate {
+	return func(key data.Key) bool {
+		output.Debug("Checking", key)
+		return filter(key)
+	}
+}
+
 
 func outputLevel(c *cli.Context) {
 	switch {

@@ -82,8 +82,6 @@ func (l *changeLibrary) ListMatching(predicate ChangePredicate) <-chan data.Chan
 			if k, ok := o.(*data.Change); ok {
 				if predicate(*k) {
 					c <- *k
-				} else {
-					output.Error(fmt.Sprint("while listing keys, object ", o, " was not a Change"))
 				}
 			} else {
 				output.Error("Object recovered from", o, " is not a change")
