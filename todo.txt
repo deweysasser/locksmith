@@ -1,6 +1,7 @@
 TODO
 
-
+* make sure `locksmith remove` doesn't just remove everything
+* 'plan' changes automatically as they're discovered
 * recursive fetch from credentials file (but only for keys that
   haven't been deprecated)
 * recursive fetch for instances (but only if the key is loaded)

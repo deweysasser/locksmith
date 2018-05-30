@@ -1,32 +1,68 @@
 locksmith
 =========
 
-Current Status:  Alpha
-----------------------------
+A tool for cataloging and managing SSH and AWS keys on local and
+remote systems.
 
-This project is early Alpha quality only.
+Quick Start
+-----------
+
+```
+locksmith connect -sudo ubuntu@somewhere.example.com
+locksmith connect somebody@somewhereelse.example.com
+locksmtih connect aws:default
+locksmith connect ~/.ssh
+locksmith fetch
+locksmith list
+```
+
+Run `locksmith` for details on subcommands and options.
+
+See the ["Using Locksmith"](#using_locksmith) section below for more
+details on operation.
+
+Current Status:  Becoming useful
+--------------------------------
+
+This project is Alpha quality only.
 
 It defnitely has bugs.  The storage format will definitely change in
 incompatible ways.  It may not work at all.
 
 All that being said, it's being released now to get feedback on what
 people want it to do.  Right now it's a useful survey tool to discover
-keys and where they're used.  Please give feedback in the form of
-Github issues.
+keys and where they're used and has proto features to manipulate SSH
+keys on remote systems.
 
-Overview
---------
+It is already sufficiently performant enough to apply to hundreds of
+connections and thousands of keys.  (Thousands of systems and 10s of
+thousnands of keys are likely also possible but not well exercised.)
+
+Please give feedback in the form of Github issues.
+
+Current Functionality
+---------------------
+
+* Ingest SSH *Public* keys and AWS keys *IDs* from disk, remote SSH
+  servers, Amazon AWS (does not store private keys)
+* Filter and display keys and key ages.  Mark keys for deletion or replacement
+* Handle use `sudo` to access all accounts on a given system through a
+  single connection
+* Suitable for use with a few keys only
+* Highly performant at large scale
+
+Vision
+------
 
 A tool for managing SSH keys on remote servers.
 
-* Ingest SSH *Public* keys and AWS keys *IDs* from disk, remote SSH
-  servers, Amazon AWS, Github, Gitlab (does not store private keys)
+* Also ingest/manage keys in Github, Gitlab and other systems
 * Delete and Rotate keys, including handling previously expired key in
   newly encountered systems.
+* Modify local configuration files (e.g. ~/.aws/credentials) with up
+  to date keys
 * Handle key accessiblity mechanism including bastion hosts/jump
   boxes, sudo and hosts ony reachable within certain networks
-* Suitable for use with a few keys only
-* Highly performant at large scale
 
 Target Users
 ------------
@@ -39,25 +75,10 @@ The tool is targeted at several use cases:
 * An operations engineer who needs to manage sets of SSH keys across
   thousands of systems
   
-Usage
------
-
-```
-locksmith connect -sudo ubuntu@somewhere.example.com
-locksmith connect somebody@somewhereelse.example.com
-locksmtih connect aws:default
-locksmith connect ~/.ssh
-locksmith fetch
-locksmith list
-```
-
-Run `locksmith` for details on subcommands and options.
-  
-
 Getting the tool
 ----------------
 
-This code is *NOT* yet ready for reliable production use.
+This code is *NOT* yet ready for reliable production use.  
 
 ### Binaries
 
@@ -78,15 +99,8 @@ There are 3 branches in this code:
   the master branch
 
 * prototype -- a BASH prototype of this system used to explore some
-  basic features and user interactions and to prove the conept that
-  this is useful (it is!  Very!).  The prototype software is slow and
-  has only worked on cygwin and Linux.  It is currently the only
-  branch that supports key rotation.  It does not support AWS keys.
+  basic features.  This is now only of historical interest.
   
-If you would like to try out the prototype, a much more extensive
-Readme is availabe on the "prototype" branch at
-https://github.com/dmsasser/locksmith/tree/prototype
-
 Data Storage
 ------------
 
@@ -107,7 +121,7 @@ Current rough performance:
 
 * ingest 10000 SSH keys from disk in 208 seconds on 2-core,
   hyperthreaded 2.8GHz system with 16G of RAM (fully consumes CPU,
-  memory usage no apparant at system level).
+  memory usage not apparant at system level).
   
 * Fetch from accounts in parallel:
 
@@ -120,6 +134,125 @@ real    0m4.401s
 user    0m0.000s
 sys     0m0.015s
 ```
+
+Using Locksmith
+---------------
+
+### Connections
+
+It all starts with a connection.  A connection is *how* to connect to
+a given system to fetch keys and other information.  There are
+currently 3 kinds:
+
+* files/directories (indicated by path)
+* SSH remote hosts (assumed when a path does not exists)
+* AWS accounts (indicated by "aws:" prefix)
+
+Adding a connection does *NOT* immediately use it -- for that you must
+use `locksmith fetch`
+
+
+#### "expanded" connections
+
+Certain types of connections can expand to reach not only the directly
+connected endpoint but other endpoints reachable from it.
+
+For example, if an ssh connection is added with the `--sudo` flag,
+then fetch looks up all login accounts on the remote system and uses
+passwordless sudo to fetch keys for all accounts.
+
+Setting the "sudo" flag is the default when the login name is `ubuntu`
+or `ec2-user`.
+
+Note that there is no current provision for handling passwords with
+sudo.
+
+### Fetching information
+
+Once you've added 1 or more connecitons, run `locksmith fetch` to
+connect to the systems and fetch information.  As much as possible,
+errors are reported and processing continues.
+
+### Displaying keys/systems/etc
+
+Use `locksmith list` to show information.  Information of *all* types
+is displayed.  Adding the `-v` flag shows additional details
+(e.g. shows the keys on an account or the accounts using a key).
+
+There is a *lot* of information, which brings us to...
+
+### Filtering the commands
+
+All commands take an arbitrary set of string arguments which are used
+as filters and only run on objects matching the filters.
+
+Each argument is taken as a separate filter and a filter matches if
+the word is a substring of *any part* of the *displayed* line for the
+information.  Using "verbose" (the `-v` flag) shows additional
+information for objects but does *NOT* impact which objects match the
+filter.
+
+If multiple arguments are specified, the set of operands are the
+*union* of the filters.
+
+For example, to show only keys you might use
+
+```locksmith list key```
+
+To show only SSH keys you would use
+
+```locksmith list SSHKey```
+
+To show only connections use
+
+```locksmith list connection```
+
+Filters apply to all operations the same, so you can e.g. apply the
+`fetch` command to only certain machines using a filter:
+
+```locksmith fetch exmple```
+
+Will only fetch from connections with the string 'example' in them
+(which might include "aws:example" and "me@login.example.com".
+
+### Removing objects from locksmith
+
+The `remove` subcommand removes the objects (matching the filter) from
+locksmith's knowledge.  This does *NOT* remove a key from the remote
+system.  (NOTE:  suggestions on a better name for this subcommand are
+welcome).
+
+If you remove a key and then fetch from a connection that got you the
+key, the key will come back.
+
+### Adding, removing, Expiring, and manipulating keys
+
+`locksmith add` is used mark a key to be added to a connection
+
+`locksmith expire` is used to mark a key as expired (which implies
+that it should be removed from a system)
+
+`locksmith plan` will calculate a set of changes to be applied to
+systems (use `locksmith list change` to view them)
+
+`locksmith apply` will apply the pending changes to the various
+systems.
+
+Note that expired keys are *NOT* forgotten -- they are kept around so
+they can be recognized in other places.  It's possible to expire a
+key, then find it in use somewhere new, then have locksmith remove the
+key from that new location.
+
+
+### Additional rare commands
+
+`add-id` can be used to give an additional ID to a key.  Key IDs are,
+in general, automatically calculated, but it is not possible to
+calculate the AWS fingerprint of an SSH key generated by AWS without
+the private key.
+
+`display-lib` displays the contents of the library -- this is really
+only useful for debugging.
 
 Road Map
 --------
@@ -144,3 +277,11 @@ longer under development.
 * Mnaage SSH keys in Digital Ocean
 * Manage Gitlab & Github SSH deployment keys
 * Manage SSH host keys
+* Edit ~/.aws/credentials file to update as keys rotate
+* Fetch keys from aws and create credentials file
+
+"Blue Sky" ideas
+----------------
+
+* Interact with hashcorp's Vault?
+* use shared storage such as consul
