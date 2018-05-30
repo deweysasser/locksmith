@@ -100,10 +100,10 @@ func (a *AWSConnection) fetchAccountInfo(sess *session.Session, accounts chan<- 
 			for _, a := range iout.AccountAliases {
 				aliases = append(aliases, *a)
 			}
-			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBinding{}, aliases...)
+			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBindingImpl{}, aliases...)
 		} else {
 			output.Warn("Failed to get accont alias for", a.Profile, "account", arn)
-			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBinding{})
+			accounts <- data.NewAWSAccount(arn, a.Id(), []data.KeyBindingImpl{})
 		}
 		return arn, nil
 	} else {
@@ -157,7 +157,7 @@ func (a *AWSConnection) fetchInstances(region *string, sharedCredentials *creden
 				output.Debug(a, *region, "instances:", len(res.Instances))
 				for _, instance := range res.Instances {
 					keyID := keymap[*instance.KeyName]
-					keys := []data.KeyBinding{
+					keys := []data.KeyBindingImpl{
 						{
 							KeyID:    keyID,
 							Location: data.INSTANCE_ROOT_CREDENTIALS,
@@ -189,13 +189,13 @@ func (a *AWSConnection) fetchKeyPairs(arn data.AWSAccountID, region *string, sha
 		e := ec2.New(sess)
 
 		if out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{}); err == nil {
-			bindings := make([]data.KeyBinding, 0)
+			bindings := make([]data.KeyBindingImpl, 0)
 			for _, p := range out.KeyPairs {
 				fp := p.KeyFingerprint
 				name := p.KeyName
 				key := data.NewSSHKeyFromFingerprint(*name, time.Now(), data.ID(*fp))
 				cKeys <- key
-				bindings = append(bindings, data.KeyBinding{KeyID: data.ID(*fp), Name: *name})
+				bindings = append(bindings, data.KeyBindingImpl{KeyID: data.ID(*fp), Name: *name})
 				keymap[*name] = data.ID(*fp)
 			}
 

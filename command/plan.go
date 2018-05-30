@@ -47,7 +47,7 @@ func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.KeyLibrary, acco
 	}
 }
 
-func printChange(keylib lib.KeyLibrary, add data.KeyBinding, s string) {
+func printChange(keylib lib.KeyLibrary, add data.KeyBindingImpl, s string) {
 	if key, err := keylib.Fetch(add.KeyID); err == nil {
 		output.Verbose("  ", s, key)
 	} else {
@@ -62,10 +62,10 @@ func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, chan
 				continue
 			}
 			output.Debug("Working on account", account)
-			var additions []data.KeyBinding
-			var removals []data.KeyBinding
+			var additions []data.KeyBindingImpl
+			var removals []data.KeyBindingImpl
 
-			for _, binding := range account.Bindings() {
+			for binding := range account.Bindings() {
 				output.Debug("Examining binding", binding)
 				if bk, err := keylib.Fetch(binding.KeyID); err == nil {
 					if key, ok := bk.(data.Key); ok {
@@ -92,7 +92,7 @@ func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, chan
 	}
 }
 
-func newBinding(binding data.KeyBinding, key data.ID) data.KeyBinding {
+func newBinding(binding data.KeyBindingImpl, key data.ID) data.KeyBindingImpl {
 	binding.KeyID = key
 	return binding
 }

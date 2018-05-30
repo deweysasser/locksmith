@@ -15,7 +15,7 @@ type ARN string
 type accountImpl struct {
 	Type       string
 	Connection ID
-	Keys       []KeyBinding
+	Keys       []KeyBindingImpl
 }
 
 type SSHAccount struct {
@@ -43,7 +43,7 @@ type AWSInstanceAccount struct {
 
 type Account interface {
 	Ider
-	Bindings() []KeyBinding
+	Bindings() <- chan KeyBindingImpl
 	Merge(a Account)
 	ConnectionID() ID
 }
@@ -67,7 +67,7 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 		accountImpl{
 			"AWSIamAccount",
 			conn,
-			[]KeyBinding{},
+			[]KeyBindingImpl{},
 		},
 		ARN(*md.Arn),
 		*md.UserName,
@@ -77,7 +77,7 @@ func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 
 func NewIAMAccountFromKey(md *iam.AccessKeyMetadata, userMd *iam.User, conn ID) *AWSIamAccount {
 	a := NewIAMAccount(userMd, conn)
-	a.Keys = []KeyBinding{
+	a.Keys = []KeyBindingImpl{
 		{
 			KeyID: ID(*md.AccessKeyId),
 		},
@@ -96,7 +96,7 @@ func (a *AWSIamAccount) Merge(other Account) {
 	}
 }
 
-func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBinding) *AWSInstanceAccount {
+func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBindingImpl) *AWSInstanceAccount {
 	acct := &AWSInstanceAccount{
 		accountImpl{
 			"AWSInstanceAccount",
@@ -131,7 +131,7 @@ func (a *AWSInstanceAccount) String() string {
 	}
 }
 
-func NewSSHAccount(username string, name string, connID ID, keys []KeyBinding) *SSHAccount {
+func NewSSHAccount(username string, name string, connID ID, keys []KeyBindingImpl) *SSHAccount {
 	host := name
 	if i := strings.Index(name, "@"); i > -1 {
 		host =  name[(i+1):]
@@ -140,7 +140,7 @@ func NewSSHAccount(username string, name string, connID ID, keys []KeyBinding) *
 	return &SSHAccount{accountImpl{"SSHAccount", connID, keys}, username, host}
 }
 
-func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBinding, aliases ...string) *AWSAccount {
+func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBindingImpl, aliases ...string) *AWSAccount {
 	sAliases := StringSet{}
 	sAliases.AddArray(aliases)
 	return &AWSAccount{accountImpl{"AWSAccount", connID, keys}, arn,sAliases}
@@ -195,8 +195,17 @@ func (a *AWSAccount) String() string {
 	}
 }
 
-func (a *accountImpl) Bindings() []KeyBinding {
-	return a.Keys
+func (a *accountImpl) Bindings() <- chan KeyBindingImpl {
+	c := make(chan KeyBindingImpl)
+
+	go func() {
+		defer close(c)
+		for _, k := range a.Keys {
+			c <- k
+		}
+	}()
+
+	return c
 }
 
 //func (a *accountImpl) String() string {
@@ -204,7 +213,7 @@ func (a *accountImpl) Bindings() []KeyBinding {
 //}
 
 func (a *accountImpl) AddBinding(k Key) {
-	a.Keys = append(a.Keys, KeyBinding{KeyID: k.Id() /* AccountID: a.Id() */})
+	a.Keys = append(a.Keys, KeyBindingImpl{KeyID: k.Id() /* AccountID: a.Id() */})
 }
 
 //func (a *accountImpl) Id() ID {
@@ -213,7 +222,7 @@ func (a *accountImpl) AddBinding(k Key) {
 
 // mergeBindings merges 2 arrays of keybindings resulting in an array of unique keyBindings
 // The implementation is a bit of a hack right now
-func mergeBindings(b1 []KeyBinding, b2 []KeyBinding) []KeyBinding {
+func mergeBindings(b1 []KeyBindingImpl, b2 []KeyBindingImpl) []KeyBindingImpl {
 	s := StringSet{}
 	for _, k := range b1 {
 		s.Add(toJson(&k))
@@ -223,7 +232,7 @@ func mergeBindings(b1 []KeyBinding, b2 []KeyBinding) []KeyBinding {
 		s.Add(toJson(&k))
 	}
 
-	var result []KeyBinding
+	var result []KeyBindingImpl
 
 	for s := range s.Values() {
 		result = append(result, fromJson(s))
@@ -232,7 +241,7 @@ func mergeBindings(b1 []KeyBinding, b2 []KeyBinding) []KeyBinding {
 	return result
 }
 
-func toJson(binding *KeyBinding) string {
+func toJson(binding *KeyBindingImpl) string {
 	if bytes, err := json.Marshal(binding); err == nil {
 		return string(bytes)
 	} else {
@@ -240,8 +249,8 @@ func toJson(binding *KeyBinding) string {
 	}
 }
 
-func fromJson(s string) KeyBinding {
-	var k KeyBinding
+func fromJson(s string) KeyBindingImpl {
+	var k KeyBindingImpl
 
 	if e := json.Unmarshal([]byte(s), &k); e == nil {
 		return k

@@ -32,18 +32,18 @@ func CmdAdd(c *cli.Context) error {
 
 
 	for account := range ml.Accounts().ListMatching(accountFilter(buildFilterFromContext(c))) {
-		var bindings []data.KeyBinding
+		var bindings []data.KeyBindingImpl
 		for _, k := range keys {
 			output.Verbose("Adding", k, "to account", account)
 
-			bindings = append(bindings, data.KeyBinding{
+			bindings = append(bindings, data.KeyBindingImpl{
 				k,
 				data.AUTHORIZED_KEYS,
 				"",
 			})
 		}
 
-		changes.Store(data.Change{"Change", account.Id(), bindings, make([]data.KeyBinding, 0)})
+		changes.Store(data.Change{"Change", account.Id(), bindings, make([]data.KeyBindingImpl, 0)})
 	}
 
 	return nil
