@@ -21,8 +21,14 @@ func datadir(c *cli.Context) string {
 		return repo
 	}
 
-	home := os.Getenv("HOME")
-	r := home + "/" + ".x-locksmith"
+	var r string
+	if	home := os.Getenv("HOME"); home != "" {
+		r = home + "/.x-locksmith"
+	} else {
+		if profile := os.Getenv("USERPROFILE"); profile != "" {
+			r = profile + "/locksmith"
+		}
+	}
 	output.Debug("Repo in home directory:", r)
 	return r
 }
