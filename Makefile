@@ -43,7 +43,7 @@ release: .release .release/branch .release/merge .release/version .release/chang
 	vi $@.tmp
 	mv $@.tmp $@
 
-.release/version: LAST=$(shell git tag -l | awk -F /  '/release/{print $$2}' | tail -n -1)
+.release/version: LAST=$(shell git tag -l | awk -F /  '/release/{print $$2}' | sort -V | tail -n -1)
 
 .release/version: .release
 	echo $(LAST) | awk -F . '{print $$1"."$$2+1}' > $@
