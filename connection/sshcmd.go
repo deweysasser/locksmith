@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"strings"
 	"errors"
+	"os"
 )
 
 type SshCmd struct {
@@ -21,7 +22,7 @@ func NewSshCmd(host string) (*SshCmd, error){
 
 	output.Debug(fmt.Sprintf("Running SSH cmd: ssh %s", host))
 
-	scmd.cmd = exec.Command("ssh", host)
+	scmd.cmd = exec.Command(get_ssh_command(), host)
 
 
 	var err error
@@ -50,6 +51,16 @@ func NewSshCmd(host string) (*SshCmd, error){
 	scmd.Run("true")
 
 	return scmd, nil
+}
+
+// Return the SSH command to use
+func get_ssh_command() string {
+	if ssh, ok := os.LookupEnv("LOCKSMITH_SSH"); ok {
+		output.Debug("Using command from LOCKSMITH_SSH: ", ssh)
+		return ssh
+	} else {
+		return "ssh"
+	}
 }
 
 // TODO:  implement a timeout

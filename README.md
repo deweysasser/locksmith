@@ -138,6 +138,14 @@ sys     0m0.015s
 Using Locksmith
 ---------------
 
+### Environment Variables
+
+* `LOCKSMITH_REPO` -- specify the location of the locksmith repository
+* `LOCKSMITH_SSH` -- SSH executable to use.
+* `HOME` -- User's home directory.  If repo is not otherwise specified,
+  the repo will be $HOME/.x-locksmith
+* `USERPROFILE` -- User's home directory if $HOME is empty
+
 ### Connections
 
 It all starts with a connection.  A connection is *how* to connect to
@@ -253,6 +261,14 @@ the private key.
 
 `display-lib` displays the contents of the library -- this is really
 only useful for debugging.
+
+### Running on different platforms
+
+On Linux and MacOS, locksmith should run as-is.
+
+On Windows you will either need an "ssh" executable or set the
+`LOCKSMITH_SSH` environment variable.  Locksmith works well under
+Cygwin with OpenSSH.
 
 Road Map
 --------
