@@ -18,7 +18,7 @@ locksmith list
 
 Run `locksmith` for details on subcommands and options.
 
-See the ["Using Locksmith"](#using_locksmith) section below for more
+See the ["Using Locksmith"](#using-locksmith) section below for more
 details on operation.
 
 Current Status:  Becoming useful
