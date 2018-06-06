@@ -7,6 +7,7 @@ import (
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
 	"github.com/deweysasser/locksmith/config"
+	"os"
 )
 
 func CmdRemove(c *cli.Context) error {
@@ -15,6 +16,11 @@ func CmdRemove(c *cli.Context) error {
 	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 
 	filter := buildFilterFromContext(c)
+
+	if len(c.Args()) < 1{
+		output.Error("Remove cannot be called without some filter")
+		os.Exit(1)
+	}
 
 	accounts := ml.Accounts()
 	connections := ml.Connections()
