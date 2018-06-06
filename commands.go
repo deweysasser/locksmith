@@ -104,6 +104,12 @@ var Commands = []cli.Command{
 		Action: command.CmdApply,
 		Flags:  outputFlags,
 	},
+	{
+		Name: "version",
+		Usage: "Show version information",
+		Action: CmdVersion,
+		Flags: outputFlags,
+	},
 }
 
 func CommandNotFound(c *cli.Context, command string) {
