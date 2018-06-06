@@ -8,7 +8,7 @@ import (
 	"bufio"
 	"strings"
 	"errors"
-	"os"
+	"github.com/deweysasser/locksmith/config"
 )
 
 type SshCmd struct {
@@ -55,12 +55,7 @@ func NewSshCmd(host string) (*SshCmd, error){
 
 // Return the SSH command to use
 func get_ssh_command() string {
-	if ssh, ok := os.LookupEnv("LOCKSMITH_SSH"); ok {
-		output.Debug("Using command from LOCKSMITH_SSH: ", ssh)
-		return ssh
-	} else {
-		return "ssh"
-	}
+	return config.Property.LOCKSMITH_SSH
 }
 
 // TODO:  implement a timeout

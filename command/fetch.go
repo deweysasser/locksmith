@@ -9,12 +9,13 @@ import (
 	"github.com/urfave/cli"
 	"reflect"
 	"sync"
+	"github.com/deweysasser/locksmith/config"
 )
 
 func CmdFetch(c *cli.Context) error {
 	outputLevel(c)
 	libWG := sync.WaitGroup{}
-	ml := lib.MainLibrary{Path: datadir(c)}
+	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 
 	fKeys := data.NewFanInKey(nil)
 	fAccounts := data.NewFanInAccount()

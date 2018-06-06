@@ -6,10 +6,11 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"strings"
+	"github.com/deweysasser/locksmith/config"
 )
 
 func CmdConnect(c *cli.Context) error {
-	ml := lib.MainLibrary{Path: datadir(c)}
+	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 	clib := ml.Connections()
 
 	for _, a := range c.Args() {

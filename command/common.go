@@ -4,34 +4,12 @@ import (
 	"fmt"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"os"
 	"strings"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/config"
 )
 
-// Return the locksmith data directory
-func datadir(c *cli.Context) string {
-	if s := c.GlobalString("repo"); s != "" {
-		output.Debug("Repo from --repo flag:", s)
-		return s
-	}
-	if repo := os.Getenv("LOCKSMITH_REPO"); repo != "" {
-		output.Debug("Repo from env:", repo)
-		return repo
-	}
-
-	var r string
-	if	home := os.Getenv("HOME"); home != "" {
-		r = home + "/.x-locksmith"
-	} else {
-		if profile := os.Getenv("USERPROFILE"); profile != "" {
-			r = profile + "/locksmith"
-		}
-	}
-	output.Debug("Repo in home directory:", r)
-	return r
-}
 
 type Filter func(interface{}) bool
 
@@ -76,12 +54,5 @@ func keyFilter(filter Filter) lib.KeyPredicate {
 
 
 func outputLevel(c *cli.Context) {
-	switch {
-	case c.Bool("debug") || c.GlobalBool("debug"):
-		output.Level = output.DebugLevel
-	case c.Bool("verbose") || c.GlobalBool("verbose"):
-		output.Level = output.VerboseLevel
-	case c.Bool("silent") || c.GlobalBool("silent"):
-		output.Level = output.SilentLevel
-	}
+	config.Init(c)
 }

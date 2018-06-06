@@ -6,6 +6,7 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
+	"github.com/deweysasser/locksmith/config"
 )
 
 /* Adds an ID manually to a key.  Note that to get an ID for Amazon generate key pairs we need access to the *private* key.
@@ -13,7 +14,7 @@ import (
  */
 func CmdAddId(c *cli.Context) error {
 	outputLevel(c)
-	ml := lib.MainLibrary{Path: datadir(c)}
+	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 
 	if len(c.Args()) < 2 {
 		output.Error("Requires 2 arguments")

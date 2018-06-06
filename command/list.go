@@ -6,12 +6,13 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
+	"github.com/deweysasser/locksmith/config"
 )
 
 func CmdList(c *cli.Context) error {
 
 	outputLevel(c)
-	ml := lib.MainLibrary{Path: datadir(c)}
+	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 
 	keyToAccounts := make(map[data.ID][]data.ID)
 

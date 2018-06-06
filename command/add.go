@@ -5,6 +5,7 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
+	"github.com/deweysasser/locksmith/config"
 )
 
 func CmdAdd(c *cli.Context) error {
@@ -21,7 +22,7 @@ func CmdAdd(c *cli.Context) error {
 		return nil
 	}
 
-	ml := lib.MainLibrary{Path: datadir(c)}
+	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 	changes := ml.Changes()
 
 	skeyFilter := []string{c.String("key")}

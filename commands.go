@@ -110,6 +110,12 @@ var Commands = []cli.Command{
 		Action: CmdVersion,
 		Flags: outputFlags,
 	},
+	{
+		Name: "env",
+		Usage: "Show configuration",
+		Action: command.CmdEnv,
+		Flags: outputFlags,
+	},
 }
 
 func CommandNotFound(c *cli.Context, command string) {
