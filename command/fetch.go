@@ -23,7 +23,7 @@ func CmdFetch(c *cli.Context) error {
 	go ingestKeys(ml.Keys(), fKeys.Output(), &libWG)
 
 	libWG.Add(1)
-	go ingestAccounts(ml.Accounts(), fAccounts.Output(), &libWG)
+	go ingestAccounts(ml, fAccounts.Output(), &libWG)
 
 	filter := buildFilterFromContext(c)
 
@@ -48,13 +48,20 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *sync.WaitGroup) {
+func ingestAccounts(library lib.MainLibrary, accounts chan data.Account, wg *sync.WaitGroup) {
 	defer wg.Done()
+	alib := library.Accounts()
+	klib := library.Keys()
+	clib := library.Changes()
+	changes := 0
+
 	idmap := make(map[data.ID]bool)
 	i := 0
 	for account := range accounts {
 		i++
 		id := alib.Id(account)
+		changes = changes + calculateAccountChanges(account, klib, clib)
+		output.Verbose(fmt.Sprintf("Accont %s has %d changes", account.Id(), changes))
 		idmap[id] = true
 		if existing, err := alib.Fetch(id); err == nil {
 			if existingacct, ok := existing.(data.Account); ok {
@@ -73,6 +80,7 @@ func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *syn
 	}
 
 	output.Normalf("Discovered %d accounts in %d references\n", len(idmap), i)
+	output.Normalf("Discovered %d recommended key changes in accounts\n", changes)
 }
 
 func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
@@ -83,6 +91,7 @@ func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
 		i++
 		id := klib.Id(k)
 		idmap[id] = true
+		output.Verbose("Discovered key", k)
 		if existing, err := klib.Fetch(id); err == nil {
 			existing.(data.Key).Merge(k)
 			if e := klib.Store(existing); e != nil {

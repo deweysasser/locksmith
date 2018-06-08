@@ -35,5 +35,8 @@ func CmdExpire(c *cli.Context) error {
 		library.Store(k)
 	}
 
+	// Now that we've changed the keys, recalculate changes
+	calculateChangesForAllAccounts(ml.Accounts(), library, ml.Changes(), AcceptAll)
+
 	return nil
 }

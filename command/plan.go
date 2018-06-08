@@ -17,7 +17,7 @@ func CmdPlan(c *cli.Context) error {
 	ml := lib.MainLibrary{Path: config.Property.LOCKSMITH_REPO}
 
 	output.Debug("Calculating changes")
-	calculateChanges(ml.Accounts(), ml.Keys(), ml.Changes(), filter)
+	calculateChangesForAllAccounts(ml.Accounts(), ml.Keys(), ml.Changes(), filter)
 
 	output.Debug("Showing changes")
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
@@ -56,40 +56,46 @@ func printChange(keylib lib.KeyLibrary, add data.KeyBindingImpl, s string) {
 	}
 }
 
-func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, changelib lib.ChangeLibrary, filter Filter) {
+func calculateChangesForAllAccounts(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, changelib lib.ChangeLibrary, filter Filter) {
 	for a := range accountLib.List() {
 		if account, ok := a.(data.Account); ok {
 			if !filter(account) {
 				continue
 			}
 			output.Debug("Working on account", account)
-			var additions []data.KeyBindingImpl
-			var removals []data.KeyBindingImpl
-
-			for binding := range account.Bindings() {
-				output.Debug("Examining binding", binding)
-				if bk, err := keylib.Fetch(binding.KeyID); err == nil {
-					if key, ok := bk.(data.Key); ok {
-						if key.IsDeprecated() {
-							removals = append(removals, binding)
-						}
-						if repl := key.ReplacementID(); repl != "" {
-							additions = append(additions, newBinding(binding, repl))
-						}
-					} else {
-						output.Error("Discovered key which is not a key", bk)
-					}
-				} else {
-					output.Error("Failed to lookup key", binding.KeyID, err)
-				}
-			}
-			if len(additions) > 0 || len(removals) > 0 {
-				changelib.Store(data.Change{"Change", account.Id(), additions, removals})
-			}
+			calculateAccountChanges(account, keylib, changelib)
 		} else {
 			output.Error("Account list was not an account")
 		}
+	}
+}
 
+func calculateAccountChanges(account data.Account, keylib lib.KeyLibrary, changelib lib.ChangeLibrary) int {
+	var additions []data.KeyBindingImpl
+	var removals []data.KeyBindingImpl
+
+	for binding := range account.Bindings() {
+		output.Debug("Examining binding", binding)
+		if bk, err := keylib.Fetch(binding.KeyID); err == nil {
+			if key, ok := bk.(data.Key); ok {
+				if key.IsDeprecated() {
+					removals = append(removals, binding)
+				}
+				if repl := key.ReplacementID(); repl != "" {
+					additions = append(additions, newBinding(binding, repl))
+				}
+			} else {
+				output.Error("Discovered key which is not a key", bk)
+			}
+		} else {
+			output.Error(fmt.Sprintf("Failed to lookup key '%s' in account '%s': %s", binding.KeyID, account.Id(), err))
+		}
+	}
+	if len(additions) > 0 || len(removals) > 0 {
+		changelib.Store(data.Change{"Change", account.Id(), additions, removals})
+		return len(additions) + len(removals)
+	} else {
+		return 0
 	}
 }
 
