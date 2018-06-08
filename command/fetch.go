@@ -7,7 +7,6 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"reflect"
 	"sync"
 	"github.com/deweysasser/locksmith/config"
 )
@@ -34,7 +33,7 @@ func CmdFetch(c *cli.Context) error {
 		if filter(conn) {
 			output.Verbosef("Fetching from %s\n", conn)
 			connCount++
-			k, a := fetchFrom(conn)
+			k, a := conn.(connection.Connection).Fetch()
 			fKeys.Add(k)
 			fAccounts.Add(a)
 		}
@@ -49,27 +48,17 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func fetchFrom(conn interface{}) (keys <-chan data.Key, accounts <-chan data.Account) {
-	switch conn.(type) {
-	case connection.Connection:
-		//fmt.Println("Fetching from ", conn)
-		return conn.(connection.Connection).Fetch()
-	default:
-		panic("Unknown connection type " + reflect.TypeOf(conn).Name())
-	}
-}
-
 func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *sync.WaitGroup) {
 	defer wg.Done()
 	idmap := make(map[data.ID]bool)
 	i := 0
-	for k := range accounts {
+	for account := range accounts {
 		i++
-		id := alib.Id(k)
+		id := alib.Id(account)
 		idmap[id] = true
 		if existing, err := alib.Fetch(id); err == nil {
 			if existingacct, ok := existing.(data.Account); ok {
-				existingacct.Merge(k)
+				existingacct.Merge(account)
 				if e := alib.Store(existingacct); e != nil {
 					output.Error(e)
 				}
@@ -77,7 +66,7 @@ func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *syn
 				panic(fmt.Sprint("type for", id, " was not Account"))
 			}
 		} else {
-			if e := alib.Store(k); e != nil {
+			if e := alib.Store(account); e != nil {
 				output.Error(e)
 			}
 		}
