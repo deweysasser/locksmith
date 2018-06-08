@@ -184,7 +184,9 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 						acct.AddBinding(k)
 						cKeys <- k
 					}
-					if len(acct.Bindings()) > 0 {
+					output.Debug(fmt.Sprintf("Account is %s with bindings %d" , acct, len(acct.Bindings())))
+					if acct.BindingCount()> 0 {
+						output.Debug(fmt.Sprintf("Recording accont %s", acct.Id()))
 						cAccounts <- acct
 					}
 				}

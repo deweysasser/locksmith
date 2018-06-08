@@ -44,6 +44,7 @@ type AWSInstanceAccount struct {
 type Account interface {
 	Ider
 	Bindings() <- chan KeyBindingImpl
+	BindingCount() int
 	Merge(a Account)
 	ConnectionID() ID
 }
@@ -193,6 +194,10 @@ func (a *AWSAccount) String() string {
 	} else {
 		return fmt.Sprintf("%s (%s)", a.Arn, a.Aliases.Join(", "))
 	}
+}
+
+func (a *accountImpl) BindingCount() int {
+	return len(a.Keys)
 }
 
 func (a *accountImpl) Bindings() <- chan KeyBindingImpl {
