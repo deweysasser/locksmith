@@ -8,22 +8,30 @@ type IDList struct {
 	Ids []ID
 }
 
-func (l *IDList) Add(i ID) {
+func (l *IDList) Add(i ID) bool {
 	if !l.Contains(i) {
 		l.Ids = append(l.Ids, i)
+		return true
 	}
+	return false
 }
 
-func (l *IDList) AddList(other *IDList) {
+func (l *IDList) AddList(other *IDList) bool {
+	retval := false
 	for _, id := range other.Ids {
-		l.Add(id)
+		retval = retval || l.Add(id)
 	}
+
+	return retval
 }
 
-func (l *IDList) AddArray(other []ID) {
+func (l *IDList) AddArray(other []ID) bool {
+	retval := false
 	for _, id := range other {
-		l.Add(id)
+		retval = retval || l.Add(id)
 	}
+
+	return retval
 }
 
 func (l *IDList) Contains(i ID) bool {
