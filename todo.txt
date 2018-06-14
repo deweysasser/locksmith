@@ -1,5 +1,8 @@
 TODO
 
+* filter by age
+* filter by expired
+
 * recursive fetch from credentials file (but only for keys that
   haven't been deprecated)
 * recursive fetch for instances (but only if the key is loaded)
@@ -46,7 +49,6 @@ TODO
 * Make SSH fetch work with PLINK on Windows
 * document commands
 
-* more complicated filters
 * handle key options in bindings
 * mirror terraform's plan/apply for changes
 * remove keys from accounts via connections
@@ -81,7 +83,6 @@ TODO
 * parse multiple keys from a local file (e.g. known hosts)
 
 MAYBE
-
 * "find" things by filtering on not top level
 
 
@@ -117,3 +118,5 @@ DONE
   Perhaps mirror "go env"
 * make sure `locksmith remove` doesn't just remove everything
 * 'plan' changes automatically as they're discovered
+* reject duplicate changes
+* more complicated filters

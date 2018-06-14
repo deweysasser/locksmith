@@ -192,16 +192,31 @@ There is a *lot* of information, which brings us to...
 ### Filtering the commands
 
 All commands take an arbitrary set of string arguments which are used
-as filters and only run on objects matching the filters.
+as filters and only run on objects which pass the set of filters.
 
-Each argument is taken as a separate filter and a filter matches if
-the word is a substring of *any part* of the *displayed* line for the
-information.  Using "verbose" (the `-v` flag) shows additional
-information for objects but does *NOT* impact which objects match the
-filter.
+Filters are *NOT* a complete filtering language.  If you need a
+complete filtering language, please write up a use-case and submit it
+as an issue.
 
-If multiple arguments are specified, the set of operands are the
-*union* of the filters.
+Filters behave the same way for all commands, so any objects listed
+with e.g. `list` are the same objects which will be affected by
+`expire` or `remove` or `fetch`.
+
+Filters operate on the displayed lines of the components.
+
+A bare word is a "substring" filter -- it will match if the specified
+term is a substring of any part of componet line (i.e. any part of the
+line shown by `locksmith list`).
+
+A word containing a `&` character is an AND of 2 bare word filters.
+This filter will match if *all* of the terms are substrings of the
+component line.
+
+The top level filters are treated as an OR:  any component matching
+any of the filters will be matched.
+
+Using "verbose" (the `-v` flag) shows additional information for
+objects but does *NOT* impact which objects match the filter. 
 
 For example, to show only keys you might use
 
@@ -215,10 +230,14 @@ To show only connections use
 
 ```locksmith list connection```
 
+To show only planned changes for host `example`, use
+
+```locksmith list 'change&example'```
+
 Filters apply to all operations the same, so you can e.g. apply the
 `fetch` command to only certain machines using a filter:
 
-```locksmith fetch exmple```
+```locksmith fetch example```
 
 Will only fetch from connections with the string 'example' in them
 (which might include "aws:example" and "me@login.example.com".
