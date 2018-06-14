@@ -3,6 +3,9 @@ TODO
 * filter by age
 * filter by expired
 
+* remove expired AWS keys from Amazon
+* should we be able to expire entire accounts (consider the passwords?)
+
 * recursive fetch from credentials file (but only for keys that
   haven't been deprecated)
 * recursive fetch for instances (but only if the key is loaded)
@@ -15,9 +18,8 @@ TODO
 * decorate AWS Iam accounts with the account alias of the AWS account
 * decorate AWS instances with the AWS account to which they belong
 
-* remove should remove changes as well
-
 * Create github release process
+
 * compute AWS format fingerprints of private keys
 
 * fetch -v should show the accounts/keys it creates
@@ -120,3 +122,4 @@ DONE
 * 'plan' changes automatically as they're discovered
 * reject duplicate changes
 * more complicated filters
+* remove should remove changes as well

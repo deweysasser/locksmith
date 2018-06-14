@@ -7,7 +7,7 @@ import (
 )
 
 
-type Fetcher interface {
+type KeyFetcher interface {
 	Fetch(id ID) (Key, error)
 }
 
@@ -31,13 +31,13 @@ type KeyBindingImpl struct {
 }
 
 type KeyBinding interface {
-	Describe(keylib Fetcher) (s string, key interface{})
+	Describe(keylib KeyFetcher) (s string, key interface{})
 	// TODO:  this should move into a speicfic binding type
-	GetSshLine(keylib Fetcher) (string, error)
+	GetSshLine(keylib KeyFetcher) (string, error)
 }
 
 // Describe returns a key binding description and the key described
-func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
+func (k *KeyBindingImpl) Describe(keylib KeyFetcher) (s string, key interface{}) {
 	if k.Name != "" {
 		s = k.Name + " = "
 	}
@@ -51,7 +51,7 @@ func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
 	return
 }
 
-func (k *KeyBindingImpl) GetSshLine(keylib Fetcher) (string, error){
+func (k *KeyBindingImpl) GetSshLine(keylib KeyFetcher) (string, error){
 	if key, err := keylib.Fetch(k.KeyID); err != nil {
 		return "", err
 	} else {

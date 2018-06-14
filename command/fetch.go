@@ -53,15 +53,22 @@ func ingestAccounts(library lib.MainLibrary, accounts chan data.Account, wg *syn
 	alib := library.Accounts()
 	klib := library.Keys()
 	clib := library.Changes()
-	changes := 0
+	changeCount := 0
 
 	idmap := make(map[data.ID]bool)
+
+	var changes []data.Change
+
 	i := 0
 	for account := range accounts {
 		i++
 		id := alib.Id(account)
-		changes = changes + calculateAccountChanges(account, klib, clib)
-		output.Verbose(fmt.Sprintf("Accont %s has %d changes", account.Id(), changes))
+		if change, count := calculateAccountChanges(account, klib, clib); change != nil {
+			changeCount = changeCount + count
+			changes = append(changes, *change)
+		}
+
+		output.Verbose(fmt.Sprintf("Accont %s has %d changes", account.Id(), changeCount))
 		idmap[id] = true
 		if existing, err := alib.Fetch(id); err == nil {
 			if existingacct, ok := existing.(data.Account); ok {
@@ -80,7 +87,27 @@ func ingestAccounts(library lib.MainLibrary, accounts chan data.Account, wg *syn
 	}
 
 	output.Normalf("Discovered %d accounts in %d references\n", len(idmap), i)
-	output.Normalf("Discovered %d recommended key changes in accounts\n", changes)
+
+	printDetails(idmap,
+		func(id data.ID) (interface{},error) {
+			return alib.Fetch(id)
+		},
+		accountString,
+	)
+
+	output.Normalf("Discovered %d recommended key changes in accounts\n", changeCount)
+
+	if output.IsLevel(output.VerboseLevel) {
+		ch := make(chan data.Change)
+		go func() {
+			defer close(ch)
+			for _, c := range changes {
+				ch <- c
+			}
+		}()
+
+		showPendingChanges(ch, klib, alib, AcceptAll)
+	}
 }
 
 func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
@@ -91,7 +118,7 @@ func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
 		i++
 		id := klib.Id(k)
 		idmap[id] = true
-		output.Verbose("Discovered key", k)
+		output.Debug("Discovered key", k)
 		if existing, err := klib.Fetch(id); err == nil {
 			existing.(data.Key).Merge(k)
 			if e := klib.Store(existing); e != nil {
@@ -118,4 +145,26 @@ func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {
 	}
 
 	output.Normalf("Discovered %d keys in %d locations\n", len(idmap), i)
+
+	printDetails(idmap,
+		func(id data.ID) (interface{},error) {
+			return klib.Fetch(id)
+		},
+		keyString,
+	)
+}
+
+type stringify func(interface{}, string) string
+type objectFetcher func(data.ID) (interface{}, error)
+
+func printDetails(idmap map[data.ID]bool, fetch objectFetcher, stringer stringify) {
+	if output.IsLevel(output.VerboseLevel) {
+		for id, _ := range idmap {
+			if key, err := fetch(id); err == nil {
+				output.Verbose(stringer(key, "  "))
+			} else {
+				output.Verbose("Internal Error, please report:  Failed to fetch data for", id, ":", err)
+			}
+		}
+	}
 }

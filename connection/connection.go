@@ -10,5 +10,5 @@ type Connection interface {
 }
 
 type Changer interface {
-	Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) error
+	Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.KeyFetcher) error
 }

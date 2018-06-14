@@ -20,13 +20,13 @@ func CmdPlan(c *cli.Context) error {
 	calculateChangesForAllAccounts(ml.Accounts(), ml.Keys(), ml.Changes(), filter)
 
 	output.Debug("Showing changes")
-	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
+	showPendingChanges(ml.Changes().List(), ml.Keys(), ml.Accounts(), AcceptAll)
 	return nil
 }
 
-func showPendingChanges(changelib lib.ChangeLibrary, keylib lib.KeyLibrary, accountlib lib.AccountLibrary, filter Filter) {
+func showPendingChanges(changes <- chan data.Change, keylib lib.KeyLibrary, accountlib lib.AccountLibrary, filter Filter) {
 	output.Debug("showing pending changes")
-	for change := range changelib.List() {
+	for change := range changes {
 		output.Debug("Change is", change)
 		if acct, err := accountlib.Fetch(change.Account); err == nil {
 			s := fmt.Sprint("change ", acct)
@@ -70,7 +70,7 @@ func calculateChangesForAllAccounts(accountLib lib.AccountLibrary, keylib lib.Ke
 	}
 }
 
-func calculateAccountChanges(account data.Account, keylib lib.KeyLibrary, changelib lib.ChangeLibrary) int {
+func calculateAccountChanges(account data.Account, keylib lib.KeyLibrary, changelib lib.ChangeLibrary) (change *data.Change, count int) {
 	var additions []data.KeyBindingImpl
 	var removals []data.KeyBindingImpl
 
@@ -92,10 +92,11 @@ func calculateAccountChanges(account data.Account, keylib lib.KeyLibrary, change
 		}
 	}
 	if len(additions) > 0 || len(removals) > 0 {
-		changelib.Store(data.Change{"Change", account.Id(), additions, removals})
-		return len(additions) + len(removals)
+		change := data.Change{"Change", account.Id(), additions, removals}
+		changelib.Store(change)
+		return &change, len(additions) + len(removals)
 	} else {
-		return 0
+		return nil, 0
 	}
 }
 
