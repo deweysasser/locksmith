@@ -48,11 +48,29 @@ func showPendingChanges(changes <- chan data.Change, keylib lib.KeyLibrary, acco
 	}
 }
 
+/** Stringify a change
+ */
+
+ func changeString(change data.Change, accountlib lib.AccountLibrary) (string, error){
+	 if acct, err := accountlib.Fetch(change.Account); err == nil {
+		 return fmt.Sprint("change ", acct), nil
+	 } else {
+	 	return fmt.Sprintf("(error looking up account %s)", change.Account), err
+	 }
+ }
+
 func printChange(keylib lib.KeyLibrary, add data.KeyBindingImpl, s string) {
-	if key, err := keylib.Fetch(add.KeyID); err == nil {
-		output.Verbose("  ", s, key)
+	output.Verbose(bindingString(add, keylib, s, "  "))
+}
+
+/** Get a string describing a binding
+ */
+func bindingString(binding data.KeyBindingImpl, keylib lib.KeyLibrary, changeType string, prefix string) string {
+	if key, err := keylib.Fetch(binding.KeyID); err == nil {
+		return fmt.Sprintf("%s%s %s", prefix, changeType, key)
 	} else {
-		output.Error("Cannot find key", add, "in change")
+		output.Error("Cannot find key", changeType, "in change")
+		return fmt.Sprintf("(error finding key %s)", binding.KeyID)
 	}
 }
 

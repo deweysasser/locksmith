@@ -5,12 +5,14 @@ import (
 	"os"
 	"github.com/urfave/cli"
 	"reflect"
+	"time"
 )
 
 
 type properties struct {
 	LOCKSMITH_REPO string
 	LOCKSMITH_SSH string
+	NOW time.Time
 }
 
 var Property properties
@@ -51,6 +53,7 @@ func Init(c *cli.Context) {
 	Property = properties{
 		datadir(c),
 		getSshCommand(),
+		time.Now(),
 	}
 }
 

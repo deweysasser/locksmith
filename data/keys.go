@@ -18,6 +18,10 @@ type keyImpl struct {
 	Earliest    time.Time `json:",omitempty"`
 }
 
+type FirstTimer interface {
+	FirstTime() time.Time
+}
+
 type Key interface {
 	Id() ID
 	//IdString() string
@@ -27,6 +31,10 @@ type Key interface {
 	Expire()
 	ReplacementID() ID
 	Merge(Key)
+}
+
+func (key *keyImpl) FirstTime() time.Time {
+	return key.Earliest
 }
 
 func (key *keyImpl) StandardString(id ID, other ...string) string {
