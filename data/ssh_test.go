@@ -160,8 +160,7 @@ func TestSSHJSon(t *testing.T) {
   "Earliest": "0001-01-01T00:00:00Z",
   "Ids": [
     "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ",
-    "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39",
-    "bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c"
+    "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39"
   ],
   "PublicKey": {
     "Type": "ssh-rsa",
@@ -208,12 +207,13 @@ func TestPublicKeyFingerprints(t *testing.T) {
 		t.Error("Failed to parse locally generated SSH key")
 	}
 
+	// TODO:  resurrect AWS public key fingerprints
 	// This is the Amazon generated fingerprint for test-data/rsa
-	s2 := k2.(*SSHKey)
-	if !s2.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
-		fmt.Println("Keys: ", s2.Ids)
-		t.Error("Failed to contain AWS public ID")
-	}
+	//s2 := k2.(*SSHKey)
+	//if !s2.Ids.Contains(ID("bb:ee:0f:90:22:18:13:a0:40:e5:cc:67:81:1b:4b:6c")) {
+	//	fmt.Println("Keys: ", s2.Ids)
+	//	t.Error("Failed to contain AWS public ID")
+	//}
 }
 
 func TestPrivateKeyParsing(t *testing.T) {
