@@ -161,15 +161,17 @@ func (key *SSHKey) Identifiers() []ID {
 			key.Ids.Add(ID(ssh.FingerprintSHA256(key.PublicKey.Key)))
 			key.Ids.Add(ID(ssh.FingerprintLegacyMD5(key.PublicKey.Key)))
 			// Complexity here:  we have an ssh.rsaPublicKey but need to turn it into an rsa.PublicKey
-			if cpker, ok := key.PublicKey.Key.(ssh.CryptoPublicKey); ok {
-				if rsapk, ok := cpker.CryptoPublicKey().(*rsa.PublicKey); ok {
-						if fp, err := ssh.FingerprintAWSPublic(rsapk); err == nil {
-							key.Ids.Add(ID(fp))
-						} else {
-							output.Warn("Failed to compute AWS format fingerprint:", err)
-						}
-					}
-				}
+
+			// TODO:  This has been changed since the code was originally written.  Find the new way of doing this.
+			//if cpker, ok := key.PublicKey.Key.(ssh.CryptoPublicKey); ok {
+			//	if rsapk, ok := cpker.CryptoPublicKey().(*rsa.PublicKey); ok {
+			//			if fp, err := ssh.FingerprintAWSPublic(rsapk); err == nil {
+			//				key.Ids.Add(ID(fp))
+			//			} else {
+			//				output.Warn("Failed to compute AWS format fingerprint:", err)
+			//			}
+			//		}
+			//	}
 			}
 		key.haveIdsBeenAdded = true
 	}
