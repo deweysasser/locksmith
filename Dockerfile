@@ -1,4 +1,4 @@
-FROM golang
+FROM golang:1-bullseye
 
 WORKDIR /go/src/github.com/deweysasser/locksmith
 
