@@ -1,15 +1,13 @@
-FROM golang
+FROM golang:1.18
 
-WORKDIR /go/src/github.com/deweysasser/locksmith
+WORKDIR /locksmith
 
-RUN go get -d -v \
-    github.com/aws/aws-sdk-go      \
-    github.com/urfave/cli          \
-    github.com/deweysasser/pkcs8   \
-    github.com/remeh/sizedwaitgroup 
-    
+COPY go.mod go.sum .
+
+RUN go mod download
+
 COPY . .
-RUN go get -d -v ./...
+
 RUN go install -v ./...
 
 RUN GOOS=windows go install -v ./...
