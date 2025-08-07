@@ -1,4 +1,4 @@
-FROM golang:1.22.3
+FROM golang:1.25rc3
 
 WORKDIR /locksmith
 
