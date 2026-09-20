@@ -85,7 +85,7 @@ func TestAddBinding(t *testing.T) {
 	a := NewSSHAccount("root", "host", "conn1", nil)
 	key := NewAwsKey("AKIAEXAMPLE", time.Time{}, true, "prod")
 
-	a.AddBinding(key)
+	a.AddBinding(key, AUTHORIZED_KEYS)
 
 	got := collectBindings(a)
 	if len(got) != 1 {
@@ -151,9 +151,9 @@ func TestMergeBindingsIsDeterministic(t *testing.T) {
 		{KeyID: "bbb", Location: AUTHORIZED_KEYS},
 	}
 
-	first := mergeBindings(b1, b2)
+	first := mergeBindings(b1, b2, nil)
 	for i := 0; i < 20; i++ {
-		if got := mergeBindings(b1, b2); !reflect.DeepEqual(got, first) {
+		if got := mergeBindings(b1, b2, nil); !reflect.DeepEqual(got, first) {
 			t.Fatalf("merge order is unstable:\n run 1: %v\n run %d: %v", first, i+2, got)
 		}
 	}
@@ -164,7 +164,7 @@ func TestMergeBindingsIsDeterministic(t *testing.T) {
 }
 
 func TestMergeBindingsEmptyInputs(t *testing.T) {
-	if got := mergeBindings(nil, nil); len(got) != 0 {
+	if got := mergeBindings(nil, nil, nil); len(got) != 0 {
 		t.Errorf("merging two empty binding sets gave %v, want nothing", got)
 	}
 }

@@ -50,7 +50,11 @@ var Commands = []cli.Command{
 		Name:   "fetch",
 		Usage:  "fetch keys from sources",
 		Action: command.CmdFetch,
-		Flags:  outputFlags,
+		Flags: append(outputFlags,
+			cli.DurationFlag{
+				Name:  "timeout, t",
+				Usage: "give up on the whole fetch after this long (e.g. 5m); 0 means no limit",
+			}),
 	},
 	{
 		Name:   "list",

@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -91,14 +92,14 @@ type githubKeyEntry struct {
 	Key string `json:"key"`
 }
 
-func (c *GitHubConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (c *GitHubConnection) Fetch(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
 	go func() {
 		defer close(cKeys)
 		defer close(cAccounts)
-		c.fetch(cKeys, cAccounts)
+		c.fetch(ctx, cKeys, cAccounts)
 	}()
 
 	return cKeys, cAccounts
@@ -115,10 +116,10 @@ func (c *GitHubConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.A
 // key should go away.  The account is a data.SSHAccount because these are the
 // SSH keys of a login at github.com, and because a dedicated account type
 // would mean adding one to data/.
-func (c *GitHubConnection) fetch(keys chan<- data.Key, accounts chan<- data.Account) {
+func (c *GitHubConnection) fetch(ctx context.Context, keys chan<- data.Key, accounts chan<- data.Account) {
 	output.Debug("Fetching keys for GitHub user", c.User)
 
-	entries, err := c.fetchKeyEntries()
+	entries, err := c.fetchKeyEntries(ctx)
 	if err != nil {
 		output.Error(c.String()+":", err)
 		return
@@ -150,7 +151,11 @@ func (c *GitHubConnection) fetch(keys chan<- data.Key, accounts chan<- data.Acco
 		})
 	}
 
-	accounts <- data.NewSSHAccount(c.User, c.User+"@github.com", c.Id(), bindings)
+	account := data.NewSSHAccount(c.User, c.User+"@github.com", c.Id(), bindings)
+	// The endpoint returns the user's complete published key set, so a key
+	// recorded here and no longer listed has genuinely been removed.
+	account.MarkObserved(data.AUTHORIZED_KEYS)
+	accounts <- account
 }
 
 // keyName labels a key with both the login and GitHub's numeric key id.  Both
@@ -161,14 +166,14 @@ func (c *GitHubConnection) keyName(entry githubKeyEntry) string {
 }
 
 // fetchKeyEntries retrieves every page of the user's key listing.
-func (c *GitHubConnection) fetchKeyEntries() ([]githubKeyEntry, error) {
+func (c *GitHubConnection) fetchKeyEntries(ctx context.Context) ([]githubKeyEntry, error) {
 	next := fmt.Sprintf("%s/users/%s/keys?per_page=%d",
 		GitHubAPIBase, url.PathEscape(c.User), githubPerPage)
 
 	var all []githubKeyEntry
 
 	for page := 0; next != "" && page < githubMaxPages; page++ {
-		entries, link, err := c.fetchPage(next)
+		entries, link, err := c.fetchPage(ctx, next)
 		if err != nil {
 			return nil, err
 		}
@@ -182,8 +187,11 @@ func (c *GitHubConnection) fetchKeyEntries() ([]githubKeyEntry, error) {
 
 // fetchPage requests one page and returns its entries plus the URL of the
 // next page, if the response advertised one.
-func (c *GitHubConnection) fetchPage(u string) (entries []githubKeyEntry, next string, err error) {
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+func (c *GitHubConnection) fetchPage(ctx context.Context, u string) (entries []githubKeyEntry, next string, err error) {
+	// WithContext, not NewRequest: the client timeout bounds a slow response,
+	// but only the context aborts a request already in flight when the run is
+	// cancelled.
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, "", err
 	}

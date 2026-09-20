@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"sync"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/iam"
@@ -34,7 +36,7 @@ type awstestSTS struct {
 	calls    int
 }
 
-func (s *awstestSTS) GetCallerIdentity(*sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error) {
+func (s *awstestSTS) GetCallerIdentityWithContext(_ aws.Context, _ *sts.GetCallerIdentityInput, _ ...request.Option) (*sts.GetCallerIdentityOutput, error) {
 	s.calls++
 	return s.identity, s.err
 }
@@ -58,11 +60,11 @@ type awstestIAM struct {
 	requestedFor []string
 }
 
-func (i *awstestIAM) ListAccountAliases(*iam.ListAccountAliasesInput) (*iam.ListAccountAliasesOutput, error) {
+func (i *awstestIAM) ListAccountAliasesWithContext(_ aws.Context, _ *iam.ListAccountAliasesInput, _ ...request.Option) (*iam.ListAccountAliasesOutput, error) {
 	return i.aliases, i.aliasesErr
 }
 
-func (i *awstestIAM) ListUsersPages(_ *iam.ListUsersInput, fn func(*iam.ListUsersOutput, bool) bool) error {
+func (i *awstestIAM) ListUsersPagesWithContext(_ aws.Context, _ *iam.ListUsersInput, fn func(*iam.ListUsersOutput, bool) bool, _ ...request.Option) error {
 	if i.usersErr != nil {
 		return i.usersErr
 	}
@@ -74,7 +76,7 @@ func (i *awstestIAM) ListUsersPages(_ *iam.ListUsersInput, fn func(*iam.ListUser
 	return nil
 }
 
-func (i *awstestIAM) ListAccessKeysPages(in *iam.ListAccessKeysInput, fn func(*iam.ListAccessKeysOutput, bool) bool) error {
+func (i *awstestIAM) ListAccessKeysPagesWithContext(_ aws.Context, in *iam.ListAccessKeysInput, fn func(*iam.ListAccessKeysOutput, bool) bool, _ ...request.Option) error {
 	user := aws.StringValue(in.UserName)
 
 	i.mu.Lock()
@@ -111,11 +113,11 @@ type awstestEC2 struct {
 	instancesErr  error
 }
 
-func (e *awstestEC2) DescribeKeyPairs(*ec2.DescribeKeyPairsInput) (*ec2.DescribeKeyPairsOutput, error) {
+func (e *awstestEC2) DescribeKeyPairsWithContext(_ aws.Context, _ *ec2.DescribeKeyPairsInput, _ ...request.Option) (*ec2.DescribeKeyPairsOutput, error) {
 	return e.keyPairs, e.keyPairsErr
 }
 
-func (e *awstestEC2) DescribeInstancesPages(_ *ec2.DescribeInstancesInput, fn func(*ec2.DescribeInstancesOutput, bool) bool) error {
+func (e *awstestEC2) DescribeInstancesPagesWithContext(_ aws.Context, _ *ec2.DescribeInstancesInput, fn func(*ec2.DescribeInstancesOutput, bool) bool, _ ...request.Option) error {
 	if e.instancesErr != nil {
 		return e.instancesErr
 	}
@@ -281,7 +283,7 @@ func Test_fetchAccountInfo(t *testing.T) {
 			var err error
 
 			keys, accounts := awstestCollect(t, func(_ chan<- data.Key, acc chan<- data.Account) {
-				arn, err = a.fetchAccountInfo(tt.sts, tt.iam, acc)
+				arn, err = a.fetchAccountInfo(context.Background(), tt.sts, tt.iam, acc)
 			})
 
 			if err != nil {
@@ -335,7 +337,7 @@ func Test_fetchAccountInfoIdentityFailure(t *testing.T) {
 	var err error
 
 	keys, accounts := awstestCollect(t, func(_ chan<- data.Key, acc chan<- data.Account) {
-		arn, err = a.fetchAccountInfo(s, &awstestIAM{}, acc)
+		arn, err = a.fetchAccountInfo(context.Background(), s, &awstestIAM{}, acc)
 	})
 
 	if err == nil {
@@ -397,7 +399,7 @@ func Test_fetchAccounts(t *testing.T) {
 
 			var got userMap
 			keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-				got = a.fetchAccounts(tt.iam, acc, k)
+				got = a.fetchAccounts(context.Background(), tt.iam, acc, k)
 			})
 
 			if len(keys) != 0 || len(accounts) != 0 {
@@ -443,7 +445,7 @@ func Test_fetchAccessKeysIsPerUser(t *testing.T) {
 	usermap := userMap{"alice": alice, "bob": bob}
 
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		a.fetchAccessKeys(i, acc, k, usermap)
+		a.fetchAccessKeys(context.Background(), i, acc, k, usermap)
 	})
 
 	// Every user must be asked for explicitly -- an unqualified ListAccessKeys
@@ -515,7 +517,7 @@ func Test_fetchAccessKeysPaginates(t *testing.T) {
 	}}
 
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		a.fetchAccessKeys(i, acc, k, userMap{"alice": alice})
+		a.fetchAccessKeys(context.Background(), i, acc, k, userMap{"alice": alice})
 	})
 
 	if want := []string{"AKIAONE", "AKIATWO"}; !awstestEqual(awstestKeyIDs(keys), want) {
@@ -539,7 +541,7 @@ func Test_fetchAccessKeysUnknownUserDoesNotPanic(t *testing.T) {
 	}}
 
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		a.fetchAccessKeys(i, acc, k, userMap{})
+		a.fetchAccessKeys(context.Background(), i, acc, k, userMap{})
 	})
 
 	if want := []string{""}; !awstestEqual(i.requested(), want) {
@@ -578,7 +580,7 @@ func Test_fetchAccessKeysErrorAndEmpty(t *testing.T) {
 			usermap := userMap{"alice": awstestUser("alice", "arn:aws:iam::1:user/alice")}
 
 			keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-				a.fetchAccessKeys(tt.iam, acc, k, usermap)
+				a.fetchAccessKeys(context.Background(), tt.iam, acc, k, usermap)
 			})
 
 			if len(keys) != 0 || len(accounts) != 0 {
@@ -603,7 +605,7 @@ func Test_fetchKeyPairs(t *testing.T) {
 
 	var keymap map[string]data.ID
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		keymap = a.fetchKeyPairs(e, data.AWSAccountID("123456789012"), "us-west-2", k, acc)
+		keymap = a.fetchKeyPairs(context.Background(), e, data.AWSAccountID("123456789012"), "us-west-2", k, acc)
 	})
 
 	want := map[string]data.ID{"laptop": "aa:bb:cc", "build": "dd:ee:ff"}
@@ -668,7 +670,7 @@ func Test_fetchKeyPairsEmpty(t *testing.T) {
 
 	var keymap map[string]data.ID
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		keymap = a.fetchKeyPairs(e, data.AWSAccountID("1"), "eu-west-1", k, acc)
+		keymap = a.fetchKeyPairs(context.Background(), e, data.AWSAccountID("1"), "eu-west-1", k, acc)
 	})
 
 	if len(keymap) != 0 {
@@ -693,7 +695,7 @@ func Test_fetchKeyPairsError(t *testing.T) {
 
 	var keymap map[string]data.ID
 	keys, accounts := awstestCollect(t, func(k chan<- data.Key, acc chan<- data.Account) {
-		keymap = a.fetchKeyPairs(e, data.AWSAccountID("1"), "ap-south-1", k, acc)
+		keymap = a.fetchKeyPairs(context.Background(), e, data.AWSAccountID("1"), "ap-south-1", k, acc)
 	})
 
 	if keymap == nil {
@@ -789,7 +791,7 @@ func Test_fetchInstances(t *testing.T) {
 			a := awstestConn()
 
 			_, accounts := awstestCollect(t, func(_ chan<- data.Key, acc chan<- data.Account) {
-				a.fetchInstances(tt.ec2, "us-east-1", acc, keymap)
+				a.fetchInstances(context.Background(), tt.ec2, "us-east-1", acc, keymap)
 			})
 
 			if !awstestEqual(awstestAccountIDs(accounts), tt.wantInstance) {
@@ -830,7 +832,7 @@ func Test_fetchInstancesNoKeyName(t *testing.T) {
 	}}
 
 	_, accounts := awstestCollect(t, func(_ chan<- data.Key, acc chan<- data.Account) {
-		a.fetchInstances(e, "us-east-1", acc, map[string]data.ID{"laptop": "aa:bb:cc"})
+		a.fetchInstances(context.Background(), e, "us-east-1", acc, map[string]data.ID{"laptop": "aa:bb:cc"})
 	})
 
 	if len(accounts) != 1 {

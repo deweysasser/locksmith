@@ -35,7 +35,7 @@ The system pipelines data from **connections** → **fetch** → **library stora
 
 - **root (`main`)** — CLI wiring only. `main.go`, `commands.go`, `version.go`. Subcommand dispatch uses `github.com/urfave/cli` v1. Adding a subcommand means adding a `cli.Command` to `Commands` in `commands.go` and an `Action` handler in `command/`.
 - **`command/`** — one file per subcommand (`fetch.go`, `list.go`, `connect.go`, `apply.go`, …). Shared helpers live in `command/common.go`: `datadir()` resolves the repo path (flag → `$LOCKSMITH_REPO` → `$HOME/.x-locksmith` → `$USERPROFILE/locksmith`), `buildFilterFromContext()` produces the substring-match filter used by every command, and `outputLevel()` maps flags to `output.Level`.
-- **`connection/`** — five connection kinds implement `connection.Connection` (`Fetch() (<-chan data.Key, <-chan data.Account)`): `FileConnection`, `SSHHostConnection`, `AWSConnection`, `GitHubConnection`, `DOConnection`. Only SSH and (partially) AWS implement `connection.Changer`; GitHub and Digital Ocean are **deliberately read-only** — GitHub permits key writes only against the authenticated user's own account, never another user's, and the Digital Ocean work was done under an explicit read-only constraint. `apply` skips a non-`Changer` connection with a warning. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
+- **`connection/`** — five connection kinds implement `connection.Connection` (`Fetch(ctx) (<-chan data.Key, <-chan data.Account)`). The context is the only way out of a fetch: every implementation talks to something it does not control, and an implementation must both stop starting work when `ctx.Err() != nil` and guard every channel send with a `select` on `ctx.Done()`, or an abandoned fetch leaks a goroutine per producer. Both channels close whether the fetch completed or was cancelled: `FileConnection`, `SSHHostConnection`, `AWSConnection`, `GitHubConnection`, `DOConnection`. Only SSH and (partially) AWS implement `connection.Changer`; GitHub and Digital Ocean are **deliberately read-only** — GitHub permits key writes only against the authenticated user's own account, never another user's, and the Digital Ocean work was done under an explicit read-only constraint. `apply` skips a non-`Changer` connection with a warning. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
 - **`data/`** — domain types and the `Key`, `Account`, `Ider`, `Identiferser`, `Fetcher` interfaces. `FanInKey`/`FanInAccount` multiplex per-connection channels into a single stream for ingestion. `KeyBindingImpl` ties a key to an account at a `BindingLocation` (`AUTHORIZED_KEYS`, `CREDENTIALS`, `INSTANCE ROOT`, `FILE`).
 - **`lib/`** — persistence. `library` (lowercase, `library.go`) is the generic store: one JSON file per object under `Path`, in-memory cache keyed by every ID returned by `Identifiers()`, type-dispatched deserialization via a `Type` field in the JSON and a global `TypeMap`. `MainLibrary` (`mainlib.go`) composes four typed wrappers — `KeyLibrary`, `AccountLibrary`, `ConnectionLibrary`, `ChangeLibrary` — stored under `keys/`, `accounts/`, `connections/`, `changes/` subdirs of the repo path.
 - **`output/`** — leveled logger (`Error`/`Warn`/`Normal`/`Verbose`/`Debug`). Prefer these helpers over `fmt.Print*` so level gating works. `main.go` exits 1 when `output.ErrorCount()` is non-zero — but see *Known rough edges*: that counter does not currently count what its name says.
@@ -44,13 +44,45 @@ The system pipelines data from **connections** → **fetch** → **library stora
 
 1. **Register every new serializable type in `lib/mainlib.go` `init()`** via `AddType(reflect.TypeOf(...))`. Deserialization reads the `Type` string field from the JSON and looks it up in `TypeMap`; a missing registration *panics* (`library.deserialize`). Every `data.*` and `connection.*` type persisted to disk needs an entry here, and every struct so persisted must include a `Type string` field whose value matches the registered name.
 
-2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit `accountLibrary.go` or `connectionLibrary.go` — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). **`changeLibrary.go` is the exception**: its rule is `test -f $@ && touch $@ || sed …`, which deliberately preserves the file once it exists, and it has diverged from what `sed` would produce (it handles both `data.Change` and `*data.Change`, which the key version has no need to). Edit it in place; regenerating it from scratch would undo that. The `connectionLibrary.go` rule additionally adds a `connection` import, in a position gofmt
-disagrees with — which is why every rule ends in `gofmt -w $@`. Keep that line on any rule you
-add, or regeneration will leave the tree unformatted.
+2. **The typed libraries are generics, not code generation.** `lib/typedlibrary.go`
+defines one `TypedLibrary[T]` over the generic `library`, and `KeyLibrary`,
+`AccountLibrary`, `ConnectionLibrary` and `ChangeLibrary` are aliases for
+instantiations of it. There is no `lib/Makefile` and no `go:generate`; the four
+`sed`-generated files are gone. The one thing the template could not express --
+that `data.Change` is a value type, so it arrives from disk as a pointer and
+from the cache as a value -- is now the `coercion[T]` argument each constructor
+supplies (`asInterface` for the interface element types, `asChange` for
+`data.Change`). Adding a library kind means one constructor, not a new file.
 
-3. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
+3. **Ingestion never deletes a key; it deletes bindings.** A key record in
+`keys/` is a permanent catalog entry -- it keeps its names, comments and
+first-seen date even when nothing references it any more, and "this key exists
+and is bound nowhere" is a meaningful answer rather than an artifact. Only
+`locksmith remove` deletes keys, and only when the user names a filter. (The
+`klib.Delete` in `command/fetch.go` is not a deletion: it is the rename that
+happens when a fingerprint-only key later gains real public key material and so
+changes primary ID.)
 
-4. **Key-algorithm dispatch goes through `data.IsPublicKeyAlgorithm`, never a substring test.**
+4. **A connection may only claim authority over a binding location it
+enumerated in full.** `accountImpl.Observed`, set via `MarkObserved`, tells
+`mergeBindings` which locations the observation is *complete* for; bindings
+recorded at those locations and not seen this time are dropped. Claiming a
+location that was merely sampled silently deletes real inventory. Today SSH
+claims `AUTHORIZED_KEYS` (it reads the whole file) and GitHub claims it (the
+endpoint returns the user's whole key set). AWS deliberately claims nothing:
+`fetchKeyPairs` emits one `AWSAccount` **per region**, all merging onto the same
+ARN, so each is complete for its region and partial for the account -- claiming
+there would delete 29 regions' worth of bindings. DO droplet accounts likewise
+claim nothing, because DO never reports droplet-to-key linkage at all.
+
+   The corollary is that connections must report an account **even when it has
+no keys**, or an emptied `authorized_keys` could never clear what was recorded.
+`command.ingestAccounts` is what declines to store a *new* keyless account, so
+the inventory does not fill with system accounts that will never hold a key.
+
+5. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
+
+6. **Key-algorithm dispatch goes through `data.IsPublicKeyAlgorithm`, never a substring test.**
 `NewKey` used to decide "this is a public key" with `strings.Contains(content, "ssh-")`, which
 catches `ssh-rsa`/`ssh-dss`/`ssh-ed25519` by spelling alone and silently dropped every
 `ecdsa-sha2-*` and `sk-*` key. The algorithm list in `data/keytypes.go` is built from
@@ -58,7 +90,7 @@ catches `ssh-rsa`/`ssh-dss`/`ssh-ed25519` by spelling alone and silently dropped
 *every* field on a line, not just the first two, because an option value may contain quoted
 whitespace (`command="/bin/ps -ef"` splits into two fields on its own).
 
-5. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
+7. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
 struct field, not something the library fills in — `data.Change{Type: "Change", …}`,
 `connection.FileConnection{Type: "FileConnection", …}`. A new persisted type needs the field,
 a matching `AddType` registration, and the right literal at every place it is constructed.

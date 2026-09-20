@@ -1,6 +1,8 @@
 package connection
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -231,19 +233,24 @@ func TestUpdateAbortsRemovalWhenAddFails(t *testing.T) {
 	sshtestQuiet(t)
 	home := sshtestUseSandbox(t, "tee() { return 1; }")
 
+	// The key being added must NOT already be in the file: addKey now checks
+	// before appending, so a key that is already present is a no-op and there
+	// would be no add left to fail.  Removal targets a different key that is
+	// present, so a successful run would visibly change the file.
 	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
-	other := sshtestGenerateKeyLine(t, "bob@example.com")
-	path := sshtestWriteAuthorizedKeys(t, home, authorizedKey+" alice@example.com", other)
+	doomed := sshtestNewKey(t, sshtestGenerateKeyLine(t, "bob@example.com"))
+	path := sshtestWriteAuthorizedKeys(t, home, doomed.PublicKeyString())
 
-	lib := sshtestFetcher{key.Id(): key}
+	lib := sshtestFetcher{key.Id(): key, doomed.Id(): doomed}
 	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+	removal := data.KeyBindingImpl{KeyID: doomed.Id(), Location: data.AUTHORIZED_KEYS}
 
 	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
 	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
 
 	before := sshtestReadFile(t, path)
 
-	err := c.Update(acct, []data.KeyBindingImpl{binding}, []data.KeyBindingImpl{binding}, lib)
+	err := c.Update(acct, []data.KeyBindingImpl{binding}, []data.KeyBindingImpl{removal}, lib)
 	if err == nil {
 		t.Fatal("Update should report the failed add")
 	}
@@ -263,5 +270,130 @@ func TestUpdateFailsWhenSshCannotStart(t *testing.T) {
 
 	if err := c.Update(acct, nil, nil, sshtestFetcher{}); err == nil {
 		t.Error("Update should fail when the ssh command cannot be started")
+	}
+}
+
+// A key comment is free text read out of an authorized_keys file on a surveyed
+// host, or out of a third-party API. It used to be pasted between single quotes
+// into a command that apply then ran on a remote host, often under sudo, so a
+// comment carrying a quote and a semicolon meant arbitrary command execution
+// wherever that key was later placed. This drives the real Update path with
+// such a comment and asserts nothing but the intended write happened.
+func TestUpdateNeutralisesAMaliciousKeyComment(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	marker := filepath.Join(t.TempDir(), "pwned")
+	payload := `x'; touch ` + marker + `; echo '`
+
+	path := sshtestWriteAuthorizedKeys(t, home, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	key := sshtestNewKey(t, authorizedKey+" "+payload)
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("the key comment escaped quoting and executed: %s exists", marker)
+	}
+
+	// The key should still have been added, comment and all -- escaping must
+	// neutralise the payload, not silently drop the key.
+	got := sshtestReadFile(t, path)
+	if !strings.Contains(got, payload) {
+		t.Errorf("the key line was not written verbatim; authorized_keys is:\n%s", got)
+	}
+}
+
+// The same payload by way of a removal, which builds a different command.
+func TestDeleteNeutralisesAMaliciousKeyComment(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	marker := filepath.Join(t.TempDir(), "pwned")
+	payload := `x'; touch ` + marker + `; echo '`
+
+	key := sshtestNewKey(t, authorizedKey+" "+payload)
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	line, err := binding.GetSshLine(lib)
+	if err != nil {
+		t.Fatalf("GetSshLine: %v", err)
+	}
+	path := sshtestWriteAuthorizedKeys(t, home, line, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, nil, []data.KeyBindingImpl{binding}, lib); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("the key comment escaped quoting and executed: %s exists", marker)
+	}
+	if got := sshtestReadFile(t, path); strings.Contains(got, payload) {
+		t.Errorf("the key was not removed; authorized_keys is:\n%s", got)
+	}
+}
+
+// A username reaches the command after a "~", where it cannot be quoted, so it
+// is vetted instead. Update must refuse rather than build the command.
+func TestUpdateRefusesAMaliciousUsername(t *testing.T) {
+	sshtestQuiet(t)
+	sshtestUseSandbox(t, "")
+
+	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice; touch /tmp/pwned", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err == nil {
+		t.Error("Update accepted a username containing shell metacharacters")
+	}
+}
+
+// SSHHostConnection is the one Changer in the tree; apply degrades to a warning
+// for every host if it ever stops satisfying the interface.
+var _ Changer = (*SSHHostConnection)(nil)
+
+// fetch unions bindings and never drops one, so an already-applied rotation is
+// re-planned on the next run. A bare `tee -a` would append another copy of the
+// key every cycle, growing authorized_keys without bound.
+func TestUpdateDoesNotDuplicateAnAlreadyPresentKey(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	line, err := binding.GetSshLine(lib)
+	if err != nil {
+		t.Fatalf("GetSshLine: %v", err)
+	}
+	path := sshtestWriteAuthorizedKeys(t, home, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	for i := 0; i < 3; i++ {
+		if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err != nil {
+			t.Fatalf("Update %d: %v", i+1, err)
+		}
+	}
+
+	got := sshtestReadFile(t, path)
+	if n := strings.Count(got, line); n != 1 {
+		t.Errorf("the key appears %d times after three applies, want 1:\n%s", n, got)
 	}
 }

@@ -51,7 +51,7 @@ func TestParseAWSCredentialsFixture(t *testing.T) {
 	}
 
 	got := keyIds(collectKeys(bytes))
-	want := []string{"AKIAIQ5R76RH47DYH3OA", "AKIAIUNPBKF3ZP6MFSPQ"}
+	want := []string{"AKIAI44QH8DHBEXAMPLE", "AKIAIOSFODNN7EXAMPLE"}
 
 	if len(got) != len(want) {
 		t.Fatalf("parsed %d keys %v, want %d %v", len(got), got, len(want), want)

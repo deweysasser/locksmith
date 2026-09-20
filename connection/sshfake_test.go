@@ -158,3 +158,14 @@ func sshtestReadFile(t *testing.T, path string) string {
 	}
 	return string(b)
 }
+
+// sshtestObserved reports the binding locations an account claims to have
+// observed completely. Observed is not persisted and has no accessor, so the
+// test reaches it through the promoted field.
+func sshtestObserved(a data.Account) []data.BindingLocation {
+	switch acct := a.(type) {
+	case *data.SSHAccount:
+		return acct.Observed
+	}
+	return nil
+}

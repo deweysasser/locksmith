@@ -10,8 +10,12 @@ import (
 
 type AWSKey struct {
 	keyImpl
-	AwsKeyId, AwsSecretKey string
-	Active                 bool
+	AwsKeyId string
+	// Never serialized.  locksmith promises (README, "Data Storage") that no
+	// secret material reaches the repository, and this field is the one place
+	// that promise could be broken by accident.
+	AwsSecretKey string `json:"-"`
+	Active       bool
 }
 
 func NewAwsKey(id string, createDate time.Time, active bool, aNames ...string) *AWSKey {

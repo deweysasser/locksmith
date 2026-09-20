@@ -16,8 +16,11 @@ func TestFormatAge(t *testing.T) {
 		age  time.Duration
 		want string
 	}{
-		{"less than an hour reads as nothing", 30 * time.Minute, ""},
-		{"exactly zero reads as nothing", 0, ""},
+		{"under a minute reads as current", 30 * time.Second, "right now"},
+		{"exactly zero reads as current", 0, "right now"},
+		{"a minute", time.Minute, "1m"},
+		{"minutes", 30 * time.Minute, "30m"},
+		{"just under an hour is still minutes", 59 * time.Minute, "59m"},
 		{"an hour", hour, "1h"},
 		{"hours up to and including a week stay in hours", week, "168h"},
 		{"just past a week rolls over to weeks", week + hour, "1w"},
@@ -37,11 +40,25 @@ func TestFormatAge(t *testing.T) {
 	}
 }
 
-// A key whose Earliest timestamp is in the future produces a negative age. It
-// should not panic or render something absurd; hours simply go negative.
+// A key whose Earliest timestamp is somehow in the future produces a negative
+// age. Rendering that as "-5h" was worse than useless; it reads as current.
 func TestFormatAgeNegative(t *testing.T) {
-	if got := formatAge(-5 * time.Hour); got != "-5h" {
-		t.Errorf("formatAge(-5h) = %q, want %q", got, "-5h")
+	if got := formatAge(-5 * time.Hour); got != "right now" {
+		t.Errorf("formatAge(-5h) = %q, want %q", got, "right now")
+	}
+}
+
+// Blank is reserved for "no date known" -- which is a real state, since several
+// sources supply no creation date at all. A key that IS dated must never render
+// as blank, however recently it was seen.
+func TestFormatAgeNeverBlankForAKnownDate(t *testing.T) {
+	for _, d := range []time.Duration{
+		0, time.Second, time.Minute, time.Hour, 24 * time.Hour,
+		7 * 24 * time.Hour, 365 * 24 * time.Hour, 3 * 365 * 24 * time.Hour,
+	} {
+		if got := formatAge(d); got == "" {
+			t.Errorf("formatAge(%s) rendered blank, which means \"date unknown\"", d)
+		}
 	}
 }
 

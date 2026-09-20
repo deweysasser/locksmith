@@ -22,7 +22,15 @@ func NewSshCmd(host string) (*SshCmd, error) {
 
 	output.Debug(fmt.Sprintf("Running SSH cmd: ssh %s", host))
 
-	scmd.cmd = exec.Command(get_ssh_command(), host)
+	// "--" stops ssh treating a host that begins with "-" as an option.  A
+	// connection string is read back out of the repository, which the README
+	// invites teams to share over git, so it is not trusted input: without this
+	// a committed "-oProxyCommand=..." would run on a teammate's workstation.
+	if strings.HasPrefix(host, "-") {
+		return nil, fmt.Errorf("refusing to connect to %q: host may not begin with '-'", host)
+	}
+
+	scmd.cmd = exec.Command(get_ssh_command(), "--", host)
 
 	var err error
 	if scmd.stdin, err = scmd.cmd.StdinPipe(); err != nil {

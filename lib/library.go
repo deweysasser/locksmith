@@ -164,7 +164,10 @@ func (l *library) pathOfId(s string) string {
 func (l *library) Store(o interface{}) error {
 	_, e := os.Stat(l.Path)
 	if e != nil {
-		e = os.MkdirAll(l.Path, 0777)
+		// 0700, not 0777: the repository holds no private key material, but it
+		// does hold the map of which key authorizes which account on which
+		// host, which is a finished target list for any other local user.
+		e = os.MkdirAll(l.Path, 0700)
 		if e != nil {
 			return e
 		}
@@ -176,7 +179,7 @@ func (l *library) Store(o interface{}) error {
 	if e != nil {
 		return e
 	}
-	if e = ioutil.WriteFile(path, bytes, 0666); e == nil {
+	if e = ioutil.WriteFile(path, bytes, 0600); e == nil {
 		l.addToCache(o)
 	} else {
 		return errors.New(fmt.Sprint("Error storing ", path))
