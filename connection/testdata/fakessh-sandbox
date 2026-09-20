@@ -1,0 +1,31 @@
+#!/bin/sh
+# Fake ssh client that really executes the commands it is handed, but against a
+# sandbox directory instead of a remote host.  The host argument is ignored.
+#
+# Two things make the commands locksmith generates safe to run locally:
+#   * `sudo` is a shell function that just runs its arguments, so no privilege
+#     is required and it works wherever it appears in a pipeline;
+#   * "~/" and "~name/" are rewritten to "$HOME/", so the real passwd database
+#     is never consulted and every path lands inside the sandbox.
+#
+# $HOME must already point at the sandbox directory.  $FAKESSH_PROLOGUE, if set,
+# names a shell file sourced first; tests use it to stub commands such as
+# `getent` that have no business running for real.
+cd "$HOME" || exit 1
+
+sudo() { "$@"; }
+
+if [ -n "$FAKESSH_PROLOGUE" ]; then
+	. "$FAKESSH_PROLOGUE"
+fi
+
+status=0
+while IFS= read -r line; do
+	cmd=$(printf '%s\n' "$line" | sed -e "s|~[A-Za-z0-9_.-]*/|$HOME/|g")
+	# Restore the previous command's exit status so the "echo <boundary>: $?"
+	# line locksmith sends next reports the right value: the command
+	# substitution above would otherwise have clobbered it.
+	(exit $status)
+	eval "$cmd"
+	status=$?
+done
