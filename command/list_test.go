@@ -91,7 +91,7 @@ func TestPrintersSurviveAnEmptyRepository(t *testing.T) {
 	defer func() { output.Level = saved }()
 
 	printConnections(ml.Connections(), AcceptAll)
-	printAccounts(ml.Accounts(), AcceptAll, ml)
+	printAccounts(ml.Accounts(), AcceptAll, &ml)
 	printKeys(ml.Keys(), ml.Accounts(), ml.Policies(), map[data.ID][]data.ID{}, AcceptAll)
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
 }

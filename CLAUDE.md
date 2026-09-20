@@ -191,3 +191,21 @@ they are the parts that talk to SSH and AWS.
 an AWS-style `credentials` file. They are throwaway fixtures generated for the test suite, not live
 secrets — a security pass will flag them, and that flag is a false positive. Tests read them by
 relative path, so they run from the package directory.
+
+8. **`authorized_keys` options belong to the binding, not the key.**
+`KeyBindingImpl.Options` holds the option list that preceded the key on the line
+it was found on (`command="..."`, `from="..."`, `restrict`, `no-pty`), verbatim
+and comma-separated, exactly as `ssh.ParseAuthorizedKey` reports it — joining on
+`,` round-trips byte for byte, including commas inside a quoted value. It is on
+the *binding* because the same key is routinely unrestricted on one host and
+confined to a single command on another, and it is a `string` rather than a
+`[]string` so `KeyBindingImpl` stays comparable and usable as a map key.
+
+   `GetSshLine` must re-emit it. Omitting it is a privilege escalation, not a
+cosmetic loss: `plan`'s replace path copies the binding and swaps the key, so a
+line written without its options hands the replacement key an interactive shell
+where the key it replaced had a forced read-only command — on every host that
+key was bound to, with nothing in `plan -v` showing it.
+`connection.TestUpdateWritesTheReplacementUnderTheOriginalRestrictions`,
+`TestFetchRecordsAuthorizedKeysOptionsOnTheBinding` and
+`command.TestPlanCarriesRestrictionsOntoTheReplacement` pin the three layers.

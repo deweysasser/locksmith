@@ -289,6 +289,21 @@ func asHex(bytes [20]byte) string {
 	return strings.Join(s, ":")
 }
 
+// AuthorizedKeyOptions returns the option list preceding the key on an
+// authorized_keys line, comma-separated and verbatim, or "" when the line
+// carries none or cannot be parsed.
+//
+// x/crypto reports each option with its quoting intact, so joining on ","
+// reproduces the original prefix byte for byte -- including commas inside a
+// quoted value such as `from="10.0.0.0/8,!10.1.2.3"`.
+func AuthorizedKeyOptions(line string) string {
+	_, _, options, _, err := ssh.ParseAuthorizedKey([]byte(line))
+	if err != nil {
+		return ""
+	}
+	return strings.Join(options, ",")
+}
+
 func parseSshPublicKey(content string, t time.Time, names []string) Key {
 	//	pub, comment, options, _, err := ssh.ParseAuthorizedKey([]byte(content))
 	if pub, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(content)); err == nil {

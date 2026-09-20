@@ -8,9 +8,26 @@ TODO
 - [x] load keys form a named user/account in digital ocean  (`do:NAME`, read-only)
 - [x] connect to digital ocean droplets to survey keys in a similar way as we do for AWS
       (same `do:` connection; note DO does not report which keys a droplet was built with)
+
+### PR
+
+- [ ] when keys are discovered via a file connector, they should be recorded with the current hostname.   File connector may be valid on multiple hosts, but we still need to track where.
+
+### PR
+
+- [ ] when running against a user .ssh/ path, if it contains an `authorized_keys` file, that should also be included
+
+### PR
+
 - [ ] Upgrade to latest AWS API library version
+
+### PR
+
 - [ ] Support ingesting keys from 1password, either by specific ID or all of a 1password account.  Keys in 1password should NEVER be deleted.  If they are deprecated or expired a line should be added to the key's "note" field about that.
 - [ ] Support reading AWS credentials from 1password
+
+### PR
+
 - [ ] Change the command protocol.
   - instead of "connect", it should accept "connection" or "conn" or "c" with subcommands add, list|ls, del|delete|rm|remove
   - take out "list"
@@ -18,6 +35,8 @@ TODO
   - "add" should mark a key to be added to a system
   - "del|delete|rm|remove" should mark a key to be removed from a system
   - "replace <old> <new>" should mark things to replace the old key with the new key on all systems or any system discovered in the future
+
+### PR
 
 - [ ] Pace requests against provider rate limits.  This is *not* a concurrency
       problem and a worker pool is the wrong tool: a cap bounds calls in flight,
@@ -45,6 +64,7 @@ TODO
       needs care with the fan-in lifecycle, which requires every Add before
       Wait -- that is why it was not done alongside the context work.
 
+### PR
 - [ ] Resolve AWS credentials the way the AWS CLI does.  `awsconnection.go`
       builds them with `credentials.NewSharedCredentials`, which reads
       **only** `~/.aws/credentials` and ignores `~/.aws/config` entirely, so
@@ -64,7 +84,7 @@ TODO
       credentials into its **own** cache (overridable via
       `AWS_LOGIN_CACHE_DIRECTORY`) and writes a profile like:
 
-          [nemon]
+          [PROFILE]
           login_session = arn:aws:iam::ACCOUNT:user/NAME
           region = us-east-1
 
@@ -129,11 +149,12 @@ them into a shape that is about to change.
       fetch context does not reach inside it.  The unread stderr pipe blocks the
       writer once the 64KiB kernel buffer fills, and a failing remote command
       reports `Non-zero exit: 1` while discarding the message that would explain
-      it.  The boundary is a fixed string, so a line of that shape inside an
-      `authorized_keys` file desynchronises the session for its whole life: an
-      unprivileged user on a surveyed host can hide their own keys and
-      misattribute the next user's.  Use a per-command nonce, match the whole
-      line, drain stderr into a bounded buffer, and add a deadline.
+      it.  The command boundary is a fixed string matched as a prefix rather
+      than a per-command nonce matched as a whole line, so remote content can
+      be mistaken for it and desynchronise the session.  Use a per-command
+      nonce, match the whole line, drain stderr into a bounded buffer, and add
+      a deadline.  (Impact analysis deliberately kept out of this file; see the
+      note below on disclosure.)
 
 - [ ] `apply` cannot report failure.  `CmdApply` returns nil unconditionally;
       every per-host failure is logged and skipped.  For a tool whose job is
@@ -354,3 +375,118 @@ DONE
 * Don't record accounts for which we have no keys (?)
 * Fix the !@#$%# AWS Fingerprints!
 * detect username on system for when we don't have a username
+
+## Open from the 2026-09 review, round 2
+
+Round-2 findings that were *not* fixed in this branch. Everything the reviewers
+rated HIGH was fixed; these are the MEDIUMs and LOWs that need more than a
+local edit.
+
+### The comment on a rendered line is attacker-choosable
+
+(The restriction-dropping half of this finding is fixed: options now ride on
+`KeyBindingImpl.Options`. What follows is the part that is not.)
+
+`GetSshLine` picks `Comments.StringArray()[0]`, and `StringSet` sorts,
+so among every comment ever merged for a key the lexicographically smallest
+wins. That is attacker-choosable by anyone who can publish a key locksmith
+surveys. Choose the comment deterministically from the binding instead.
+
+### History write failures are silent, and apply proceeds anyway
+
+`history.Log.Record` returns an error and all six call sites drop it, as does
+`defer log.Close()`. `Log.open` caches its failure, so once the first write
+fails every later one fails identically and invisibly for the rest of the run.
+`apply` writes the record *before* `Changes().DeleteObject`, so on a read-only
+checkout or a full disk it removes keys from every host, deletes the pending
+changes that would have reconstructed what it did, prints nothing, and exits 0.
+
+Fix: check the return, report it through `output.Error`, and have `apply`
+refuse to delete the change when the record of the work could not be written.
+This is adjacent to the filed "Persistence errors are discarded across
+`command/`" item but not covered by it -- that one enumerates `Store`,
+`DeleteObject` and `Flush` and does not reach `history`.
+
+### Cancellation is still missing on three connections, and one goroutine leaks
+
+The `ctx.Done()` guard on channel sends reached SSH and `FileConnection` but not
+`connection/awsconnection.go` (eight sites), `connection/githubconnection.go`
+(two) or `connection/doconnection.go` (three). It is not a hang today only
+because `CmdFetch` never stops draining; any caller that abandons a `Fetch`
+leaks a goroutine per producer, and AWS starts one per region. The
+`sendKey`/`sendAccount` helpers in `connection/ssh.go` are already written and
+package-scoped.
+
+One real leak survives inside the SSH path: `retreiveSystemUsers`' goroutine
+sends on `users` with no guard, and its consumers return early both on
+`ctx.Err()` and on `NewSshCmd` failure -- so on cancellation, or when fd
+exhaustion makes all five workers fail to connect, it blocks forever holding
+the host's entire `getent passwd` output.
+
+Also `NewSshCmd` returns `nil, err` from `StdoutPipe`/`StderrPipe` without
+closing the pipes it already made, which is exactly the failure that happens
+under fd pressure.
+
+### Allocation and syscall costs, in rough order of payoff
+
+None of these is what limits the tool today; they are filed so the numbers
+exist when fan-out gets bounded.
+
+- `connection/fileconnection.go` -- `Fetch` walks the whole tree synchronously
+  and leaves two blocked goroutines per file, each holding that file's bytes,
+  before anything drains them. At the documented "tens of thousands of keys"
+  that is ~40k goroutines and 100-200MB resident before ingestion starts. Run
+  `fetchPath` inside one goroutine and the walk streams properly. ~5 lines.
+- `data/account.go` -- `bindingSet` and `calculateChanges` drain `Bindings()`,
+  which spawns a goroutine to feed an unbuffered channel from a slice the
+  caller could have had directly, twice per already-known account, on the
+  single ingestion goroutine. Add `BindingList() []KeyBindingImpl`. Also lets
+  `doBindingChannel` in `connection/doconnection.go` go away.
+- `data/account.go` -- `mergeBindings` round-trips every binding through JSON
+  to deduplicate a struct that is already comparable. `map[KeyBindingImpl]bool`
+  plus `sort.Slice` is shorter than what is there and keeps the stable ordering
+  the comment promises.
+- `history/history.go` -- one unbuffered `write(2)` per event with the mutex
+  held. A steady fleet writes nothing, but the *first* fetch of a fleet is all
+  transitions: ~40k syscalls serialising the two ingest goroutines against each
+  other. Wrap the file in a `bufio.Writer` and flush in `Close`.
+- `lib/library.go` `deserialize` unmarshals the whole file into
+  `map[string]interface{}` just to read `Type`, then again into the real type;
+  `PublicKey.UnmarshalJSON` does it a third time per key. `var probe struct{
+  Type string }` -- worth doing when someone touches that function for the
+  `Type`-missing panic already filed under Robustness.
+- `connection/fileconnection.go` `matches` compiles two regexps for every
+  directory entry, and both -- `~$` and `^#.*` -- are `HasSuffix`/`HasPrefix`
+  in disguise.
+
+### Re-ratings of items already filed above
+
+- **`lib.sanitize` is not injective** is worse than billed for `changes/`.
+  Two accounts whose IDs differ only in punctuation (`alice@a.b.com` /
+  `alice@a-b.com` -- an ordinary pair of hostnames) share one file, so `plan`
+  writes two pending revocations and one survives. `apply` revokes on one host,
+  deletes the change, exits 0, and the other host keeps the key indefinitely,
+  every run, forever. The "verify the stored ID on read" half of the fix turns
+  it from silent to loud at no migration cost and should be done first. Not
+  reachable for `keys/` or `policies/`, which are keyed by fingerprints and
+  `AKIA...` IDs.
+- **`SshCmd` has no timeout** -- the new `--timeout` flag now advertises a
+  guarantee it cannot deliver. `fetchSudo` checks `ctx.Err()` only between
+  accounts, so a host that accepts the connection and goes quiet blocks in
+  `Run`'s `ReadLine` forever and `fetch` hangs past its deadline. Say so in the
+  flag's usage string until the deadline exists. Its blast radius also grew:
+  `apply` now sits on `Close` -> `cmd.Wait()` with no deadline.
+- **Panics reachable from repository content** now also lands in `apply`.
+
+### Worth one check against a real host
+
+Whether `sed -i` under `sudo` preserves the owner of
+`~user/.ssh/authorized_keys` on every sed implementation targeted. If BusyBox
+sed does not, `delKey` leaves the file owned by root and sshd's `StrictModes`
+locks the user out.
+
+### Below LOW, noted only
+
+`DOAccount.Email` writes the account holder's email address into the shared
+repository. `fetchPath` follows symlinks with no cycle guard, so a symlink loop
+under a connected directory recurses until the stack is exhausted.

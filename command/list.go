@@ -28,7 +28,7 @@ func CmdList(c *cli.Context) error {
 	filter := buildFilterFromContext(c)
 
 	printConnections(ml.Connections(), filter)
-	printAccounts(ml.Accounts(), filter, ml)
+	printAccounts(ml.Accounts(), filter, &ml)
 	printKeys(ml.Keys(), ml.Accounts(), ml.Policies(), keyToAccounts, filter)
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), filter)
 
@@ -67,7 +67,7 @@ func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, policies lib.Po
 	}
 }
 
-func printAccounts(accounts lib.AccountLibrary, filter Filter, ml lib.MainLibrary) {
+func printAccounts(accounts lib.AccountLibrary, filter Filter, ml *lib.MainLibrary) {
 	for i := range accounts.List() {
 		s := accountString(i, "")
 		if filter(s) {

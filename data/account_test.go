@@ -85,7 +85,7 @@ func TestAddBinding(t *testing.T) {
 	a := NewSSHAccount("root", "host", "conn1", nil)
 	key := NewAwsKey("AKIAEXAMPLE", time.Time{}, true, "prod")
 
-	a.AddBinding(key, AUTHORIZED_KEYS)
+	a.AddBinding(key, AUTHORIZED_KEYS, "")
 
 	got := collectBindings(a)
 	if len(got) != 1 {

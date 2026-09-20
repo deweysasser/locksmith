@@ -41,13 +41,23 @@ func CmdAdd(c *cli.Context) error {
 			})
 		}
 
-		changes.Store(data.Change{
-			Manual:  true,
-			Type:    "Change",
-			Account: account.Id(),
-			Add:     bindings,
-			Remove:  make([]data.KeyBindingImpl, 0),
-		})
+		// Changes are keyed by account, so there may already be one holding
+		// derived removals.  Those are policy, not ours to discard: keep them
+		// and add the operator's request beside them.
+		change := data.Change{Type: "Change", Account: account.Id()}
+		if existing, err := changes.Fetch(account.Id()); err == nil {
+			change = existing
+		}
+		change.Manual = true
+		change.ManualAdd = append(change.ManualAdd, bindings...)
+		if change.Remove == nil {
+			change.Remove = make([]data.KeyBindingImpl, 0)
+		}
+
+		if err := changes.Store(change); err != nil {
+			output.Error("Failed to record the change for", account.Id(), ":", err)
+			return err
+		}
 	}
 
 	return nil

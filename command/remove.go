@@ -28,6 +28,7 @@ func CmdRemove(c *cli.Context) error {
 	connections := ml.Connections()
 	keys := ml.Keys()
 	changes := ml.Changes()
+	policies := ml.Policies()
 
 	// Why golang, why???  DRY!!!
 	for conn := range connections.ListMatching(func(connection connection.Connection) bool { return filter(connection) }) {
@@ -48,6 +49,15 @@ func CmdRemove(c *cli.Context) error {
 	for change := range changes.ListMatching(func(change data.Change) bool { return filter(changestr(accounts, change)) }) {
 		output.Verbose("Deleting", change)
 		changes.DeleteObject(change)
+	}
+
+	// Policies are keyed by key ID, so once the key is gone nothing can name
+	// the policy again -- not `list`, not `unexpire`, both of which walk the
+	// key library.  Left behind, it silently re-expires the key if it is ever
+	// re-fetched.
+	for policy := range policies.ListMatching(func(p data.KeyPolicy) bool { return filter(p) }) {
+		output.Verbose("Deleting", policy)
+		policies.DeleteObject(policy)
 	}
 
 	return nil

@@ -33,7 +33,7 @@ func CmdApply(c *cli.Context) error {
 						// Finally, the main event
 						output.Debug("via", changer)
 						if account, err := accounts.Fetch(change.Account); err == nil {
-							if err := changer.Update(account, change.Add, change.Remove, keys); err != nil {
+							if err := changer.Update(account, change.Additions(), change.Remove, keys); err != nil {
 								output.Error("Failed to add keys:", err)
 								continue
 							} else {
@@ -62,7 +62,7 @@ func CmdApply(c *cli.Context) error {
 // host.  It runs only after Update reported success, so the log records work
 // done rather than work attempted.
 func recordApplied(log *history.Log, change data.Change) {
-	for _, b := range change.Add {
+	for _, b := range change.Additions() {
 		log.Record(history.Event{
 			Event: history.AppliedAdd, Key: b.KeyID,
 			Account: change.Account, Location: b.Location,

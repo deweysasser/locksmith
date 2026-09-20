@@ -116,9 +116,9 @@ func TestRetrieveKeys(t *testing.T) {
 
 	comments := make(map[string]bool)
 	for _, k := range keys {
-		sshKey, ok := k.(*data.SSHKey)
+		sshKey, ok := k.Key.(*data.SSHKey)
 		if !ok {
-			t.Fatalf("key is %T, want *data.SSHKey", k)
+			t.Fatalf("key is %T, want *data.SSHKey", k.Key)
 		}
 		for _, c := range sshKey.Comments.StringArray() {
 			comments[c] = true

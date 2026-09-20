@@ -162,15 +162,20 @@ func (l *library) pathOfId(s string) string {
 }
 
 func (l *library) Store(o interface{}) error {
-	_, e := os.Stat(l.Path)
-	if e != nil {
-		// 0700, not 0777: the repository holds no private key material, but it
-		// does hold the map of which key authorizes which account on which
-		// host, which is a finished target list for any other local user.
-		e = os.MkdirAll(l.Path, 0700)
-		if e != nil {
+	// 0700, not 0777: the repository holds no private key material, but it does
+	// hold the map of which key authorizes which account on which host, which
+	// is a finished target list for any other local user.
+	//
+	// Chmod runs unconditionally, and so does the one below: a repository
+	// created by an older locksmith was made 0755/0644, and neither MkdirAll
+	// (skipped when the directory exists) nor WriteFile (whose mode applies
+	// only on create) would ever narrow it.
+	if _, e := os.Stat(l.Path); e != nil {
+		if e = os.MkdirAll(l.Path, 0700); e != nil {
 			return e
 		}
+	} else if e = os.Chmod(l.Path, 0700); e != nil {
+		output.Debug("Could not tighten permissions on", l.Path, ":", e)
 	}
 
 	path := l.pathOfObject(o)
@@ -180,6 +185,9 @@ func (l *library) Store(o interface{}) error {
 		return e
 	}
 	if e = ioutil.WriteFile(path, bytes, 0600); e == nil {
+		if ce := os.Chmod(path, 0600); ce != nil {
+			output.Debug("Could not tighten permissions on", path, ":", ce)
+		}
 		l.addToCache(o)
 	} else {
 		return errors.New(fmt.Sprint("Error storing ", path))
@@ -207,10 +215,10 @@ func (l *library) Fetch(id string) (interface{}, error) {
 	return l.fetchFrom(id, path)
 }
 
-func sanitize(path string) string {
-	re := regexp.MustCompile(`\W+`)
-	return re.ReplaceAllString(path, "_")
+var sanitizeRe = regexp.MustCompile(`\W+`)
 
+func sanitize(path string) string {
+	return sanitizeRe.ReplaceAllString(path, "_")
 }
 
 func (l *library) fetchFrom(id, path string) (interface{}, error) {

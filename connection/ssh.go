@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -59,6 +58,13 @@ func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyB
 }
 
 func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	// Checked before connecting: the commonest plan is a pure revocation or a
+	// pure addition, and the other half of Update would otherwise pay a full
+	// handshake to do nothing.
+	if len(bindings) == 0 {
+		return nil
+	}
+
 	if err := checkPrefix(prefix); err != nil {
 		return err
 	}
@@ -77,6 +83,13 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 		for _, add := range bindings {
 			if key, err := keylib.Fetch(add.KeyID); err == nil {
 				if sshKey, ok := key.(*data.SSHKey); ok {
+					if sshKey.PublicKey.Key == nil {
+						// Known only by fingerprint (the AWS and DO key-pair
+						// path).  We cannot match the line without the public
+						// material, and panicking here would abort apply
+						// half-way through a fleet.
+						return fmt.Errorf("key %s is known only by fingerprint; no public material to remove", add.KeyID)
+					}
 					text := base64.StdEncoding.EncodeToString(sshKey.PublicKey.Key.Marshal())
 					// base64 may contain '/', which would end a sed '/re/'
 					// address early, so select '|' as the address delimiter
@@ -99,6 +112,10 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 }
 
 func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	if len(addBindings) == 0 {
+		return nil
+	}
+
 	if err := checkPrefix(prefix); err != nil {
 		return err
 	}
@@ -123,11 +140,29 @@ func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []dat
 				// re-planned on the next run.  With a bare `tee -a` that
 				// appends another copy of the same key every cycle, without
 				// bound.
-				quoted := shellQuote(line)
-				addLine := fmt.Sprintf("%s grep -qxF %s ~%s/.ssh/authorized_keys 2>/dev/null || echo %s | %s tee -a ~%s/.ssh/authorized_keys",
-					prefix, quoted, path, quoted, prefix, path)
+				// printf, not echo.  shellQuote makes the shell see one word,
+				// but `echo` is not a transparent sink: in dash, ash and zsh
+				// its builtin expands \n, \t and \\ *after* quote removal,
+				// so a key comment containing a literal backslash-n -- free
+				// text an unprivileged user wrote into their own
+				// authorized_keys on a surveyed host -- would append a second
+				// line, injecting a key of their choosing.  printf's format is
+				// a fixed literal and its operand is not escape-processed.
+				//
+				// grep on the base64 blob rather than the whole line, matching
+				// what delKey keys on: the blob is the key's identity, while
+				// the rendered line also carries a merged comment set that can
+				// change between runs and options that may already be present.
+				// A whole-line match fails open and re-appends the key.
+				blob, err := add.PublicKeyBlob(keylib)
+				if err != nil {
+					return fmt.Errorf("could not identify key %s: %w", add.KeyID, err)
+				}
+
+				addLine := fmt.Sprintf("%s grep -qF %s ~%s/.ssh/authorized_keys 2>/dev/null || printf '%%s\\n' %s | %s tee -a ~%s/.ssh/authorized_keys",
+					prefix, shellQuote(blob), path, shellQuote(line), prefix, path)
 				if _, err := cmd.Run(addLine); err != nil {
-					return errors.New(fmt.Sprintf("Failed to run '%s': %s", addLine, err))
+					return fmt.Errorf("failed to run %q: %w", addLine, err)
 				}
 			}
 		}
@@ -226,8 +261,8 @@ func (c *SSHHostConnection) fetchSudo(ctx context.Context) (keys <-chan data.Key
 					}
 					output.Debug("Discovered", len(keys), "keys for account", accountName)
 					for _, k := range keys {
-						acct.AddBinding(k, data.AUTHORIZED_KEYS)
-						if !sendKey(ctx, cKeys, k) {
+						acct.AddBinding(k.Key, data.AUTHORIZED_KEYS, k.Options)
+						if !sendKey(ctx, cKeys, k.Key) {
 							return
 						}
 					}
@@ -283,8 +318,8 @@ func (c *SSHHostConnection) fetchNonSudo(ctx context.Context) (keys <-chan data.
 				}
 				//a.SetKeys(keys)
 				for _, k := range keys {
-					acct.AddBinding(k, data.AUTHORIZED_KEYS)
-					if !sendKey(ctx, cKeys, k) {
+					acct.AddBinding(k.Key, data.AUTHORIZED_KEYS, k.Options)
+					if !sendKey(ctx, cKeys, k.Key) {
 						return
 					}
 				}
@@ -299,11 +334,11 @@ func (c *SSHHostConnection) fetchNonSudo(ctx context.Context) (keys <-chan data.
 	return cKeys, cAccounts
 }
 
-func (c *SSHHostConnection) retrieveKeysFor(cmd *SshCmd, account remoteAccount, prefix string) ([]data.Key, error) {
+func (c *SSHHostConnection) retrieveKeysFor(cmd *SshCmd, account remoteAccount, prefix string) ([]authorizedKeyLine, error) {
 	return c.retrieveKeysFrom(cmd, fmt.Sprintf("%s/.ssh/authorized_keys", account.Home), prefix)
 }
 
-func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) ([]data.Key, error) {
+func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) ([]authorizedKeyLine, error) {
 	return remote.retrieveKeysFrom(cmd, ".ssh/authorized_keys", "")
 }
 
@@ -318,7 +353,7 @@ func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) ([]data.Key, error) {
 // A non-zero exit is deliberately treated as "do not claim", including the case
 // where the file simply does not exist.  That errs towards keeping a stale
 // binding rather than dropping a real one.
-func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) ([]data.Key, error) {
+func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) ([]authorizedKeyLine, error) {
 	if err := checkPrefix(prefix); err != nil {
 		output.Error(err)
 		return nil, err
@@ -329,9 +364,6 @@ func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, pref
 	// surveyed host could otherwise escalate through locksmith.
 	remoteCmd := fmt.Sprintf("%s cat %s", prefix, shellQuote(file))
 
-	delay := time.Duration(rand.Int31() % 500)
-	time.Sleep(delay * time.Millisecond)
-
 	out, err := cmd.Run(remoteCmd)
 	if err != nil {
 		output.Verbose("Could not read", file, "on", remote.Connection, ":", err)
@@ -339,14 +371,25 @@ func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, pref
 	}
 
 	output.Debug("Parsing Returned Keys")
-	keys := make([]data.Key, 0)
+	keys := make([]authorizedKeyLine, 0)
 	for _, line := range strings.Split(string(out), "\n") {
 		if key := parseAuthorizedKey(line, time.Now()); key != nil {
-			keys = append(keys, key)
+			keys = append(keys, authorizedKeyLine{Key: key, Options: data.AuthorizedKeyOptions(line)})
 		}
 	}
 
 	return keys, nil
+}
+
+// authorizedKeyLine is one line of an authorized_keys file: the key, plus the
+// restrictions it was found under.  The two travel together because the
+// restrictions belong to the binding, not to the key -- the same key is
+// routinely unrestricted on one host and confined to a single command on
+// another -- and dropping them when rewriting the line would silently widen
+// the key's privileges.
+type authorizedKeyLine struct {
+	Key     data.Key
+	Options string
 }
 
 func parseAuthorizedKey(line string, t time.Time) data.Key {

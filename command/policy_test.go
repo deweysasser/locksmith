@@ -254,10 +254,10 @@ func TestPlanLeavesAManualChangeAlone(t *testing.T) {
 
 	// As `add` would write it.
 	if err := f.ml.Changes().Store(data.Change{
-		Type:    "Change",
-		Manual:  true,
-		Account: acct.Id(),
-		Add:     []data.KeyBindingImpl{{KeyID: wanted.Id(), Location: data.AUTHORIZED_KEYS}},
+		Type:      "Change",
+		Manual:    true,
+		Account:   acct.Id(),
+		ManualAdd: []data.KeyBindingImpl{{KeyID: wanted.Id(), Location: data.AUTHORIZED_KEYS}},
 	}); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -274,8 +274,121 @@ func TestPlanLeavesAManualChangeAlone(t *testing.T) {
 	if !got.Manual {
 		t.Error("plan overwrote the manual change with a derived one")
 	}
-	if len(got.Add) != 1 || got.Add[0].KeyID != wanted.Id() {
-		t.Errorf("additions = %v, want the manually added key", got.Add)
+	adds := got.Additions()
+	if len(adds) != 1 || adds[0].KeyID != wanted.Id() {
+		t.Errorf("additions = %v, want the manually added key", adds)
+	}
+}
+
+// ...but plan still owns the other half of that change. Bailing out of the
+// account because an `add` was pending meant the expired key's removal was
+// silently discarded -- the one thing a revocation tool must never do.
+func TestPlanStillRemovesExpiredKeysAlongsideAManualChange(t *testing.T) {
+	silence(t)
+	f := newPolicyFixture(t)
+
+	doomed := f.storeKey(t, "AKIADOOMED")
+	wanted := f.storeKey(t, "AKIAWANTED")
+
+	acct := data.NewSSHAccount("root", "host.example.com", "conn1", []data.KeyBindingImpl{
+		{KeyID: doomed.Id(), Location: data.AUTHORIZED_KEYS},
+	})
+	if err := f.ml.Accounts().Store(acct); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+	if err := f.ml.Changes().Store(data.Change{
+		Type:      "Change",
+		Manual:    true,
+		Account:   acct.Id(),
+		ManualAdd: []data.KeyBindingImpl{{KeyID: wanted.Id(), Location: data.AUTHORIZED_KEYS}},
+	}); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+
+	if err := setPolicy(&f.ml, f.log, buildFilter([]string{"AKIADOOMED"}), ""); err != nil {
+		t.Fatalf("setPolicy: %v", err)
+	}
+	calculateChanges(f.ml.Accounts(), f.ml.Keys(), f.ml.Changes(), f.ml.Policies(), AcceptAll)
+
+	got, err := f.ml.Changes().Fetch(acct.Id())
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if len(got.Remove) != 1 || got.Remove[0].KeyID != doomed.Id() {
+		t.Errorf("removals = %v, want the expired key -- it was discarded because an add was pending", got.Remove)
+	}
+	if adds := got.Additions(); len(adds) != 1 || adds[0].KeyID != wanted.Id() {
+		t.Errorf("additions = %v, want the manually added key kept", adds)
+	}
+}
+
+// A change written by a locksmith that kept both kinds of addition in Add must
+// keep working: its additions are the operator's, and re-planning must not
+// drop them.
+func TestPlanCarriesForwardALegacyManualChange(t *testing.T) {
+	silence(t)
+	f := newPolicyFixture(t)
+
+	doomed := f.storeKey(t, "AKIADOOMED")
+	wanted := f.storeKey(t, "AKIAWANTED")
+
+	acct := data.NewSSHAccount("root", "host.example.com", "conn1", []data.KeyBindingImpl{
+		{KeyID: doomed.Id(), Location: data.AUTHORIZED_KEYS},
+	})
+	if err := f.ml.Accounts().Store(acct); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+	// The old on-disk shape: Manual, with the addition in Add.
+	if err := f.ml.Changes().Store(data.Change{
+		Type:    "Change",
+		Manual:  true,
+		Account: acct.Id(),
+		Add:     []data.KeyBindingImpl{{KeyID: wanted.Id(), Location: data.AUTHORIZED_KEYS}},
+	}); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+
+	if err := setPolicy(&f.ml, f.log, buildFilter([]string{"AKIADOOMED"}), ""); err != nil {
+		t.Fatalf("setPolicy: %v", err)
+	}
+	calculateChanges(f.ml.Accounts(), f.ml.Keys(), f.ml.Changes(), f.ml.Policies(), AcceptAll)
+
+	got, err := f.ml.Changes().Fetch(acct.Id())
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if adds := got.Additions(); len(adds) != 1 || adds[0].KeyID != wanted.Id() {
+		t.Errorf("additions = %v, want the legacy manual addition preserved", adds)
+	}
+	if len(got.Remove) != 1 {
+		t.Errorf("removals = %v, want the expired key", got.Remove)
+	}
+}
+
+// A policy is stored under the key ID that was current when `expire` ran. A
+// later fetch can learn the key's real public material and change its primary
+// ID -- and the policy must still be found, or the repository says the key is
+// expired while the fleet goes on honouring it.
+func TestEffectivePolicyFindsAPolicyUnderASecondaryIdentifier(t *testing.T) {
+	silence(t)
+	f := newPolicyFixture(t)
+
+	key := data.NewSSHKeyFromFingerprint("do-key", time.Time{},
+		"SHA256:primary", "1e:5f:aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77")
+
+	ids := key.Identifiers()
+	if len(ids) < 2 {
+		t.Fatalf("need a key with a secondary identifier, got %v", ids)
+	}
+
+	// Expire recorded the policy under what was then the primary ID; something
+	// later promoted a different identifier to the front.
+	if err := f.ml.Policies().Store(data.NewRemovePolicy(ids[len(ids)-1])); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+
+	if _, found := effectivePolicy(f.ml.Policies(), key); !found {
+		t.Errorf("policy stored under %s was orphaned; key identifiers are %v", ids[len(ids)-1], ids)
 	}
 }
 
@@ -296,5 +409,46 @@ func TestGetKeyIdsSkipsKeysUnderRemovalPolicy(t *testing.T) {
 
 	if len(got) != 1 || got[0] != "AKIALIVE" {
 		t.Errorf("got %v, want only the live key", got)
+	}
+}
+
+// plan's replace path copies the binding and swaps the key, so the
+// restrictions the old key was found under travel to its replacement. If they
+// did not, rotating a confined key would silently grant its replacement more
+// privilege than the key it replaced.
+func TestPlanCarriesRestrictionsOntoTheReplacement(t *testing.T) {
+	silence(t)
+	f := newPolicyFixture(t)
+
+	old := f.storeKey(t, "AKIAOLD")
+	replacement := f.storeKey(t, "AKIANEW")
+
+	const opts = `command="/usr/bin/rrsync -ro /srv",restrict`
+	acct := data.NewSSHAccount("backup", "backup@host.example.com", "conn1", []data.KeyBindingImpl{
+		{KeyID: old.Id(), Location: data.AUTHORIZED_KEYS, Options: opts},
+	})
+	if err := f.ml.Accounts().Store(acct); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+
+	if err := setPolicy(&f.ml, f.log, buildFilter([]string{"AKIAOLD"}), "AKIANEW"); err != nil {
+		t.Fatalf("setPolicy: %v", err)
+	}
+	calculateChanges(f.ml.Accounts(), f.ml.Keys(), f.ml.Changes(), f.ml.Policies(), AcceptAll)
+
+	change, err := f.ml.Changes().Fetch(acct.Id())
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	adds := change.Additions()
+	if len(adds) != 1 {
+		t.Fatalf("additions = %v, want the replacement", adds)
+	}
+	if adds[0].KeyID != replacement.Id() {
+		t.Fatalf("added %s, want %s", adds[0].KeyID, replacement.Id())
+	}
+	if adds[0].Options != opts {
+		t.Errorf("the replacement was planned without the original restrictions.\nwant: %q\ngot:  %q", opts, adds[0].Options)
 	}
 }
