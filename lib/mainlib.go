@@ -21,10 +21,13 @@ func init() {
 	AddType(reflect.TypeOf(connection.FileConnection{}))
 	AddType(reflect.TypeOf(connection.AWSConnection{}))
 	AddType(reflect.TypeOf(connection.GitHubConnection{}))
+	AddType(reflect.TypeOf(connection.DOConnection{}))
 	AddType(reflect.TypeOf(data.SSHAccount{}))
 	AddType(reflect.TypeOf(data.AWSAccount{}))
 	AddType(reflect.TypeOf(data.AWSInstanceAccount{}))
 	AddType(reflect.TypeOf(data.AWSIamAccount{}))
+	AddType(reflect.TypeOf(connection.DOAccount{}))
+	AddType(reflect.TypeOf(connection.DODropletAccount{}))
 	AddType(reflect.TypeOf(data.Change{}))
 }
 

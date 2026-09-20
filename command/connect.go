@@ -33,6 +33,8 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 		return &connection.AWSConnection{Type: "AWSConnection", Profile: a[4:]}
 	case strings.HasPrefix(a, "gh:"):
 		return &connection.GitHubConnection{Type: "GitHubConnection", User: a[3:]}
+	case strings.HasPrefix(a, "do:"):
+		return &connection.DOConnection{Type: "DOConnection", Name: a[3:]}
 	default:
 		sudo := !c.Bool("no-sudo") &&
 			(c.Bool("sudo") ||
