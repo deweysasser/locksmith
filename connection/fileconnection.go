@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
 	"io/ioutil"
@@ -19,7 +20,7 @@ func (c *FileConnection) String() string {
 	return "file://" + c.Path
 }
 
-func (c *FileConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (c *FileConnection) Fetch(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	fKeys := data.NewFanInKey(nil)
 	defer fKeys.DoneAdding()
 	keys = fKeys.Output()
@@ -29,11 +30,17 @@ func (c *FileConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acc
 
 	path := c.Path
 
-	fetchPath(path, fKeys)
+	fetchPath(ctx, path, fKeys)
 	return keys, cAccounts
 }
 
-func fetchPath(path string, inKeys *data.FanInKeys) {
+func fetchPath(ctx context.Context, path string, inKeys *data.FanInKeys) {
+	// A large tree is a lot of files; check before each one so a cancelled
+	// fetch stops walking rather than finishing the directory first.
+	if ctx.Err() != nil {
+		return
+	}
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return
@@ -44,12 +51,12 @@ func fetchPath(path string, inKeys *data.FanInKeys) {
 		if err == nil {
 			for _, file := range files {
 				if !shouldSkipFile(file) {
-					fetchPath(path+"/"+file.Name(), inKeys)
+					fetchPath(ctx, path+"/"+file.Name(), inKeys)
 				}
 			}
 		}
 	} else {
-		inKeys.Add(fetchFile(path))
+		inKeys.Add(fetchFile(ctx, path))
 	}
 }
 
@@ -69,7 +76,7 @@ func matches(re, name string) bool {
 	return m
 }
 
-func fetchFile(path string) chan data.Key {
+func fetchFile(ctx context.Context, path string) chan data.Key {
 	keys := make(chan data.Key)
 	go func() {
 		defer close(keys)
@@ -89,7 +96,7 @@ func fetchFile(path string) chan data.Key {
 			case strings.Contains(path, "known_hosts"):
 				output.Debug("Skipping known hosts file", path)
 			default:
-				readSSHKey(bytes, keys, info.ModTime(), basename(path))
+				readSSHKey(ctx, bytes, keys, info.ModTime(), basename(path))
 			}
 		} else {
 			output.Error("Failed to read", path)
@@ -108,11 +115,17 @@ func basename(path string) string {
 	}
 }
 
-func readSSHKey(bytes []byte, keys chan data.Key, time time.Time, names ...string) {
+func readSSHKey(ctx context.Context, bytes []byte, keys chan data.Key, time time.Time, names ...string) {
 	// NewKeys, not NewKey: a file may hold many entries, and taking only the
 	// first silently drops the rest from the catalogue.
 	for _, k := range data.NewKeys(string(bytes), time, names...) {
-		keys <- k
+		// The consumer may have gone away; without this select the goroutine
+		// blocks on the send forever and leaks.
+		select {
+		case keys <- k:
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

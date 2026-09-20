@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -27,7 +28,7 @@ func (a *AWSConnection) String() string {
 
 type userMap map[string]*iam.User
 
-func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (a *AWSConnection) Fetch(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	output.Debug("Fetching from aws", a.Profile)
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
@@ -55,7 +56,7 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 		stsClient := sts.New(sess)
 
 		// TODO:  make this code still fetch keys and instances even if fetching the account ARN fails?
-		arn, err := a.fetchAccountInfo(stsClient, iamClient, cAccounts)
+		arn, err := a.fetchAccountInfo(ctx, stsClient, iamClient, cAccounts)
 		if err != nil {
 			output.Error("Failed to get account identity for", a.Profile, ":", err)
 			return
@@ -64,11 +65,11 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			usermap := a.fetchAccounts(iamClient, cAccounts, cKeys)
-			a.fetchAccessKeys(iamClient, cAccounts, cKeys, usermap)
+			usermap := a.fetchAccounts(ctx, iamClient, cAccounts, cKeys)
+			a.fetchAccessKeys(ctx, iamClient, cAccounts, cKeys, usermap)
 		}()
 
-		dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{})
+		dro, err := e.DescribeRegionsWithContext(ctx, &ec2.DescribeRegionsInput{})
 		if err != nil {
 			output.Error(a, "failed to lookup EC2 regions")
 			return
@@ -90,8 +91,8 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 
 				regionEC2 := ec2.New(regionSession)
 
-				keymap := a.fetchKeyPairs(regionEC2, arn, aws.StringValue(regionName), cKeys, cAccounts)
-				a.fetchInstances(regionEC2, aws.StringValue(regionName), cAccounts, keymap)
+				keymap := a.fetchKeyPairs(ctx, regionEC2, arn, aws.StringValue(regionName), cKeys, cAccounts)
+				a.fetchInstances(ctx, regionEC2, aws.StringValue(regionName), cAccounts, keymap)
 			}(r.RegionName)
 		}
 	}()
@@ -105,10 +106,10 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 	return cKeys, cAccounts
 }
 
-func (a *AWSConnection) fetchAccountInfo(s stsiface.STSAPI, i iamiface.IAMAPI, accounts chan<- data.Account) (data.AWSAccountID, error) {
-	if out, err := s.GetCallerIdentity(&sts.GetCallerIdentityInput{}); err == nil {
+func (a *AWSConnection) fetchAccountInfo(ctx context.Context, s stsiface.STSAPI, i iamiface.IAMAPI, accounts chan<- data.Account) (data.AWSAccountID, error) {
+	if out, err := s.GetCallerIdentityWithContext(ctx, &sts.GetCallerIdentityInput{}); err == nil {
 		arn := data.AWSAccountID(aws.StringValue(out.Account))
-		if iout, err := i.ListAccountAliases(&iam.ListAccountAliasesInput{}); err == nil {
+		if iout, err := i.ListAccountAliasesWithContext(ctx, &iam.ListAccountAliasesInput{}); err == nil {
 			aliases := make([]string, 0, len(iout.AccountAliases))
 			for _, a := range iout.AccountAliases {
 				aliases = append(aliases, aws.StringValue(a))
@@ -132,24 +133,24 @@ func (a *AWSConnection) fetchAccountInfo(s stsiface.STSAPI, i iamiface.IAMAPI, a
 // credentials signed the request.  It must therefore be called once per user.
 // The no-UserName form is kept only as a fallback for the case where the
 // account has no IAM users at all (the root user then gets its own keys back).
-func (a *AWSConnection) fetchAccessKeys(i iamiface.IAMAPI, accounts chan<- data.Account, keys chan<- data.Key, usermap userMap) {
+func (a *AWSConnection) fetchAccessKeys(ctx context.Context, i iamiface.IAMAPI, accounts chan<- data.Account, keys chan<- data.Key, usermap userMap) {
 	if len(usermap) == 0 {
-		a.fetchAccessKeysForUser(i, "", accounts, keys, usermap)
+		a.fetchAccessKeysForUser(ctx, i, "", accounts, keys, usermap)
 		return
 	}
 
 	for userName := range usermap {
-		a.fetchAccessKeysForUser(i, userName, accounts, keys, usermap)
+		a.fetchAccessKeysForUser(ctx, i, userName, accounts, keys, usermap)
 	}
 }
 
-func (a *AWSConnection) fetchAccessKeysForUser(i iamiface.IAMAPI, userName string, accounts chan<- data.Account, keys chan<- data.Key, usermap userMap) {
+func (a *AWSConnection) fetchAccessKeysForUser(ctx context.Context, i iamiface.IAMAPI, userName string, accounts chan<- data.Account, keys chan<- data.Key, usermap userMap) {
 	input := &iam.ListAccessKeysInput{}
 	if userName != "" {
 		input.UserName = aws.String(userName)
 	}
 
-	err := i.ListAccessKeysPages(input, func(lako *iam.ListAccessKeysOutput, _ bool) bool {
+	err := i.ListAccessKeysPagesWithContext(ctx, input, func(lako *iam.ListAccessKeysOutput, _ bool) bool {
 		for _, md := range lako.AccessKeyMetadata {
 			output.Debug("Found acces key", aws.StringValue(md.AccessKeyId))
 			keyUser := aws.StringValue(md.UserName)
@@ -181,10 +182,10 @@ func (a *AWSConnection) fetchAccessKeysForUser(i iamiface.IAMAPI, userName strin
 	}
 }
 
-func (a *AWSConnection) fetchAccounts(i iamiface.IAMAPI, accounts chan<- data.Account, keys chan<- data.Key) userMap {
+func (a *AWSConnection) fetchAccounts(ctx context.Context, i iamiface.IAMAPI, accounts chan<- data.Account, keys chan<- data.Key) userMap {
 	usermap := make(userMap)
 
-	err := i.ListUsersPages(&iam.ListUsersInput{}, func(r *iam.ListUsersOutput, _ bool) bool {
+	err := i.ListUsersPagesWithContext(ctx, &iam.ListUsersInput{}, func(r *iam.ListUsersOutput, _ bool) bool {
 		for _, user := range r.Users {
 			usermap[aws.StringValue(user.UserName)] = user
 		}
@@ -198,10 +199,10 @@ func (a *AWSConnection) fetchAccounts(i iamiface.IAMAPI, accounts chan<- data.Ac
 	return usermap
 }
 
-func (a *AWSConnection) fetchInstances(e ec2iface.EC2API, region string, cAccounts chan<- data.Account, keymap map[string]data.ID) {
+func (a *AWSConnection) fetchInstances(ctx context.Context, e ec2iface.EC2API, region string, cAccounts chan<- data.Account, keymap map[string]data.ID) {
 	output.Debug(a, "fetching instances from", region)
 
-	err := e.DescribeInstancesPages(&ec2.DescribeInstancesInput{}, func(dio *ec2.DescribeInstancesOutput, _ bool) bool {
+	err := e.DescribeInstancesPagesWithContext(ctx, &ec2.DescribeInstancesInput{}, func(dio *ec2.DescribeInstancesOutput, _ bool) bool {
 		output.Debug(a, region, "reservations:", len(dio.Reservations))
 		for _, res := range dio.Reservations {
 			output.Debug(a, region, "instances:", len(res.Instances))
@@ -227,11 +228,11 @@ func (a *AWSConnection) fetchInstances(e ec2iface.EC2API, region string, cAccoun
 	}
 }
 
-func (a *AWSConnection) fetchKeyPairs(e ec2iface.EC2API, arn data.AWSAccountID, region string, cKeys chan<- data.Key, cAccounts chan<- data.Account) (keymap map[string]data.ID) {
+func (a *AWSConnection) fetchKeyPairs(ctx context.Context, e ec2iface.EC2API, arn data.AWSAccountID, region string, cKeys chan<- data.Key, cAccounts chan<- data.Account) (keymap map[string]data.ID) {
 	output.Debug(a, "fetching key pairs from", region)
 	keymap = make(map[string]data.ID)
 
-	if out, err := e.DescribeKeyPairs(&ec2.DescribeKeyPairsInput{}); err == nil {
+	if out, err := e.DescribeKeyPairsWithContext(ctx, &ec2.DescribeKeyPairsInput{}); err == nil {
 		bindings := make([]data.KeyBindingImpl, 0)
 		for _, p := range out.KeyPairs {
 			fp := aws.StringValue(p.KeyFingerprint)

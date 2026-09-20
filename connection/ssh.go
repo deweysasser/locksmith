@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -29,11 +30,11 @@ func (c *SSHHostConnection) String() string {
 	return "ssh://" + c.Connection
 }
 
-func (c *SSHHostConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (c *SSHHostConnection) Fetch(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	if c.Sudo {
-		return c.fetchSudo()
+		return c.fetchSudo(ctx)
 	} else {
-		return c.fetchNonSudo()
+		return c.fetchNonSudo(ctx)
 	}
 }
 
@@ -176,7 +177,7 @@ func buildAccountName(account remoteAccount, connection string) string {
 // 5 threads seems to be the optimum between connection overhead and command serilaization on a single threaded Ubuntu VM with ~30 users
 var ParallelSSHCount int = 5
 
-func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (c *SSHHostConnection) fetchSudo(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
@@ -209,6 +210,9 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 			} else {
 				defer ssh.Close()
 				for account := range systemAccounts {
+					if ctx.Err() != nil {
+						return
+					}
 					output.Debugf("Fetching account %s on thread %d\n", account, i)
 					accountName := buildAccountName(account, c.Connection)
 					output.Debug("Retrieving keys for", accountName)
@@ -223,12 +227,16 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 					output.Debug("Discovered", len(keys), "keys for account", accountName)
 					for _, k := range keys {
 						acct.AddBinding(k, data.AUTHORIZED_KEYS)
-						cKeys <- k
+						if !sendKey(ctx, cKeys, k) {
+							return
+						}
 					}
 					// Emitted even with no keys: an account whose
 					// authorized_keys is now empty still has to be reported, or
 					// the bindings recorded for it can never be cleared.
-					cAccounts <- acct
+					if !sendAccount(ctx, cAccounts, acct) {
+						return
+					}
 				}
 			}
 		}(i)
@@ -243,7 +251,7 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 	return cKeys, cAccounts
 }
 
-func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (c *SSHHostConnection) fetchNonSudo(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
@@ -276,13 +284,15 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 				//a.SetKeys(keys)
 				for _, k := range keys {
 					acct.AddBinding(k, data.AUTHORIZED_KEYS)
-					cKeys <- k
+					if !sendKey(ctx, cKeys, k) {
+						return
+					}
 				}
 
 				// Emitted even with no keys, for the same reason as the sudo
 				// path: an emptied authorized_keys must be able to clear the
 				// bindings recorded for the account.
-				cAccounts <- acct
+				sendAccount(ctx, cAccounts, acct)
 			}
 		}
 	}()
@@ -345,4 +355,29 @@ func parseAuthorizedKey(line string, t time.Time) data.Key {
 		return key
 	}
 	return nil
+}
+
+// sendKey and sendAccount deliver one item unless the run has been cancelled.
+//
+// A bare send on an unbuffered channel blocks until a consumer takes the value.
+// When a fetch is abandoned nobody is consuming, so every producer goroutine
+// would block there for the life of the process -- and an SSH fetch runs
+// ParallelSSHCount of them per host.  They report whether the caller should
+// keep going.
+func sendKey(ctx context.Context, ch chan<- data.Key, k data.Key) bool {
+	select {
+	case ch <- k:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func sendAccount(ctx context.Context, ch chan<- data.Account, a data.Account) bool {
+	select {
+	case ch <- a:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }

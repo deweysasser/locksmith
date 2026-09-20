@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
@@ -8,14 +9,19 @@ import (
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
-	"reflect"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 func CmdFetch(c *cli.Context) error {
 	outputLevel(c)
 	libWG := sync.WaitGroup{}
 	ml := lib.MainLibrary{Path: datadir(c)}
+
+	ctx, cancel := fetchContext(c)
+	defer cancel()
 
 	log := history.Open(datadir(c), "fetch")
 	defer log.Close()
@@ -37,7 +43,7 @@ func CmdFetch(c *cli.Context) error {
 		if filter(conn) {
 			output.Verbosef("Fetching from %s\n", conn)
 			connCount++
-			k, a := fetchFrom(conn)
+			k, a := fetchFrom(ctx, conn)
 			fKeys.Add(k)
 			fAccounts.Add(a)
 		}
@@ -52,14 +58,50 @@ func CmdFetch(c *cli.Context) error {
 	return nil
 }
 
-func fetchFrom(conn interface{}) (keys <-chan data.Key, accounts <-chan data.Account) {
-	switch conn.(type) {
-	case connection.Connection:
-		//fmt.Println("Fetching from ", conn)
-		return conn.(connection.Connection).Fetch()
-	default:
-		panic("Unknown connection type " + reflect.TypeOf(conn).Name())
+// fetchContext builds the context every connection fetches under.
+//
+// Two ways out: a deadline, so one unresponsive host cannot pin an entire
+// fleet run, and an interrupt, so Ctrl-C ends the fetch rather than killing
+// the process and orphaning its ssh children.
+func fetchContext(c *cli.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	if timeout := c.Duration("timeout"); timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
 	}
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		select {
+		case <-signals:
+			output.Warn("Interrupted; finishing with what has been found so far")
+			cancel()
+		case <-ctx.Done():
+		}
+		signal.Stop(signals)
+	}()
+
+	return ctx, cancel
+}
+
+func fetchFrom(ctx context.Context, conn interface{}) (keys <-chan data.Key, accounts <-chan data.Account) {
+	if c, ok := conn.(connection.Connection); ok {
+		return c.Fetch(ctx)
+	}
+
+	// Reachable whenever connections/ holds an object that deserializes to
+	// something that is not a Connection -- a hand-edited repository, or one
+	// written by a newer locksmith.  Report it and carry on rather than
+	// aborting a fleet-wide fetch.
+	output.Error("Not a connection, ignoring:", conn)
+
+	dead := make(chan data.Key)
+	close(dead)
+	deadAccounts := make(chan data.Account)
+	close(deadAccounts)
+	return dead, deadAccounts
 }
 
 // bindingSet collects an account's bindings for comparison. KeyBindingImpl is

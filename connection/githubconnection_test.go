@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -98,7 +99,7 @@ func ghtestQuiet(t *testing.T) {
 func ghtestCollect(t *testing.T, c *GitHubConnection) ([]data.Key, []data.Account) {
 	t.Helper()
 
-	keys, accounts := c.Fetch()
+	keys, accounts := c.Fetch(context.Background())
 
 	var gotKeys []data.Key
 	var gotAccounts []data.Account
@@ -308,7 +309,7 @@ func TestGitHubFetchNoSuchUser(t *testing.T) {
 		t.Errorf("got %d keys and %d accounts, want none of either", len(keys), len(accounts))
 	}
 
-	_, err := c.fetchKeyEntries()
+	_, err := c.fetchKeyEntries(context.Background())
 	if err == nil {
 		t.Fatal("fetchKeyEntries succeeded on a 404")
 	}
@@ -335,7 +336,7 @@ func TestGitHubFetchRateLimited(t *testing.T) {
 		},
 	})
 
-	_, err := c.fetchKeyEntries()
+	_, err := c.fetchKeyEntries(context.Background())
 	if err == nil {
 		t.Fatal("fetchKeyEntries succeeded on a rate-limited 403")
 	}
@@ -358,7 +359,7 @@ func TestGitHubFetchRateLimited(t *testing.T) {
 		headers: map[string]string{"X-RateLimit-Remaining": "59"},
 	})
 
-	_, err = c2.fetchKeyEntries()
+	_, err = c2.fetchKeyEntries(context.Background())
 	if err == nil {
 		t.Fatal("fetchKeyEntries succeeded on a plain 403")
 	}
@@ -379,7 +380,7 @@ func TestGitHubFetchServerError(t *testing.T) {
 		body:   "boom",
 	})
 
-	if _, err := c.fetchKeyEntries(); err == nil {
+	if _, err := c.fetchKeyEntries(context.Background()); err == nil {
 		t.Fatal("fetchKeyEntries succeeded on a 500")
 	} else if !strings.Contains(err.Error(), "500") {
 		t.Errorf("error %q does not report the status", err)
@@ -392,7 +393,7 @@ func TestGitHubFetchTransportError(t *testing.T) {
 
 	c, _ := ghtestConn("deweysasser", ghtestResponse{err: errors.New("dial tcp: no route to host")})
 
-	if _, err := c.fetchKeyEntries(); err == nil {
+	if _, err := c.fetchKeyEntries(context.Background()); err == nil {
 		t.Fatal("fetchKeyEntries succeeded when the transport failed")
 	} else if !strings.Contains(err.Error(), "no route to host") {
 		t.Errorf("error %q loses the underlying cause", err)
@@ -411,7 +412,7 @@ func TestGitHubFetchMalformedJSON(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			c, _ := ghtestConn("deweysasser", ghtestOK(body))
 
-			if entries, err := c.fetchKeyEntries(); err == nil {
+			if entries, err := c.fetchKeyEntries(context.Background()); err == nil {
 				t.Fatalf("fetchKeyEntries accepted %s body, returning %v", name, entries)
 			}
 
@@ -550,7 +551,7 @@ func TestGitHubUserIsEscapedIntoThePath(t *testing.T) {
 
 	c, client := ghtestConn("../../evil?x=1", ghtestOK("[]"))
 
-	if _, err := c.fetchKeyEntries(); err != nil {
+	if _, err := c.fetchKeyEntries(context.Background()); err != nil {
 		t.Fatalf("fetchKeyEntries: %v", err)
 	}
 

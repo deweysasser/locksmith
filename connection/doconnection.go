@@ -231,7 +231,7 @@ func doMergeBindings(a, b []data.KeyBindingImpl) []data.KeyBindingImpl {
 
 // Fetch surveys the account's SSH keys and droplets.  Everything it does is a
 // read; there is no write path to Digital Ocean anywhere in this file.
-func (d *DOConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Account) {
+func (d *DOConnection) Fetch(ctx context.Context) (keys <-chan data.Key, accounts <-chan data.Account) {
 	output.Debug("Fetching from digital ocean", d.Name)
 
 	cKeys := make(chan data.Key)
@@ -247,7 +247,7 @@ func (d *DOConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Accou
 			return
 		}
 
-		d.fetch(context.Background(), client.Account, client.Keys, client.Droplets, cKeys, cAccounts)
+		d.fetch(ctx, client.Account, client.Keys, client.Droplets, cKeys, cAccounts)
 	}()
 
 	return cKeys, cAccounts

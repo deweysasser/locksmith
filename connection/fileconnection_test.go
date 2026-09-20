@@ -1,11 +1,14 @@
 package connection
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/deweysasser/locksmith/data"
 )
@@ -116,7 +119,7 @@ func TestFileConnectionIdIsDerivedFromPath(t *testing.T) {
 
 // fetchAll drains both channels a connection returns.
 func fetchAll(c Connection) ([]data.Key, []data.Account) {
-	keyChan, acctChan := c.Fetch()
+	keyChan, acctChan := c.Fetch(context.Background())
 
 	var keys []data.Key
 	var accounts []data.Account
@@ -299,5 +302,83 @@ func TestFileConnectionReadsEveryKeyInAMultiKeyFile(t *testing.T) {
 			t.Errorf("key %q was fetched twice", k.Id())
 		}
 		seen[k.Id()] = true
+	}
+}
+
+// A cancelled fetch must stop and close its channels. Without this a producer
+// goroutine blocks forever on an unbuffered send that nobody will ever read,
+// and an abandoned fetch leaks one goroutine per file it was mid-way through.
+func TestFileConnectionStopsWhenCancelled(t *testing.T) {
+	dir := t.TempDir()
+
+	body, err := ioutil.ReadFile("../data/test-data/rsa.pub")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	for i := 0; i < 50; i++ {
+		name := filepath.Join(dir, fmt.Sprintf("key-%02d.pub", i))
+		if err := ioutil.WriteFile(name, body, 0600); err != nil {
+			t.Fatalf("writing %s: %v", name, err)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // already cancelled before we start
+
+	c := &FileConnection{Type: "FileConnection", Path: dir}
+	keyChan, acctChan := c.Fetch(ctx)
+
+	done := make(chan int)
+	go func() {
+		n := 0
+		for range keyChan {
+			n++
+		}
+		for range acctChan {
+		}
+		done <- n
+	}()
+
+	select {
+	case n := <-done:
+		if n != 0 {
+			t.Errorf("a cancelled fetch produced %d keys", n)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a cancelled fetch did not close its channels")
+	}
+}
+
+// Cancelling midway must not wedge: the channels still close, and whatever was
+// already found is still reported.
+func TestFileConnectionCancelledMidwayStillCloses(t *testing.T) {
+	dir := t.TempDir()
+
+	body, err := ioutil.ReadFile("../data/test-data/rsa.pub")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, "one.pub"), body, 0600); err != nil {
+		t.Fatalf("writing fixture: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	c := &FileConnection{Type: "FileConnection", Path: dir}
+	keyChan, acctChan := c.Fetch(ctx)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range keyChan {
+			cancel()
+		}
+		for range acctChan {
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelling midway left the fetch hanging")
 	}
 }

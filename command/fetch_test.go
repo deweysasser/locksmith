@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/deweysasser/locksmith/history"
 	"os"
@@ -175,7 +176,7 @@ func TestFetchFromDispatchesOnConnectionType(t *testing.T) {
 
 	conn := &connection.FileConnection{Type: "FileConnection", Path: "../data/test-data/rsa.pub"}
 
-	keyChan, acctChan := fetchFrom(conn)
+	keyChan, acctChan := fetchFrom(context.Background(), conn)
 
 	done := make(chan struct{})
 	go func() {
@@ -195,14 +196,22 @@ func TestFetchFromDispatchesOnConnectionType(t *testing.T) {
 	}
 }
 
+// A connections/ directory can hold an object that is not a Connection: a
+// hand-edited repository, a bad git merge, or one written by a newer locksmith.
+// That used to panic, taking down a fetch across the whole fleet over one bad
+// file. It is reported and skipped instead, and the caller still gets closed
+// channels so the fan-in completes.
 func TestFetchFromRejectsNonConnections(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("fetching from something that is not a connection should panic")
-		}
-	}()
+	silence(t)
 
-	fetchFrom(struct{ Name string }{"not a connection"})
+	keys, accounts := fetchFrom(context.Background(), struct{ Name string }{"not a connection"})
+
+	for range keys {
+		t.Error("a non-connection yielded a key")
+	}
+	for range accounts {
+		t.Error("a non-connection yielded an account")
+	}
 }
 
 // silence keeps the leveled logger quiet for the duration of a test.
