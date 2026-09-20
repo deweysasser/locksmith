@@ -1,0 +1,21 @@
+#!/bin/sh
+# Fake ssh client that executes nothing.  It records every command locksmith
+# sends to $FAKESSH_LOG, one per line, and reports success for each, so a test
+# can compare what Update actually ran against what Preview claimed it would.
+#
+# The banner-eating "true" that NewSshCmd sends first is not recorded: it is
+# part of the connection handshake, not part of the change.
+: "${FAKESSH_LOG:?FAKESSH_LOG must be set}"
+
+while IFS= read -r line; do
+	case "$line" in
+	"echo -----cmd bundary-----: \$?")
+		printf '%s: 0\n' '-----cmd bundary-----'
+		;;
+	true | exit)
+		;;
+	*)
+		printf '%s\n' "$line" >>"$FAKESSH_LOG"
+		;;
+	esac
+done

@@ -37,136 +37,217 @@ func (c *SSHHostConnection) Fetch(ctx context.Context) (keys <-chan data.Key, ac
 	}
 }
 
-func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
-	if sAcct, ok := account.(*data.SSHAccount); ok {
-		if c.Sudo {
-			if err := c.addKey("sudo", sAcct.Username, addBindings, keylib); err == nil {
-				return c.delKey("sudo", sAcct.Username, removeBindings, keylib)
-			} else {
-				return errors.New("Failed to add keys so aborting removal")
-			}
-		} else {
-			if err := c.addKey("", "", addBindings, keylib); err == nil {
-				return c.delKey("", "", removeBindings, keylib)
-			} else {
-				return errors.New("Failed to add keys so aborting removal")
-			}
-		}
-	} else {
-		return errors.New("Account is not SSHAccount")
+// target decides the sudo prefix and the home directory Update will act on.
+// Update and Preview both go through it so a dry run cannot describe a
+// different account, or a different privilege level, than the real thing.
+func (c *SSHHostConnection) target(account data.Account) (prefix string, path string, err error) {
+	sAcct, ok := account.(*data.SSHAccount)
+	if !ok {
+		return "", "", errors.New("Account is not SSHAccount")
 	}
+
+	if c.Sudo {
+		// Under sudo we act on a named user's home; otherwise we are already
+		// that user and "~" is theirs.
+		return "sudo", sAcct.Username, nil
+	}
+	return "", "", nil
 }
 
-func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
-	// Checked before connecting: the commonest plan is a pure revocation or a
-	// pure addition, and the other half of Update would otherwise pay a full
-	// handshake to do nothing.
+func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	prefix, path, err := c.target(account)
+	if err != nil {
+		return err
+	}
+
+	// Additions first, and the removal is abandoned if they failed: losing a
+	// key you meant to keep is worse than leaving one you meant to drop.
+	if err := c.addKey(prefix, path, addBindings, keylib); err != nil {
+		return errors.New("Failed to add keys so aborting removal")
+	}
+
+	return c.delKey(prefix, path, removeBindings, keylib)
+}
+
+// Preview reports the commands Update would run, in the order it would run
+// them.  It opens no connection and changes nothing.
+func (c *SSHHostConnection) Preview(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) ([]string, error) {
+	prefix, path, err := c.target(account)
+	if err != nil {
+		return nil, err
+	}
+
+	adds, err := addKeyCommands(prefix, path, addBindings, keylib)
+	if err != nil {
+		return nil, err
+	}
+
+	dels, err := delKeyCommands(prefix, path, removeBindings, keylib)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(adds, dels...), nil
+}
+
+// delKeyCommands builds the remote commands that would remove these bindings.
+//
+// Construction is separated from execution so that `apply --dry-run` can show
+// exactly what would run.  The preview is only worth anything if it is the same
+// string the real path executes, so delKey below runs precisely what this
+// returns -- there is no second formatter to drift out of step.
+func delKeyCommands(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) ([]string, error) {
 	if len(bindings) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	if err := checkPrefix(prefix); err != nil {
-		return err
+		return nil, err
 	}
 	// path lands after a "~", where it cannot be quoted without defeating
 	// tilde expansion, so it has to be vetted instead.
 	if err := checkRemoteName("username", path); err != nil {
-		return err
+		return nil, err
 	}
 
-	if cmd, err := NewSshCmd(c.Connection); err != nil {
-		return err
-	} else {
-		// Without this the ssh child is never reaped and its three pipes stay
-		// open for the life of the process; apply runs this once per account.
-		defer cmd.Close()
-		for _, add := range bindings {
-			if key, err := keylib.Fetch(add.KeyID); err == nil {
-				if sshKey, ok := key.(*data.SSHKey); ok {
-					if sshKey.PublicKey.Key == nil {
-						// Known only by fingerprint (the AWS and DO key-pair
-						// path).  We cannot match the line without the public
-						// material, and panicking here would abort apply
-						// half-way through a fleet.
-						return fmt.Errorf("key %s is known only by fingerprint; no public material to remove", add.KeyID)
-					}
-					text := base64.StdEncoding.EncodeToString(sshKey.PublicKey.Key.Marshal())
-					// base64 may contain '/', which would end a sed '/re/'
-					// address early, so select '|' as the address delimiter
-					// instead.  The rest of the base64 alphabet holds no BRE
-					// metacharacters and no shell single quote, so the key
-					// material is safe to interpolate as-is.
-					removeLine := fmt.Sprintf("%s sed -i -e '\\|%s|d' ~%s/.ssh/authorized_keys", prefix, text, path)
-					if _, err := cmd.Run(removeLine); err != nil {
-						return errors.New(fmt.Sprintf("Failed to run '%s': %s", removeLine, err))
-					}
-				} else {
-					return errors.New(fmt.Sprint("Key ", add.KeyID, " is not an SSH key"))
-				}
-			} else {
-				return errors.New(fmt.Sprint("Error looking up key ", add.KeyID))
-			}
+	commands := make([]string, 0, len(bindings))
+
+	for _, del := range bindings {
+		key, err := keylib.Fetch(del.KeyID)
+		if err != nil {
+			return nil, errors.New(fmt.Sprint("Error looking up key ", del.KeyID))
 		}
+
+		sshKey, ok := key.(*data.SSHKey)
+		if !ok {
+			return nil, errors.New(fmt.Sprint("Key ", del.KeyID, " is not an SSH key"))
+		}
+		if sshKey.PublicKey.Key == nil {
+			// Known only by fingerprint (the AWS and DO key-pair path).  We
+			// cannot match the line without the public material, and panicking
+			// here would abort apply half-way through a fleet.
+			return nil, fmt.Errorf("key %s is known only by fingerprint; no public material to remove", del.KeyID)
+		}
+
+		text := base64.StdEncoding.EncodeToString(sshKey.PublicKey.Key.Marshal())
+		// base64 may contain '/', which would end a sed '/re/' address early,
+		// so select '|' as the address delimiter instead.  The rest of the
+		// base64 alphabet holds no BRE metacharacters and no shell single
+		// quote, so the key material is safe to interpolate as-is.
+		commands = append(commands,
+			fmt.Sprintf("%s sed -i -e '\\|%s|d' ~%s/.ssh/authorized_keys", prefix, text, path))
 	}
-	return nil
+
+	return commands, nil
 }
 
-func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
-	if len(addBindings) == 0 {
+func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	commands, err := delKeyCommands(prefix, path, bindings, keylib)
+	if err != nil {
+		return err
+	}
+	// Checked before connecting: the commonest plan is a pure revocation or a
+	// pure addition, and the other half of Update would otherwise pay a full
+	// handshake to do nothing.
+	if len(commands) == 0 {
 		return nil
 	}
 
-	if err := checkPrefix(prefix); err != nil {
+	cmd, err := NewSshCmd(c.Connection)
+	if err != nil {
 		return err
 	}
-	if err := checkRemoteName("username", path); err != nil {
-		return err
-	}
+	// Without this the ssh child is never reaped and its three pipes stay open
+	// for the life of the process; apply runs this once per account.
+	defer cmd.Close()
 
-	if cmd, err := NewSshCmd(c.Connection); err != nil {
-		return err
-	} else {
-		defer cmd.Close()
-		for _, add := range addBindings {
-			if line, err := add.GetSshLine(keylib); err != nil {
-				return errors.New(fmt.Sprint("Error generating SSH line: ", err))
-			} else {
-				// The line ends with the key's comment, which is free text
-				// taken from a surveyed host or a third-party API -- squarely
-				// outside the trust boundary.  It must be escaped, not merely
-				// wrapped in quotes.
-				// grep before appending: `fetch` unions bindings and never
-				// drops one, so a rotation that has already been applied is
-				// re-planned on the next run.  With a bare `tee -a` that
-				// appends another copy of the same key every cycle, without
-				// bound.
-				// printf, not echo.  shellQuote makes the shell see one word,
-				// but `echo` is not a transparent sink: in dash, ash and zsh
-				// its builtin expands \n, \t and \\ *after* quote removal,
-				// so a key comment containing a literal backslash-n -- free
-				// text an unprivileged user wrote into their own
-				// authorized_keys on a surveyed host -- would append a second
-				// line, injecting a key of their choosing.  printf's format is
-				// a fixed literal and its operand is not escape-processed.
-				//
-				// grep on the base64 blob rather than the whole line, matching
-				// what delKey keys on: the blob is the key's identity, while
-				// the rendered line also carries a merged comment set that can
-				// change between runs and options that may already be present.
-				// A whole-line match fails open and re-appends the key.
-				blob, err := add.PublicKeyBlob(keylib)
-				if err != nil {
-					return fmt.Errorf("could not identify key %s: %w", add.KeyID, err)
-				}
-
-				addLine := fmt.Sprintf("%s grep -qF %s ~%s/.ssh/authorized_keys 2>/dev/null || printf '%%s\\n' %s | %s tee -a ~%s/.ssh/authorized_keys",
-					prefix, shellQuote(blob), path, shellQuote(line), prefix, path)
-				if _, err := cmd.Run(addLine); err != nil {
-					return fmt.Errorf("failed to run %q: %w", addLine, err)
-				}
-			}
+	for _, line := range commands {
+		if _, err := cmd.Run(line); err != nil {
+			return fmt.Errorf("failed to run %q: %w", line, err)
 		}
 	}
+
+	return nil
+}
+
+// addKeyCommands builds the remote commands that would add these bindings.
+// See delKeyCommands on why construction is separated from execution.
+func addKeyCommands(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) ([]string, error) {
+	if len(addBindings) == 0 {
+		return nil, nil
+	}
+
+	if err := checkPrefix(prefix); err != nil {
+		return nil, err
+	}
+	if err := checkRemoteName("username", path); err != nil {
+		return nil, err
+	}
+
+	commands := make([]string, 0, len(addBindings))
+
+	for _, add := range addBindings {
+		line, err := add.GetSshLine(keylib)
+		if err != nil {
+			return nil, errors.New(fmt.Sprint("Error generating SSH line: ", err))
+		}
+
+		// The line ends with the key's comment, which is free text taken from a
+		// surveyed host or a third-party API -- squarely outside the trust
+		// boundary.  It must be escaped, not merely wrapped in quotes.
+		//
+		// grep before appending: `fetch` unions bindings and never drops one,
+		// so a rotation that has already been applied is re-planned on the next
+		// run.  With a bare `tee -a` that appends another copy of the same key
+		// every cycle, without bound.
+		//
+		// printf, not echo.  shellQuote makes the shell see one word, but
+		// `echo` is not a transparent sink: in dash, ash and zsh its builtin
+		// expands \n, \t and \\ *after* quote removal, so a key comment
+		// containing a literal backslash-n -- free text an unprivileged user
+		// wrote into their own authorized_keys on a surveyed host -- would
+		// append a second line, injecting a key of their choosing.  printf's
+		// format is a fixed literal and its operand is not escape-processed.
+		//
+		// grep on the base64 blob rather than the whole line, matching what
+		// delKey keys on: the blob is the key's identity, while the rendered
+		// line also carries a merged comment set that can change between runs
+		// and options that may already be present.  A whole-line match fails
+		// open and re-appends the key.
+		blob, err := add.PublicKeyBlob(keylib)
+		if err != nil {
+			return nil, fmt.Errorf("could not identify key %s: %w", add.KeyID, err)
+		}
+
+		commands = append(commands, fmt.Sprintf(
+			"%s grep -qF %s ~%s/.ssh/authorized_keys 2>/dev/null || printf '%%s\\n' %s | %s tee -a ~%s/.ssh/authorized_keys",
+			prefix, shellQuote(blob), path, shellQuote(line), prefix, path))
+	}
+
+	return commands, nil
+}
+
+func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	commands, err := addKeyCommands(prefix, path, addBindings, keylib)
+	if err != nil {
+		return err
+	}
+	if len(commands) == 0 {
+		return nil
+	}
+
+	cmd, err := NewSshCmd(c.Connection)
+	if err != nil {
+		return err
+	}
+	defer cmd.Close()
+
+	for _, line := range commands {
+		if _, err := cmd.Run(line); err != nil {
+			return fmt.Errorf("failed to run %q: %w", line, err)
+		}
+	}
+
 	return nil
 }
 

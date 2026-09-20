@@ -3,8 +3,10 @@ package connection
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/deweysasser/locksmith/data"
 )
@@ -590,5 +592,143 @@ func TestFetchRecordsAuthorizedKeysOptionsOnTheBinding(t *testing.T) {
 	}
 	if withOpts != 1 || withoutOpts != 1 {
 		t.Errorf("got %d restricted and %d unrestricted, want 1 of each", withOpts, withoutOpts)
+	}
+}
+
+// --- apply --dry-run -------------------------------------------------------
+
+// sshtestUseRecorder points $LOCKSMITH_SSH at a fake that executes nothing and
+// records every command it is sent, so a test can compare what Update really
+// ran against what Preview said it would.
+func sshtestUseRecorder(t *testing.T) func() []string {
+	t.Helper()
+	sshtestRequireShell(t)
+
+	log := filepath.Join(t.TempDir(), "commands.log")
+	t.Setenv("LOCKSMITH_SSH", sshtestScript(t, "fakessh-record"))
+	t.Setenv("FAKESSH_LOG", log)
+
+	return func() []string {
+		b, err := os.ReadFile(log)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			t.Fatalf("reading recorded commands: %v", err)
+		}
+		return strings.Split(strings.TrimRight(string(b), "\n"), "\n")
+	}
+}
+
+// The property that makes a dry run worth anything: what it prints is what
+// would run. A preview built by a second formatter would drift from the real
+// one silently, and the first time you would notice is when a command you never
+// reviewed ran on a fleet.
+func TestPreviewIsExactlyWhatUpdateRuns(t *testing.T) {
+	sshtestQuiet(t)
+	recorded := sshtestUseRecorder(t)
+
+	const opts = `command="/usr/bin/rrsync -ro /srv",restrict`
+
+	oldKey := sshtestNewKey(t, authorizedKey+" backup@example.com")
+	newKey := sshtestNewKey(t, sshtestGenerateKeyLine(t, "backup-2026@example.com"))
+	lib := sshtestFetcher{oldKey.Id(): oldKey, newKey.Id(): newKey}
+
+	for _, sudo := range []bool{false, true} {
+		name := "no sudo"
+		if sudo {
+			name = "sudo"
+		}
+		t.Run(name, func(t *testing.T) {
+			recorded := sshtestUseRecorder(t)
+
+			c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: sudo}
+			acct := data.NewSSHAccount("deploy", "host.example.com", c.Id(), nil)
+
+			add := []data.KeyBindingImpl{{KeyID: newKey.Id(), Location: data.AUTHORIZED_KEYS, Options: opts}}
+			del := []data.KeyBindingImpl{{KeyID: oldKey.Id(), Location: data.AUTHORIZED_KEYS, Options: opts}}
+
+			preview, err := c.Preview(acct, add, del, lib)
+			if err != nil {
+				t.Fatalf("Preview: %v", err)
+			}
+			if len(preview) != 2 {
+				t.Fatalf("preview has %d commands, want 2: %v", len(preview), preview)
+			}
+
+			if err := c.Update(acct, add, del, lib); err != nil {
+				t.Fatalf("Update: %v", err)
+			}
+
+			got := recorded()
+			if !reflect.DeepEqual(got, preview) {
+				t.Errorf("the dry run lied about what would run.\npreview:\n  %s\nactually ran:\n  %s",
+					strings.Join(preview, "\n  "), strings.Join(got, "\n  "))
+			}
+		})
+	}
+
+	_ = recorded
+}
+
+// A dry run must not touch the network. If Preview opened a connection it would
+// fail on an unreachable host -- exactly the host you most want to inspect a
+// plan for before committing to it.
+func TestPreviewOpensNoConnection(t *testing.T) {
+	sshtestQuiet(t)
+	t.Setenv("LOCKSMITH_SSH", "/nonexistent/definitely-not-an-ssh-binary")
+
+	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
+	lib := sshtestFetcher{key.Id(): key}
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "unreachable.invalid"}
+	acct := data.NewSSHAccount("alice", "unreachable.invalid", c.Id(), nil)
+	binding := []data.KeyBindingImpl{{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}}
+
+	lines, err := c.Preview(acct, binding, nil, lib)
+	if err != nil {
+		t.Fatalf("Preview needed a connection: %v", err)
+	}
+	if len(lines) != 1 {
+		t.Errorf("got %d commands, want 1: %v", len(lines), lines)
+	}
+}
+
+// Preview must fail where Update would fail, and say why -- that is the point
+// of inspecting a plan rather than discovering it mid-fleet.
+func TestPreviewReportsWhatWouldBreak(t *testing.T) {
+	sshtestQuiet(t)
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com"}
+	acct := data.NewSSHAccount("alice", "host.example.com", c.Id(), nil)
+
+	missing := []data.KeyBindingImpl{{KeyID: "no-such-key", Location: data.AUTHORIZED_KEYS}}
+	if _, err := c.Preview(acct, missing, nil, sshtestFetcher{}); err == nil {
+		t.Error("Preview succeeded for a key that is not in the library")
+	}
+
+	// A key known only by fingerprint has no material to remove.
+	fp := data.NewSSHKeyFromFingerprint("do-key", time.Time{}, "SHA256:whatever")
+	lib := sshtestFetcher{fp.Id(): fp}
+	del := []data.KeyBindingImpl{{KeyID: fp.Id(), Location: data.AUTHORIZED_KEYS}}
+	if _, err := c.Preview(acct, nil, del, lib); err == nil {
+		t.Error("Preview succeeded for a key with no public material")
+	}
+}
+
+// Nothing to do is not the same as cannot be done.
+func TestPreviewOfAnEmptyChangeIsEmpty(t *testing.T) {
+	sshtestQuiet(t)
+	t.Setenv("LOCKSMITH_SSH", "/nonexistent/definitely-not-an-ssh-binary")
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com"}
+	acct := data.NewSSHAccount("alice", "host.example.com", c.Id(), nil)
+
+	lines, err := c.Preview(acct, nil, nil, sshtestFetcher{})
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	if len(lines) != 0 {
+		t.Errorf("got %v, want no commands", lines)
 	}
 }

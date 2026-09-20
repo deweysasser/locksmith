@@ -24,3 +24,18 @@ type Connection interface {
 type Changer interface {
 	Update(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) error
 }
+
+// Previewer renders what Update would do, without doing it and without opening
+// a connection.
+//
+// It returns the literal commands that would run on the remote host, in order.
+// That is the point: `apply --dry-run` is only worth anything if what it prints
+// is the same string the real path executes, so an implementation must build
+// its preview with the same code Update uses rather than a second formatter
+// that can drift out of step.
+//
+// A Changer that cannot describe itself this way is simply not a Previewer, and
+// `apply --dry-run` says so rather than implying there is nothing to do.
+type Previewer interface {
+	Preview(account data.Account, addBindings []data.KeyBindingImpl, removeBindings []data.KeyBindingImpl, keylib data.Fetcher) ([]string, error)
+}
