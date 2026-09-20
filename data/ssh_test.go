@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -272,5 +273,61 @@ func TestNewSSHKeyFromFingerprint(t *testing.T) {
 			assertStringsEquals(t, "id1", string(key2.Id()))
 			assertStringsEquals(t, "testing", key2.Names.StringArray()[0])
 		}
+	}
+}
+
+// The thing a user has in hand is usually the key material, not a fingerprint:
+// they copy a line out of authorized_keys and paste it. Neither form appears in
+// an identifier (those are fingerprints) nor in any rendered output (the blob
+// is 68 characters and the display truncates IDs at 22).
+func TestSSHKeySearchTermsCoverThePastedForms(t *testing.T) {
+	const line = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL2n+ycV8bJgb8k6ScLmYrWZ8KrB0lqfHGx3Hs6kGvXt tester@example.com"
+
+	key := NewKey(line, time.Now())
+	if key == nil {
+		t.Fatal("could not parse the test key")
+	}
+
+	sshKey, ok := key.(*SSHKey)
+	if !ok {
+		t.Fatalf("got %T, want *SSHKey", key)
+	}
+
+	fields := strings.Fields(line)
+	blob, keytype := fields[1], fields[0]
+
+	terms := sshKey.SearchTerms()
+
+	var sawBlob, sawLine bool
+	for _, term := range terms {
+		switch term {
+		case blob:
+			sawBlob = true
+		case keytype + " " + blob:
+			sawLine = true
+		}
+	}
+	if !sawBlob {
+		t.Errorf("the bare base64 blob is not searchable; terms = %v", terms)
+	}
+	if !sawLine {
+		t.Errorf(`the "type blob" form is not searchable; terms = %v`, terms)
+	}
+
+	// The blob must not have leaked into the identifiers, which key the library
+	// cache and name the file on disk.
+	for _, id := range sshKey.Identifiers() {
+		if strings.Contains(string(id), blob) {
+			t.Errorf("the key blob leaked into identifier %q", id)
+		}
+	}
+}
+
+// A key known only by fingerprint has no material to offer, and must not panic.
+func TestSSHKeySearchTermsOnAFingerprintOnlyKey(t *testing.T) {
+	key := NewSSHKeyFromFingerprint("do-key", time.Time{}, "SHA256:whatever")
+
+	if terms := key.SearchTerms(); len(terms) != 0 {
+		t.Errorf("SearchTerms = %v, want none for a key with no public material", terms)
 	}
 }
