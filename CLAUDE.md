@@ -44,9 +44,15 @@ The system pipelines data from **connections** → **fetch** → **library stora
 
 1. **Register every new serializable type in `lib/mainlib.go` `init()`** via `AddType(reflect.TypeOf(...))`. Deserialization reads the `Type` string field from the JSON and looks it up in `TypeMap`; a missing registration *panics* (`library.deserialize`). Every `data.*` and `connection.*` type persisted to disk needs an entry here, and every struct so persisted must include a `Type string` field whose value matches the registered name.
 
-2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit `accountLibrary.go` or `connectionLibrary.go` — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). **`changeLibrary.go` is the exception**: its rule is `test -f $@ && touch $@ || sed …`, which deliberately preserves the file once it exists, and it has diverged from what `sed` would produce (it handles both `data.Change` and `*data.Change`, which the key version has no need to). Edit it in place; regenerating it from scratch would undo that. The `connectionLibrary.go` rule additionally adds a `connection` import, in a position gofmt
-disagrees with — which is why every rule ends in `gofmt -w $@`. Keep that line on any rule you
-add, or regeneration will leave the tree unformatted.
+2. **The typed libraries are generics, not code generation.** `lib/typedlibrary.go`
+defines one `TypedLibrary[T]` over the generic `library`, and `KeyLibrary`,
+`AccountLibrary`, `ConnectionLibrary` and `ChangeLibrary` are aliases for
+instantiations of it. There is no `lib/Makefile` and no `go:generate`; the four
+`sed`-generated files are gone. The one thing the template could not express --
+that `data.Change` is a value type, so it arrives from disk as a pointer and
+from the cache as a value -- is now the `coercion[T]` argument each constructor
+supplies (`asInterface` for the interface element types, `asChange` for
+`data.Change`). Adding a library kind means one constructor, not a new file.
 
 3. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
 
