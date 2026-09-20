@@ -92,7 +92,7 @@ func TestPrintersSurviveAnEmptyRepository(t *testing.T) {
 
 	printConnections(ml.Connections(), AcceptAll)
 	printAccounts(ml.Accounts(), AcceptAll, ml)
-	printKeys(ml.Keys(), ml.Accounts(), map[data.ID][]data.ID{}, AcceptAll)
+	printKeys(ml.Keys(), ml.Accounts(), ml.Policies(), map[data.ID][]data.ID{}, AcceptAll)
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), AcceptAll)
 }
 

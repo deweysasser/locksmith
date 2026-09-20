@@ -55,11 +55,13 @@ type (
 	AccountLibrary    = TypedLibrary[data.Account]
 	ConnectionLibrary = TypedLibrary[connection.Connection]
 	ChangeLibrary     = TypedLibrary[data.Change]
+	PolicyLibrary     = TypedLibrary[data.KeyPolicy]
 
 	KeyPredicate        = Predicate[data.Key]
 	AccountPredicate    = Predicate[data.Account]
 	ConnectionPredicate = Predicate[connection.Connection]
 	ChangePredicate     = Predicate[data.Change]
+	PolicyPredicate     = Predicate[data.KeyPolicy]
 )
 
 // coercion turns whatever the underlying library produced into the element
@@ -86,6 +88,17 @@ func asChange(o interface{}) (data.Change, bool) {
 		return c, true
 	}
 	return data.Change{}, false
+}
+
+// asPolicy is the same, for data.KeyPolicy.
+func asPolicy(o interface{}) (data.KeyPolicy, bool) {
+	switch p := o.(type) {
+	case *data.KeyPolicy:
+		return *p, true
+	case data.KeyPolicy:
+		return p, true
+	}
+	return data.KeyPolicy{}, false
 }
 
 type typedLibrary[T any] struct {
@@ -117,6 +130,10 @@ func NewConnectionLibrary(path string) ConnectionLibrary {
 
 func NewChangeLibrary(path string) ChangeLibrary {
 	return newTypedLibrary(path, "Change", asChange)
+}
+
+func NewPolicyLibrary(path string) PolicyLibrary {
+	return newTypedLibrary(path, "KeyPolicy", asPolicy)
 }
 
 func (l *typedLibrary[T]) Store(object T) error {

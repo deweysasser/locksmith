@@ -107,7 +107,7 @@ func TestGetKeyIdsSkipsDeprecatedKeys(t *testing.T) {
 
 	l := keyLibraryWith(t, live, dead)
 
-	got := getKeyIds(l, keyFilter(buildFilter([]string{"prod"})))
+	got := getKeyIds(l, lib.NewPolicyLibrary(t.TempDir()), keyFilter(buildFilter([]string{"prod"})))
 
 	if len(got) != 1 || got[0] != "AKIALIVE" {
 		t.Errorf("got %v, want only the live key", got)
@@ -119,7 +119,7 @@ func TestGetKeyIdsWithNoMatches(t *testing.T) {
 
 	l := keyLibraryWith(t, data.NewAwsKey("AKIALIVE", time.Time{}, true, "prod"))
 
-	if got := getKeyIds(l, keyFilter(buildFilter([]string{"nothing"}))); len(got) != 0 {
+	if got := getKeyIds(l, lib.NewPolicyLibrary(t.TempDir()), keyFilter(buildFilter([]string{"nothing"}))); len(got) != 0 {
 		t.Errorf("got %v, want nothing", got)
 	}
 }

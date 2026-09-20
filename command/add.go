@@ -26,7 +26,7 @@ func CmdAdd(c *cli.Context) error {
 
 	skeyFilter := []string{c.String("key")}
 	output.Debug("key filter is", skeyFilter)
-	keys := getKeyIds(ml.Keys(), keyFilter(buildFilter(skeyFilter)))
+	keys := getKeyIds(ml.Keys(), ml.Policies(), keyFilter(buildFilter(skeyFilter)))
 
 	output.Debug("Keys to add:", keys)
 
@@ -42,6 +42,7 @@ func CmdAdd(c *cli.Context) error {
 		}
 
 		changes.Store(data.Change{
+			Manual:  true,
 			Type:    "Change",
 			Account: account.Id(),
 			Add:     bindings,
@@ -52,12 +53,14 @@ func CmdAdd(c *cli.Context) error {
 	return nil
 }
 
-func getKeyIds(library lib.KeyLibrary, predicate lib.KeyPredicate) []data.ID {
+func getKeyIds(library lib.KeyLibrary, policies lib.PolicyLibrary, predicate lib.KeyPredicate) []data.ID {
 	keys := make([]data.ID, 0)
 
 	for k := range library.ListMatching(predicate) {
 		output.Debug("Checking key", k)
-		if !k.IsDeprecated() {
+		// Never hand out a key that is on its way off systems: binding it
+		// somewhere new would have the next plan immediately remove it again.
+		if _, doomed := effectivePolicy(policies, k); !doomed {
 			keys = append(keys, k.Id())
 		}
 	}

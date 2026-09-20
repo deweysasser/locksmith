@@ -37,7 +37,7 @@ The system pipelines data from **connections** → **fetch** → **library stora
 - **`command/`** — one file per subcommand (`fetch.go`, `list.go`, `connect.go`, `apply.go`, …). Shared helpers live in `command/common.go`: `datadir()` resolves the repo path (flag → `$LOCKSMITH_REPO` → `$HOME/.x-locksmith` → `$USERPROFILE/locksmith`), `buildFilterFromContext()` produces the substring-match filter used by every command, and `outputLevel()` maps flags to `output.Level`.
 - **`connection/`** — five connection kinds implement `connection.Connection` (`Fetch(ctx) (<-chan data.Key, <-chan data.Account)`). The context is the only way out of a fetch: every implementation talks to something it does not control, and an implementation must both stop starting work when `ctx.Err() != nil` and guard every channel send with a `select` on `ctx.Done()`, or an abandoned fetch leaks a goroutine per producer. Both channels close whether the fetch completed or was cancelled: `FileConnection`, `SSHHostConnection`, `AWSConnection`, `GitHubConnection`, `DOConnection`. Only SSH and (partially) AWS implement `connection.Changer`; GitHub and Digital Ocean are **deliberately read-only** — GitHub permits key writes only against the authenticated user's own account, never another user's, and the Digital Ocean work was done under an explicit read-only constraint. `apply` skips a non-`Changer` connection with a warning. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
 - **`data/`** — domain types and the `Key`, `Account`, `Ider`, `Identiferser`, `Fetcher` interfaces. `FanInKey`/`FanInAccount` multiplex per-connection channels into a single stream for ingestion. `KeyBindingImpl` ties a key to an account at a `BindingLocation` (`AUTHORIZED_KEYS`, `CREDENTIALS`, `INSTANCE ROOT`, `FILE`).
-- **`lib/`** — persistence. `library` (lowercase, `library.go`) is the generic store: one JSON file per object under `Path`, in-memory cache keyed by every ID returned by `Identifiers()`, type-dispatched deserialization via a `Type` field in the JSON and a global `TypeMap`. `MainLibrary` (`mainlib.go`) composes four typed wrappers — `KeyLibrary`, `AccountLibrary`, `ConnectionLibrary`, `ChangeLibrary` — stored under `keys/`, `accounts/`, `connections/`, `changes/` subdirs of the repo path.
+- **`lib/`** — persistence. `library` (lowercase, `library.go`) is the generic store: one JSON file per object under `Path`, in-memory cache keyed by every ID returned by `Identifiers()`, type-dispatched deserialization via a `Type` field in the JSON and a global `TypeMap`. `MainLibrary` (`mainlib.go`) composes four typed wrappers — `KeyLibrary`, `AccountLibrary`, `ConnectionLibrary`, `ChangeLibrary`, `PolicyLibrary` — stored under `keys/`, `accounts/`, `connections/`, `changes/`, `policies/` subdirs of the repo path.
 - **`output/`** — leveled logger (`Error`/`Warn`/`Normal`/`Verbose`/`Debug`). Prefer these helpers over `fmt.Print*` so level gating works. `main.go` exits 1 when `output.ErrorCount()` is non-zero — but see *Known rough edges*: that counter does not currently count what its name says.
 
 ### Non-obvious invariants
@@ -110,14 +110,28 @@ The interesting flow spans four files and is not obvious from any one of them.
    collides: the `switch` in `NewConnection()` and the `AddType` block in `lib/mainlib.go`.
 2. **`fetch`** — runs every stored connection's `Fetch()`, fans the key and account channels in
    (`data.FanInKey`/`FanInAccount`), and merges results into the key and account libraries.
-3. **`expire`** (`command/expire.go`) — sets `Deprecated` on every key matching the filter. This
-   only marks the key in the local repo; it touches no remote system. A key may also carry a
-   `Replacement` ID (see `keyImpl` in `data/keys.go`) meaning "wherever this key is bound, bind that
-   one instead".
-4. **`plan`** (`command/plan.go`) — `calculateChanges()` walks every account's bindings, looks each
-   bound key up in the key library, and materializes a `data.Change` per account: deprecated keys
-   become `Remove` entries, keys with a `Replacement` become `Add` entries. Changes are persisted to
-   `changes/`, so `plan` is cumulative across runs, not a fresh computation each time.
+3. **`expire`** / **`unexpire`** (`command/expire.go`) — write and delete a
+   `data.KeyPolicy` in `policies/`, keyed by the key it concerns:
+   `{KeyID, Disposition: remove|replace, Replacement}`. This only records intent in the
+   local repo; it touches no remote system.
+
+   **Intent is deliberately not stored on the key record.** A key record is an
+   *observation*, re-merged from reality on every fetch; intent is not. Storing
+   it there (as `keyImpl.Deprecated`) meant it could not be revoked — `Merge`
+   only ever ORed the flag on and no command cleared it — and it survived every
+   re-fetch whether or not it still made sense. `effectivePolicy` in
+   `command/plan.go` still falls back to that flag so an existing repository keeps
+   working, and `expire`/`unexpire` clear it when they touch a key, so a
+   repository converges on policy-only as it is used.
+4. **`plan`** (`command/plan.go`) — `calculateChanges()` is a **diff of policy against
+   inventory**, not an accumulator. It walks each account's bindings, asks
+   `effectivePolicy` what should happen to each bound key, and writes one
+   `data.Change` per account — *deleting* the stored change when nothing is
+   warranted any more. It recomputes from scratch every run.
+
+   A `Change` carries `Manual` when `add` wrote it. Plan does not own those and
+   leaves them alone; both kinds are keyed by account, so without that flag
+   re-planning silently discarded what `add` had just written.
 5. **`apply`** (`command/apply.go`) — for each stored change, resolves account →
    `account.ConnectionID()` → connection, type-asserts it to `connection.Changer`, and calls
    `Update()`. A connection that isn't a `Changer` is skipped with a warning. The change is deleted

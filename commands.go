@@ -82,8 +82,18 @@ var Commands = []cli.Command{
 	},
 	{
 		Name:   "expire",
-		Usage:  "Expire the matching keys",
+		Usage:  "Mark the matching keys to be removed from every system",
 		Action: command.CmdExpire,
+		Flags: append(outputFlags,
+			cli.StringFlag{
+				Name:  "replace-with, r",
+				Usage: "replace the matching keys with this one, rather than only removing them",
+			}),
+	},
+	{
+		Name:   "unexpire",
+		Usage:  "Undo `expire` for the matching keys",
+		Action: command.CmdUnexpire,
 		Flags:  outputFlags,
 	},
 	{

@@ -4,6 +4,13 @@ type Change struct {
 	Type        string
 	Account     ID
 	Add, Remove []KeyBindingImpl
+
+	// Manual marks a change the operator asked for directly, via `add`, rather
+	// than one `plan` derived from policy.  Changes are keyed by account, so
+	// both kinds land in the same file; without this, re-planning silently
+	// discarded whatever `add` had just written -- and `plan` is exactly the
+	// command someone runs next to inspect what they asked for.
+	Manual bool `json:",omitempty"`
 }
 
 // Id is deliberately on the value receiver: changes are stored and listed by
