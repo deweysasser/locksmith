@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"sort"
 	"strings"
 	"time"
 )
@@ -232,10 +233,17 @@ func mergeBindings(b1 []KeyBindingImpl, b2 []KeyBindingImpl) []KeyBindingImpl {
 		s.Add(toJson(&k))
 	}
 
-	var result []KeyBindingImpl
+	// Sort the encoded bindings so that merging the same set twice yields the
+	// same order.  Accounts are re-merged and rewritten on every fetch, and the
+	// repository is meant to be kept in git, so an unstable order would churn
+	// the stored JSON for no reason.
+	encoded := s.StringArray()
+	sort.Strings(encoded)
 
-	for s := range s.Values() {
-		result = append(result, fromJson(s))
+	result := make([]KeyBindingImpl, 0, len(encoded))
+
+	for _, e := range encoded {
+		result = append(result, fromJson(e))
 	}
 
 	return result

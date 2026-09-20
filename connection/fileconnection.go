@@ -99,9 +99,10 @@ func fetchFile(path string) chan data.Key {
 }
 
 func basename(path string) string {
-	if i := strings.LastIndex(path, "/"); i > 0 {
-		i++
-		return path[i:]
+	// >= 0, not > 0: a path at the filesystem root ("/rsa.pub") has its
+	// separator at index 0 and still has a name of its own.
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[i+1:]
 	} else {
 		return path
 	}

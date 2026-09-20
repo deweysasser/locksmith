@@ -53,14 +53,20 @@ func (l *changeLibrary) Id(object data.Change) data.ID {
 	return data.ID(l.Library.Id(object))
 }
 func (l *changeLibrary) Fetch(id data.ID) (data.Change, error) {
-	if o, err := l.Library.Fetch(string(id)); err == nil {
-		if k, ok := o.(data.Change); ok {
-			return k, nil
-		} else {
-			return data.Change{}, errors.New(fmt.Sprint("ID ", id, " was not a Change object"))
-		}
-	} else {
+	o, err := l.Library.Fetch(string(id))
+	if err != nil {
 		return data.Change{}, err
+	}
+
+	// Objects read back off disk arrive as pointers (reflect.New), while ones
+	// still in the cache from this run are values.
+	switch k := o.(type) {
+	case *data.Change:
+		return *k, nil
+	case data.Change:
+		return k, nil
+	default:
+		return data.Change{}, errors.New(fmt.Sprint("ID ", id, " was not a Change object"))
 	}
 }
 func (l *changeLibrary) Delete(id data.ID) error {

@@ -63,8 +63,13 @@ func ParseAWSCredentials(bytes []byte, keys chan Key) {
 	config := parseFile(string(bytes))
 
 	for name, fields := range config {
+		id, ok := fields["aws_access_key_id"]
+		if !ok || id == "" {
+			output.Debug("Skipping profile with no access key id:", name)
+			continue
+		}
 		output.Debug("Reading key", name)
-		key := NewAwsKey(fields["aws_access_key_id"], time.Time{}, true, name)
+		key := NewAwsKey(id, time.Time{}, true, name)
 		keys <- key
 	}
 }
@@ -83,12 +88,11 @@ func parseFile(input string) map[string]map[string]string {
 		if parts != nil {
 			current = make(map[string]string)
 			all[parts[0][1]] = current
-		} else {
+		} else if current != nil {
 			fieldParts := reField.FindAllStringSubmatch(line, -1)
 			if fieldParts != nil {
 				current[fieldParts[0][1]] = fieldParts[0][2]
 			}
-
 		}
 	}
 
