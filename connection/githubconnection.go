@@ -131,6 +131,7 @@ func (c *GitHubConnection) fetch(ctx context.Context, keys chan<- data.Key, acco
 	now := time.Now()
 
 	bindings := make([]data.KeyBindingImpl, 0, len(entries))
+	complete := true
 
 	for _, entry := range entries {
 		name := c.keyName(entry)
@@ -138,6 +139,10 @@ func (c *GitHubConnection) fetch(ctx context.Context, keys chan<- data.Key, acco
 		key := data.NewKey(entry.Key, now, name)
 		if key == nil {
 			output.Warn(c.String()+":", "could not parse key", name)
+			// We saw a key we could not name, so our binding list is not the
+			// whole picture.  Claiming authority on it would have the merge
+			// delete recorded bindings that are genuinely still published.
+			complete = false
 			continue
 		}
 
@@ -153,8 +158,11 @@ func (c *GitHubConnection) fetch(ctx context.Context, keys chan<- data.Key, acco
 
 	account := data.NewSSHAccount(c.User, c.User+"@github.com", c.Id(), bindings)
 	// The endpoint returns the user's complete published key set, so a key
-	// recorded here and no longer listed has genuinely been removed.
-	account.MarkObserved(data.AUTHORIZED_KEYS)
+	// recorded here and no longer listed has genuinely been removed -- but only
+	// if we understood every entry it returned.
+	if complete {
+		account.MarkObserved(data.AUTHORIZED_KEYS)
+	}
 	accounts <- account
 }
 

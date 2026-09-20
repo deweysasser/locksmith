@@ -24,6 +24,7 @@ type Key interface {
 	Identifiers() []ID
 	GetNames() StringSet
 	IsDeprecated() bool
+	Unexpire()
 	Expire()
 	ReplacementID() ID
 	Merge(Key)
@@ -92,6 +93,16 @@ func (key *keyImpl) Expire() {
 
 func (key *keyImpl) IsDeprecated() bool {
 	return key.Deprecated
+}
+
+// Unexpire clears the legacy Deprecated flag.
+//
+// Intent now lives in a data.KeyPolicy rather than on the key record, but
+// repositories written by an older locksmith carry the flag here, and it has to
+// be clearable or `unexpire` could not undo what `expire` used to do.
+func (key *keyImpl) Unexpire() {
+	key.Deprecated = false
+	key.Replacement = ""
 }
 
 func (key *keyImpl) Merge(k *keyImpl) {

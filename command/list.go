@@ -28,16 +28,24 @@ func CmdList(c *cli.Context) error {
 	filter := buildFilterFromContext(c)
 
 	printConnections(ml.Connections(), filter)
-	printAccounts(ml.Accounts(), filter, ml)
-	printKeys(ml.Keys(), ml.Accounts(), keyToAccounts, filter)
+	printAccounts(ml.Accounts(), filter, &ml)
+	printKeys(ml.Keys(), ml.Accounts(), ml.Policies(), keyToAccounts, filter)
 	showPendingChanges(ml.Changes(), ml.Keys(), ml.Accounts(), filter)
 
 	return nil
 }
 
-func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, keyToAccounts map[data.ID][]data.ID, filter Filter) {
+func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, policies lib.PolicyLibrary, keyToAccounts map[data.ID][]data.ID, filter Filter) {
 	for i := range keys.List() {
 		s := keyString(i, "")
+
+		// Intent lives in the policy library now, so the key record alone no
+		// longer says whether something is going to happen to it.  Appended
+		// before filtering, so `locksmith list remove` finds exactly the keys
+		// on their way out.
+		if p, found := effectivePolicy(policies, i); found {
+			s = fmt.Sprintf("%s [%s]", s, p.Disposition)
+		}
 		if filter(s) {
 			output.Normal(s)
 			if output.IsLevel(output.VerboseLevel) {
@@ -59,7 +67,7 @@ func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, keyToAccounts m
 	}
 }
 
-func printAccounts(accounts lib.AccountLibrary, filter Filter, ml lib.MainLibrary) {
+func printAccounts(accounts lib.AccountLibrary, filter Filter, ml *lib.MainLibrary) {
 	for i := range accounts.List() {
 		s := accountString(i, "")
 		if filter(s) {

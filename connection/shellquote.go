@@ -37,6 +37,11 @@ func shellQuote(s string) string {
 // costs them a shell.
 var remoteName = regexp.MustCompile(`^[A-Za-z0-9._][A-Za-z0-9._-]*$`)
 
+// dotsOnly matches the names remoteName would otherwise admit but must not: the
+// shell does not expand "~." or "~..", so they survive as relative paths and
+// retarget the write at the login user's own home, or its parent.
+var dotsOnly = regexp.MustCompile(`^\.+$`)
+
 // checkRemoteName reports whether name is safe to interpolate unquoted.  An
 // empty name is allowed, because the non-sudo code path uses "" to mean "the
 // account we logged in as" and builds `~/.ssh/...`.
@@ -44,7 +49,7 @@ func checkRemoteName(what, name string) error {
 	if name == "" {
 		return nil
 	}
-	if !remoteName.MatchString(name) {
+	if !remoteName.MatchString(name) || dotsOnly.MatchString(name) {
 		return fmt.Errorf("refusing to use %s %q in a remote command: it is not a plain name", what, name)
 	}
 	return nil

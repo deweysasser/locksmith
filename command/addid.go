@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
@@ -39,28 +40,41 @@ func CmdAddId(c *cli.Context) error {
 	return nil
 }
 
-func findKey(library lib.KeyLibrary, filter Filter) (*data.SSHKey, error) {
+// findOneKey resolves a filter to exactly one key, of any kind.
+//
+// Refusing an ambiguous match is the point: every caller is about to act on the
+// single key the operator meant, and guessing which of several they had in mind
+// is worse than making them narrow the filter.
+func findOneKey(library lib.KeyLibrary, filter Filter) (data.Key, error) {
 	var keys []data.Key
 
-	for k := range library.List() {
-		if filter(k) {
-			output.Debug("Found matching key ", k)
-			keys = append(keys, k.(data.Key))
-		}
+	for k := range library.ListMatching(keyFilter(filter)) {
+		output.Debug("Found matching key ", k)
+		keys = append(keys, k)
 	}
 
-	switch {
-	case len(keys) > 1:
-		return nil, errors.New("Only a single key result permitted")
-	case len(keys) == 1:
-		k0 := keys[0]
-		if sshKey, ok := k0.(*data.SSHKey); ok {
-			return sshKey, nil
-		} else {
-			return nil, errors.New("Can only add extra IDs to SSHKey")
-		}
-	case len(keys) == 0:
+	switch len(keys) {
+	case 0:
 		return nil, errors.New("No keys found")
+	case 1:
+		return keys[0], nil
+	default:
+		return nil, fmt.Errorf("only a single key result permitted; %d matched", len(keys))
 	}
-	return nil, errors.New("Internal error")
+}
+
+// findKey is findOneKey narrowed to an SSH key, which is all `add-id` can work
+// with: extra identifiers exist to correlate AWS key-pair fingerprints with an
+// SSH key locksmith already holds.
+func findKey(library lib.KeyLibrary, filter Filter) (*data.SSHKey, error) {
+	k, err := findOneKey(library, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	sshKey, ok := k.(*data.SSHKey)
+	if !ok {
+		return nil, errors.New("Can only add extra IDs to SSHKey")
+	}
+	return sshKey, nil
 }

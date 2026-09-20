@@ -13,6 +13,7 @@ type planFixture struct {
 	accounts lib.AccountLibrary
 	keys     lib.KeyLibrary
 	changes  lib.ChangeLibrary
+	policies lib.PolicyLibrary
 }
 
 func newPlanFixture(t *testing.T) *planFixture {
@@ -22,6 +23,7 @@ func newPlanFixture(t *testing.T) *planFixture {
 		accounts: ml.Accounts(),
 		keys:     ml.Keys(),
 		changes:  ml.Changes(),
+		policies: ml.Policies(),
 	}
 }
 
@@ -61,7 +63,7 @@ func TestCalculateChangesLeavesHealthyKeysAlone(t *testing.T) {
 	key := f.storeKey(t, data.NewAwsKey("AKIALIVE", time.Time{}, true, "prod"))
 	f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo(key.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	if got := f.plannedChanges(t); len(got) != 0 {
 		t.Errorf("planned %d changes for a healthy account, want none: %v", len(got), got)
@@ -77,7 +79,7 @@ func TestCalculateChangesRemovesDeprecatedKeys(t *testing.T) {
 
 	acct := f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo(key.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {
@@ -105,7 +107,7 @@ func TestCalculateChangesAddsReplacementKeys(t *testing.T) {
 
 	f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo(old.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {
@@ -130,7 +132,7 @@ func TestCalculateChangesRotatesAKey(t *testing.T) {
 
 	f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo(old.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {
@@ -157,7 +159,7 @@ func TestCalculateChangesRespectsTheFilter(t *testing.T) {
 	f.storeAccount(t, data.NewSSHAccount("root", "wanted.example.com", "conn1", bindingTo(key.Id())))
 	f.storeAccount(t, data.NewSSHAccount("root", "ignored.example.com", "conn1", bindingTo(key.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, buildFilter([]string{"wanted.example.com"}))
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, buildFilter([]string{"wanted.example.com"}))
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {
@@ -175,7 +177,7 @@ func TestCalculateChangesSkipsBindingsWithNoKey(t *testing.T) {
 
 	f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo("vanished-key")))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	if got := f.plannedChanges(t); len(got) != 0 {
 		t.Errorf("planned %d changes for a dangling binding, want none", len(got))
@@ -185,7 +187,7 @@ func TestCalculateChangesSkipsBindingsWithNoKey(t *testing.T) {
 func TestCalculateChangesWithNoAccounts(t *testing.T) {
 	f := newPlanFixture(t)
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	if got := f.plannedChanges(t); len(got) != 0 {
 		t.Errorf("planned %d changes against an empty repository, want none", len(got))
@@ -201,8 +203,8 @@ func TestCalculateChangesIsIdempotent(t *testing.T) {
 	f.storeKey(t, key)
 	f.storeAccount(t, data.NewSSHAccount("root", "host.example.com", "conn1", bindingTo(key.Id())))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	if got := f.plannedChanges(t); len(got) != 1 {
 		t.Errorf("planning twice produced %d changes, want 1", len(got))
@@ -221,7 +223,7 @@ func TestCalculateChangesOneChangePerAccount(t *testing.T) {
 		f.storeAccount(t, data.NewSSHAccount("root", host, "conn1", bindingTo(key.Id())))
 	}
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 3 {
@@ -253,7 +255,7 @@ func TestCalculateChangesGroupsBindingsPerAccount(t *testing.T) {
 		{KeyID: second.Id(), Location: data.AUTHORIZED_KEYS},
 	}))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {
@@ -304,12 +306,12 @@ func TestCalculateChangesReplacesAStalePlan(t *testing.T) {
 		{KeyID: second.Id(), Location: data.AUTHORIZED_KEYS},
 	}))
 
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	// The operator expires the second key and re-plans.
 	second.Expire()
 	f.storeKey(t, second)
-	calculateChanges(f.accounts, f.keys, f.changes, AcceptAll)
+	calculateChanges(f.accounts, f.keys, f.changes, f.policies, AcceptAll)
 
 	got := f.plannedChanges(t)
 	if len(got) != 1 {

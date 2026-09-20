@@ -19,8 +19,8 @@ updates:
         applies-to: version-updates
         patterns:
           - "*"
-      # Security fixes travel together too. There are currently 13 open alerts,
-      # and 13 separate pull requests would help nobody.
+      # Security fixes travel together too, rather than one pull request per
+      # advisory.
       go-security:
         applies-to: security-updates
         patterns:

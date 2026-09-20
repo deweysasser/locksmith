@@ -2,6 +2,7 @@ package data
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -85,7 +86,7 @@ func TestAddBinding(t *testing.T) {
 	a := NewSSHAccount("root", "host", "conn1", nil)
 	key := NewAwsKey("AKIAEXAMPLE", time.Time{}, true, "prod")
 
-	a.AddBinding(key, AUTHORIZED_KEYS)
+	a.AddBinding(key, AUTHORIZED_KEYS, "")
 
 	got := collectBindings(a)
 	if len(got) != 1 {
@@ -322,4 +323,174 @@ func TestAWSInstanceAccountMergeTakesNewDNS(t *testing.T) {
 	if old.PublicDNS != "new.example.com" {
 		t.Errorf("PublicDNS = %q, want the freshly fetched name", old.PublicDNS)
 	}
+}
+
+// --- observation authority -------------------------------------------------
+//
+// mergeBindings with a non-nil authority list is the only code in the tree that
+// *deletes* recorded inventory. Everything else accumulates. The rule it
+// implements: a connection may drop bindings only at locations it enumerated in
+// full, and claiming a location it merely sampled silently destroys real
+// records. These tests pin both halves -- that a claim does drop, and that it
+// drops nothing outside itself.
+
+func mergeTestBinding(key string, loc BindingLocation) KeyBindingImpl {
+	return KeyBindingImpl{KeyID: ID(key), Location: loc}
+}
+
+func mergeTestKeyIDs(bindings []KeyBindingImpl) []string {
+	out := make([]string, 0, len(bindings))
+	for _, b := range bindings {
+		out = append(out, string(b.KeyID)+"@"+string(b.Location))
+	}
+	sort.Strings(out)
+	return out
+}
+
+func assertMerged(t *testing.T, got []KeyBindingImpl, want ...string) {
+	t.Helper()
+	sort.Strings(want)
+	if g := mergeTestKeyIDs(got); !reflect.DeepEqual(g, want) {
+		t.Errorf("merged bindings = %v, want %v", g, want)
+	}
+}
+
+// The point of the mechanism: a key taken off a host stops being recorded there.
+func TestMergeBindingsDropsAnUnseenBindingAtAClaimedLocation(t *testing.T) {
+	existing := []KeyBindingImpl{
+		mergeTestBinding("gone", AUTHORIZED_KEYS),
+		mergeTestBinding("still-there", AUTHORIZED_KEYS),
+	}
+	observed := []KeyBindingImpl{mergeTestBinding("still-there", AUTHORIZED_KEYS)}
+
+	got := mergeBindings(existing, observed, []BindingLocation{AUTHORIZED_KEYS})
+
+	assertMerged(t, got, "still-there@AUTHORIZED_KEYS")
+}
+
+// The counterweight, and the more dangerous direction: one account legitimately
+// carries bindings from several sources. An SSH fetch that enumerated
+// authorized_keys knows nothing about AWS instance credentials, and must not
+// delete them.
+func TestMergeBindingsKeepsBindingsAtUnclaimedLocations(t *testing.T) {
+	existing := []KeyBindingImpl{
+		mergeTestBinding("ssh-key", AUTHORIZED_KEYS),
+		mergeTestBinding("aws-key", AWS_CREDENTIALS),
+		mergeTestBinding("instance-key", INSTANCE_ROOT_CREDENTIALS),
+	}
+	// An SSH fetch: authorized_keys is now empty, and it saw nothing else.
+	got := mergeBindings(existing, nil, []BindingLocation{AUTHORIZED_KEYS})
+
+	assertMerged(t, got, "aws-key@CREDENTIALS", "instance-key@INSTANCE ROOT")
+}
+
+// An emptied authorized_keys has to be able to clear what was recorded, which
+// is why connections report an account even when it has no keys.
+func TestMergeBindingsClaimedLocationWithNoObservationsClearsIt(t *testing.T) {
+	existing := []KeyBindingImpl{
+		mergeTestBinding("a", AUTHORIZED_KEYS),
+		mergeTestBinding("b", AUTHORIZED_KEYS),
+	}
+
+	if got := mergeBindings(existing, nil, []BindingLocation{AUTHORIZED_KEYS}); len(got) != 0 {
+		t.Errorf("merged = %v, want empty -- an emptied authorized_keys must clear its bindings", got)
+	}
+}
+
+// Claiming nothing is the AWS and Digital Ocean case: fetchKeyPairs emits one
+// account per region, each complete for its region and partial for the account,
+// so claiming would delete 29 regions' worth of bindings.
+func TestMergeBindingsWithNoClaimDeletesNothing(t *testing.T) {
+	existing := []KeyBindingImpl{
+		mergeTestBinding("from-another-region", AUTHORIZED_KEYS),
+	}
+	observed := []KeyBindingImpl{mergeTestBinding("from-this-region", AUTHORIZED_KEYS)}
+
+	got := mergeBindings(existing, observed, nil)
+
+	assertMerged(t, got, "from-another-region@AUTHORIZED_KEYS", "from-this-region@AUTHORIZED_KEYS")
+}
+
+// A binding seen again at a claimed location survives, exactly once.
+func TestMergeBindingsDoesNotDuplicateAReobservedBinding(t *testing.T) {
+	b := mergeTestBinding("same", AUTHORIZED_KEYS)
+
+	got := mergeBindings([]KeyBindingImpl{b}, []KeyBindingImpl{b}, []BindingLocation{AUTHORIZED_KEYS})
+
+	assertMerged(t, got, "same@AUTHORIZED_KEYS")
+}
+
+// SSH claims AUTHORIZED_KEYS and UnspecifiedLocation together so that records
+// written before locksmith stored a location converge on the first fetch after
+// an upgrade instead of sitting beside the new ones forever.
+func TestMergeBindingsClaimingSeveralLocationsConvergesLegacyRecords(t *testing.T) {
+	existing := []KeyBindingImpl{
+		mergeTestBinding("legacy", UnspecifiedLocation),
+		mergeTestBinding("aws", AWS_CREDENTIALS),
+	}
+	observed := []KeyBindingImpl{mergeTestBinding("legacy", AUTHORIZED_KEYS)}
+
+	got := mergeBindings(existing, observed, []BindingLocation{AUTHORIZED_KEYS, UnspecifiedLocation})
+
+	assertMerged(t, got, "aws@CREDENTIALS", "legacy@AUTHORIZED_KEYS")
+}
+
+// Bindings differing only in their options are different bindings, so at a
+// claimed location the observation wins outright. Otherwise tightening a
+// restriction on the host would leave the old, looser record beside the new one
+// and locksmith would keep reporting privileges that no longer exist.
+func TestMergeBindingsConvergesWhenRestrictionsChange(t *testing.T) {
+	existing := []KeyBindingImpl{{
+		KeyID: "k", Location: AUTHORIZED_KEYS, Options: `no-pty`,
+	}}
+	observed := []KeyBindingImpl{{
+		KeyID: "k", Location: AUTHORIZED_KEYS, Options: `command="/usr/bin/rrsync -ro /srv",restrict`,
+	}}
+
+	got := mergeBindings(existing, observed, []BindingLocation{AUTHORIZED_KEYS})
+
+	if len(got) != 1 {
+		t.Fatalf("merged = %v, want one binding -- the old options must not survive", got)
+	}
+	if got[0].Options != `command="/usr/bin/rrsync -ro /srv",restrict` {
+		t.Errorf("options = %q, want the newly observed restrictions", got[0].Options)
+	}
+}
+
+// Merge must take the authority list from the *incoming* observation, not from
+// the stored object. The stored one is last run's claim; using it would let a
+// fetch that claimed nothing inherit a claim from the record it is updating and
+// delete bindings it never looked at.
+func TestAccountMergeUsesTheIncomingObservationsAuthority(t *testing.T) {
+	stored := NewSSHAccount("alice", "host.example.com", "conn1", []KeyBindingImpl{
+		mergeTestBinding("recorded", AUTHORIZED_KEYS),
+	})
+	stored.MarkObserved(AUTHORIZED_KEYS)
+
+	// A fresh fetch that claims nothing -- it only sampled.
+	incoming := NewSSHAccount("alice", "host.example.com", "conn1", []KeyBindingImpl{
+		mergeTestBinding("sampled", AUTHORIZED_KEYS),
+	})
+
+	stored.Merge(incoming)
+
+	assertMerged(t, stored.Keys,
+		"recorded@AUTHORIZED_KEYS", "sampled@AUTHORIZED_KEYS")
+}
+
+// ...and when the incoming observation does claim, the merge drops.
+func TestAccountMergeHonoursTheIncomingClaim(t *testing.T) {
+	stored := NewSSHAccount("alice", "host.example.com", "conn1", []KeyBindingImpl{
+		mergeTestBinding("revoked", AUTHORIZED_KEYS),
+		mergeTestBinding("aws", AWS_CREDENTIALS),
+	})
+
+	incoming := NewSSHAccount("alice", "host.example.com", "conn1", []KeyBindingImpl{
+		mergeTestBinding("kept", AUTHORIZED_KEYS),
+	})
+	incoming.MarkObserved(AUTHORIZED_KEYS)
+
+	stored.Merge(incoming)
+
+	assertMerged(t, stored.Keys, "aws@CREDENTIALS", "kept@AUTHORIZED_KEYS")
 }

@@ -234,8 +234,11 @@ func (a *accountImpl) Bindings() <-chan KeyBindingImpl {
 //	return fmt.Sprintf("%s", a.Name)
 //}
 
-func (a *accountImpl) AddBinding(k Key, location BindingLocation) {
-	a.Keys = append(a.Keys, KeyBindingImpl{KeyID: k.Id(), Location: location})
+// AddBinding records that a key is bound here, with whatever authorized_keys
+// options accompanied it.  options is "" for sources that have no notion of
+// them (AWS, Digital Ocean) or for an unrestricted line.
+func (a *accountImpl) AddBinding(k Key, location BindingLocation, options string) {
+	a.Keys = append(a.Keys, KeyBindingImpl{KeyID: k.Id(), Location: location, Options: options})
 }
 
 //func (a *accountImpl) Id() ID {

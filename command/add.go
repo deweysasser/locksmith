@@ -26,7 +26,7 @@ func CmdAdd(c *cli.Context) error {
 
 	skeyFilter := []string{c.String("key")}
 	output.Debug("key filter is", skeyFilter)
-	keys := getKeyIds(ml.Keys(), keyFilter(buildFilter(skeyFilter)))
+	keys := getKeyIds(ml.Keys(), ml.Policies(), keyFilter(buildFilter(skeyFilter)))
 
 	output.Debug("Keys to add:", keys)
 
@@ -41,23 +41,36 @@ func CmdAdd(c *cli.Context) error {
 			})
 		}
 
-		changes.Store(data.Change{
-			Type:    "Change",
-			Account: account.Id(),
-			Add:     bindings,
-			Remove:  make([]data.KeyBindingImpl, 0),
-		})
+		// Changes are keyed by account, so there may already be one holding
+		// derived removals.  Those are policy, not ours to discard: keep them
+		// and add the operator's request beside them.
+		change := data.Change{Type: "Change", Account: account.Id()}
+		if existing, err := changes.Fetch(account.Id()); err == nil {
+			change = existing
+		}
+		change.Manual = true
+		change.ManualAdd = append(change.ManualAdd, bindings...)
+		if change.Remove == nil {
+			change.Remove = make([]data.KeyBindingImpl, 0)
+		}
+
+		if err := changes.Store(change); err != nil {
+			output.Error("Failed to record the change for", account.Id(), ":", err)
+			return err
+		}
 	}
 
 	return nil
 }
 
-func getKeyIds(library lib.KeyLibrary, predicate lib.KeyPredicate) []data.ID {
+func getKeyIds(library lib.KeyLibrary, policies lib.PolicyLibrary, predicate lib.KeyPredicate) []data.ID {
 	keys := make([]data.ID, 0)
 
 	for k := range library.ListMatching(predicate) {
 		output.Debug("Checking key", k)
-		if !k.IsDeprecated() {
+		// Never hand out a key that is on its way off systems: binding it
+		// somewhere new would have the next plan immediately remove it again.
+		if _, doomed := effectivePolicy(policies, k); !doomed {
 			keys = append(keys, k.Id())
 		}
 	}

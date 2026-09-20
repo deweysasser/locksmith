@@ -12,6 +12,7 @@ type MainLibrary struct {
 	keys        KeyLibrary
 	accounts    AccountLibrary
 	changes     ChangeLibrary
+	policies    PolicyLibrary
 }
 
 func init() {
@@ -29,6 +30,7 @@ func init() {
 	AddType(reflect.TypeOf(connection.DOAccount{}))
 	AddType(reflect.TypeOf(connection.DODropletAccount{}))
 	AddType(reflect.TypeOf(data.Change{}))
+	AddType(reflect.TypeOf(data.KeyPolicy{}))
 }
 
 func (l *MainLibrary) Connections() ConnectionLibrary {
@@ -56,6 +58,17 @@ func (l *MainLibrary) Accounts() AccountLibrary {
 	}
 
 	return l.accounts
+}
+
+// Policies holds what the operator wants to happen, as opposed to what has been
+// observed.  It is the durable half of plan's input; the other half is the
+// inventory in Keys and Accounts.
+func (l *MainLibrary) Policies() PolicyLibrary {
+	if l.policies == nil {
+		l.policies = NewPolicyLibrary(l.Path + "/policies")
+	}
+
+	return l.policies
 }
 
 func (l *MainLibrary) Changes() ChangeLibrary {

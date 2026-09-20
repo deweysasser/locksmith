@@ -140,3 +140,21 @@ func TestNewSshCmdRefusesOptionLikeHost(t *testing.T) {
 		})
 	}
 }
+
+// "." and ".." pass the plain-name test but are not plain names: the shell
+// leaves "~." and "~.." unexpanded, so they become relative paths and the
+// write lands on the login user's own authorized_keys, or its parent's.
+func TestCheckRemoteNameRejectsDotOnlyNames(t *testing.T) {
+	for _, name := range []string{".", "..", "..."} {
+		if err := checkRemoteName("username", name); err == nil {
+			t.Errorf("checkRemoteName accepted %q", name)
+		}
+	}
+
+	// ...while ordinary names containing dots stay legal.
+	for _, name := range []string{"user.name", ".hidden", "a.b.c"} {
+		if err := checkRemoteName("username", name); err != nil {
+			t.Errorf("checkRemoteName rejected %q: %v", name, err)
+		}
+	}
+}
