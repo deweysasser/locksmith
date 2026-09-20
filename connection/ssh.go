@@ -65,7 +65,12 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 			if key, err := keylib.Fetch(add.KeyID); err == nil {
 				if sshKey, ok := key.(*data.SSHKey); ok {
 					text := base64.StdEncoding.EncodeToString(sshKey.PublicKey.Key.Marshal())
-					removeLine := fmt.Sprintf("%s sed -i -e '/%s/d' ~%s/.ssh/authorized_keys", prefix, path, text)
+					// base64 may contain '/', which would end a sed '/re/'
+					// address early, so select '|' as the address delimiter
+					// instead.  The rest of the base64 alphabet holds no BRE
+					// metacharacters and no shell single quote, so the key
+					// material is safe to interpolate as-is.
+					removeLine := fmt.Sprintf("%s sed -i -e '\\|%s|d' ~%s/.ssh/authorized_keys", prefix, text, path)
 					if _, err := cmd.Run(removeLine); err != nil {
 						return errors.New(fmt.Sprintf("Failed to run '%s': %s", removeLine, err))
 					}
@@ -183,7 +188,9 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 						acct.AddBinding(k)
 						cKeys <- k
 					}
-					if len(acct.Bindings()) > 0 {
+					// Bindings() hands back a channel, so len() on it is
+					// always 0: count the keys we just bound instead.
+					if len(keys) > 0 {
 						cAccounts <- acct
 					}
 				}
@@ -226,7 +233,9 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 					cKeys <- k
 				}
 
-				if len(acct.Bindings()) > 0 {
+				// Bindings() hands back a channel, so len() on it is always
+				// 0: count the keys we just bound instead.
+				if len(keys) > 0 {
 					cAccounts <- acct
 				}
 			}

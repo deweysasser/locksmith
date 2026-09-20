@@ -1,0 +1,6 @@
+#!/bin/sh
+# Fake ssh client for the connection package tests.
+#
+# locksmith drives a remote shell over ssh's stdin, so a plain local shell
+# satisfies the same protocol.  The host argument is ignored.
+exec /bin/sh
