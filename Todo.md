@@ -11,6 +11,11 @@ TODO
 
 ### PR
 
+- [ ] Implment a method to avoid over-fetching from github -- that will likely require maintaining a state file in the data directory.  assume that the state file will NOT be checked in.
+- [ ] When creating the data directory for the first time, create a .gitignore to avoid the rate limit record file above
+
+### PR
+
 - [ ] when keys are discovered via a file connector, they should be recorded with the current hostname.   File connector may be valid on multiple hosts, but we still need to track where.
 
 ### PR
@@ -490,3 +495,33 @@ locks the user out.
 `DOAccount.Email` writes the account holder's email address into the shared
 repository. `fetchPath` follows symlinks with no cycle guard, so a symlink loop
 under a connected directory recurses until the stack is exhausted.
+
+### Untested: output.ErrorCount, and cancellation on four of five connections
+
+Two of the test reviewer's HIGH findings, left open deliberately. Both are test
+coverage over machinery that already shipped, not new defects.
+
+**`output.ErrorCount` has no test at all.** `output_test.go` covers `IsLevel`,
+level gating and formatting, and nothing else. The counter was rewritten in this
+cycle -- it used to gate on `l >= ErrorLevel` with `ErrorLevel` at iota 0, so
+every leveled call incremented it and `locksmith` exited 1 on every invocation,
+and `ErrorCount()` used to close `errorChannel` so calling it twice panicked.
+Both are fixed, and nothing pins either. What to pin: that only `Error*` calls
+increment; that a `Debug` call suppressed by the level gate does not; that the
+count survives being read twice; and that an output call after a read does not
+panic. The first of those is the one that regressed before.
+
+**Only `FileConnection` has cancellation tests.** `TestFileConnectionStopsWhenCancelled`
+and `TestFileConnectionCancelledMidwayStillCloses` are the whole of it. Nothing
+drives `Fetch(ctx)` cancellation for SSH, AWS, GitHub or DO, nothing drives the
+`--timeout` flag, and nothing drives signal handling.
+
+This is the same gap as the "Cancellation is still missing on three
+connections" item above, seen from the other side: AWS, GitHub and DO do bare
+channel sends *and* have no test that would notice. Fix them together -- a test
+that abandons a `Fetch` and asserts the producer goroutines exit is what makes
+the `sendKey`/`sendAccount` conversion verifiable rather than hopeful.
+
+Note `--timeout` cannot currently be tested end to end against a hung host,
+because `SshCmd.Run` has no deadline (see the re-rating above). A test would
+pin the flag's *parsing* and the cancellation plumbing, not the guarantee.
