@@ -44,21 +44,33 @@ func (key *keyImpl) StandardString(id ID, other ...string) string {
 		id2 = id[:22] + "..."
 	}
 
-	return fmt.Sprintf("%6s %6s %-25.25s %s (%s)", key.Type, ex, id2, key.Names.Join(", "), strings.Join(other, ", "))
+	return fmt.Sprintf("%6s %9s %-25.25s %s (%s)", key.Type, ex, id2, key.Names.Join(", "), strings.Join(other, ", "))
 }
 
 func formatAge(duration time.Duration) string {
+	const (
+		WEEK = 7 * 24
+		YEAR = 365 * 24
+	)
+
+	// Anything under a minute, including a timestamp that is somehow in the
+	// future, reads as current.  StandardString renders an *unknown* date as
+	// blank, so this must look different from blank.
+	if duration < time.Minute {
+		return "right now"
+	}
+
+	if minutes := int(duration.Minutes()); minutes < 60 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+
 	hours := int(duration.Hours())
-	YEAR := 365 * 24
-	WEEK := 7 * 24
 
 	switch {
-	case hours == 0:
-		return ""
 	case hours <= WEEK:
 		return fmt.Sprintf("%dh", hours)
 	case hours < YEAR:
-		return fmt.Sprintf("%dw", hours/(WEEK))
+		return fmt.Sprintf("%dw", hours/WEEK)
 	case hours%YEAR/WEEK == 0:
 		return fmt.Sprintf("%dy", hours/YEAR)
 	default:
@@ -89,6 +101,11 @@ func (key *keyImpl) Merge(k *keyImpl) {
 		key.Replacement = k.Replacement
 	}
 	switch {
+	case k.Earliest.IsZero():
+		// This sighting offers no date -- several sources have none to give,
+		// Digital Ocean's key API among them.  Keep whatever we already knew;
+		// otherwise the zero time, being year 1, wins every comparison and
+		// destroys a real timestamp learned from somewhere else.
 	case key.Earliest.IsZero():
 		key.Earliest = k.Earliest
 	case key.Earliest.After(k.Earliest):

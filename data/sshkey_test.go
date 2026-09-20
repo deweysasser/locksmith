@@ -315,3 +315,36 @@ func TestSSHKeyIdWithNoIdentifiers(t *testing.T) {
 		t.Errorf("Identifiers() = %v, want none", got)
 	}
 }
+
+// Several sources supply no creation date at all -- Digital Ocean's key API
+// among them, so its keys arrive with the zero time. The zero time is year 1,
+// so it wins every "earliest" comparison, and merging such a sighting used to
+// erase a real timestamp learned from somewhere else. The key then rendered
+// with no age at all, as though nothing were known about it.
+func TestKeyImplMergeKeepsAKnownDateOverAnUndatedSighting(t *testing.T) {
+	known := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	key := keyImpl{Earliest: known}
+	undated := keyImpl{}
+
+	key.Merge(&undated)
+
+	if !key.Earliest.Equal(known) {
+		t.Errorf("Earliest = %s, want the known date %s kept", key.Earliest, known)
+	}
+}
+
+// The converse still has to work: a sighting with a date fills in a record
+// that had none.
+func TestKeyImplMergeTakesADateWhenItHasNone(t *testing.T) {
+	known := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	key := keyImpl{}
+	dated := keyImpl{Earliest: known}
+
+	key.Merge(&dated)
+
+	if !key.Earliest.Equal(known) {
+		t.Errorf("Earliest = %s, want %s", key.Earliest, known)
+	}
+}
