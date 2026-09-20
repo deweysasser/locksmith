@@ -128,12 +128,13 @@ func NewKey(content string, t time.Time, names ...string) Key {
 
 	switch {
 	case strings.Contains(content, "PuTTY"):
+		// PuTTY's native format is not something we can read.
 		return nil
-	case strings.Contains(content, "ssh-"):
-		return parseSshPublicKey(content, t, names)
 	case strings.Contains(content, "PRIVATE KEY"):
 		output.Debug("Parsing private key from", names)
 		return parseSshPrivateKey(content, t, names...)
+	case looksLikeSSHPublicKey(content):
+		return parseSshPublicKey(content, t, names)
 	default:
 		return nil
 	}
