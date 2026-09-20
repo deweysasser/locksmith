@@ -233,19 +233,24 @@ func TestUpdateAbortsRemovalWhenAddFails(t *testing.T) {
 	sshtestQuiet(t)
 	home := sshtestUseSandbox(t, "tee() { return 1; }")
 
+	// The key being added must NOT already be in the file: addKey now checks
+	// before appending, so a key that is already present is a no-op and there
+	// would be no add left to fail.  Removal targets a different key that is
+	// present, so a successful run would visibly change the file.
 	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
-	other := sshtestGenerateKeyLine(t, "bob@example.com")
-	path := sshtestWriteAuthorizedKeys(t, home, authorizedKey+" alice@example.com", other)
+	doomed := sshtestNewKey(t, sshtestGenerateKeyLine(t, "bob@example.com"))
+	path := sshtestWriteAuthorizedKeys(t, home, doomed.PublicKeyString())
 
-	lib := sshtestFetcher{key.Id(): key}
+	lib := sshtestFetcher{key.Id(): key, doomed.Id(): doomed}
 	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+	removal := data.KeyBindingImpl{KeyID: doomed.Id(), Location: data.AUTHORIZED_KEYS}
 
 	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
 	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
 
 	before := sshtestReadFile(t, path)
 
-	err := c.Update(acct, []data.KeyBindingImpl{binding}, []data.KeyBindingImpl{binding}, lib)
+	err := c.Update(acct, []data.KeyBindingImpl{binding}, []data.KeyBindingImpl{removal}, lib)
 	if err == nil {
 		t.Fatal("Update should report the failed add")
 	}
@@ -360,3 +365,35 @@ func TestUpdateRefusesAMaliciousUsername(t *testing.T) {
 // SSHHostConnection is the one Changer in the tree; apply degrades to a warning
 // for every host if it ever stops satisfying the interface.
 var _ Changer = (*SSHHostConnection)(nil)
+
+// fetch unions bindings and never drops one, so an already-applied rotation is
+// re-planned on the next run. A bare `tee -a` would append another copy of the
+// key every cycle, growing authorized_keys without bound.
+func TestUpdateDoesNotDuplicateAnAlreadyPresentKey(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	line, err := binding.GetSshLine(lib)
+	if err != nil {
+		t.Fatalf("GetSshLine: %v", err)
+	}
+	path := sshtestWriteAuthorizedKeys(t, home, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	for i := 0; i < 3; i++ {
+		if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err != nil {
+			t.Fatalf("Update %d: %v", i+1, err)
+		}
+	}
+
+	got := sshtestReadFile(t, path)
+	if n := strings.Count(got, line); n != 1 {
+		t.Errorf("the key appears %d times after three applies, want 1:\n%s", n, got)
+	}
+}

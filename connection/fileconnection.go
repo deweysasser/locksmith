@@ -109,8 +109,9 @@ func basename(path string) string {
 }
 
 func readSSHKey(bytes []byte, keys chan data.Key, time time.Time, names ...string) {
-	k := data.NewKey(string(bytes), time, names...)
-	if k != nil {
+	// NewKeys, not NewKey: a file may hold many entries, and taking only the
+	// first silently drops the rest from the catalogue.
+	for _, k := range data.NewKeys(string(bytes), time, names...) {
 		keys <- k
 	}
 }

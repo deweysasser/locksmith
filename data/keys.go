@@ -123,6 +123,40 @@ func Read(path string) Key {
 	}
 }
 
+// NewKeys reads every key in content.
+//
+// A public key file may legitimately hold many entries -- an authorized_keys
+// file is the whole point of this tool -- and ssh.ParseAuthorizedKey returns
+// only the first, discarding the rest.  NewKey therefore sees one key where a
+// file holds five, and the other four are silently never catalogued.  Anything
+// reading a whole file should use this instead.
+//
+// A private key file is a single key by construction, so that case is passed
+// through to NewKey whole.
+func NewKeys(content string, t time.Time, names ...string) []Key {
+	switch {
+	case strings.Contains(content, "PuTTY"):
+		return nil
+	case strings.Contains(content, "PRIVATE KEY"):
+		if key := NewKey(content, t, names...); key != nil {
+			return []Key{key}
+		}
+		return nil
+	}
+
+	var keys []Key
+	for _, line := range strings.Split(content, "\n") {
+		if !looksLikeSSHPublicKey(line) {
+			continue
+		}
+		if key := NewKey(line, t, names...); key != nil {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
+}
+
 // Create a new Key from the given content
 func NewKey(content string, t time.Time, names ...string) Key {
 

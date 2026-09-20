@@ -117,7 +117,14 @@ func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []dat
 				// taken from a surveyed host or a third-party API -- squarely
 				// outside the trust boundary.  It must be escaped, not merely
 				// wrapped in quotes.
-				addLine := fmt.Sprintf("echo %s | %s tee -a ~%s/.ssh/authorized_keys", shellQuote(line), prefix, path)
+				// grep before appending: `fetch` unions bindings and never
+				// drops one, so a rotation that has already been applied is
+				// re-planned on the next run.  With a bare `tee -a` that
+				// appends another copy of the same key every cycle, without
+				// bound.
+				quoted := shellQuote(line)
+				addLine := fmt.Sprintf("%s grep -qxF %s ~%s/.ssh/authorized_keys 2>/dev/null || echo %s | %s tee -a ~%s/.ssh/authorized_keys",
+					prefix, quoted, path, quoted, prefix, path)
 				if _, err := cmd.Run(addLine); err != nil {
 					return errors.New(fmt.Sprintf("Failed to run '%s': %s", addLine, err))
 				}

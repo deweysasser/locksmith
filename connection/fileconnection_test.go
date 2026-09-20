@@ -271,3 +271,33 @@ func TestFileConnectionRecursesIntoSubdirectories(t *testing.T) {
 		t.Fatalf("got %d keys, want 1 from a nested directory", len(keys))
 	}
 }
+
+// A directory of keys is the common case for `locksmith connect ~/.ssh`, and an
+// authorized_keys file in it holds many entries. Ingesting only the first means
+// the operator is told a key is gone when it is still authorized -- the worst
+// failure this tool has.
+func TestFileConnectionReadsEveryKeyInAMultiKeyFile(t *testing.T) {
+	dir := t.TempDir()
+
+	body, err := ioutil.ReadFile("../data/test-data/authorized_keys")
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, "authorized_keys"), body, 0600); err != nil {
+		t.Fatalf("writing fixture: %v", err)
+	}
+
+	keys, _ := fetchAll(&FileConnection{Type: "FileConnection", Path: dir})
+
+	if len(keys) < 5 {
+		t.Fatalf("fetched %d keys from a multi-key file, want every entry (at least 5)", len(keys))
+	}
+
+	seen := make(map[data.ID]bool)
+	for _, k := range keys {
+		if seen[k.Id()] {
+			t.Errorf("key %q was fetched twice", k.Id())
+		}
+		seen[k.Id()] = true
+	}
+}
