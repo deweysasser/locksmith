@@ -40,27 +40,40 @@ func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
 		s = k.Name + " = "
 	}
 
-	if key, err := keylib.Fetch(k.KeyID); err != nil {
+	if found, err := keylib.Fetch(k.KeyID); err != nil {
 		s = fmt.Sprintf("%s%s", s, "Unknown key "+k.KeyID)
 	} else {
-		s = fmt.Sprintf("%s%s", s, key)
+		s = fmt.Sprintf("%s%s", s, found)
+		key = found
 	}
 
 	return
 }
 
 func (k *KeyBindingImpl) GetSshLine(keylib Fetcher) (string, error) {
-	if key, err := keylib.Fetch(k.KeyID); err != nil {
+	key, err := keylib.Fetch(k.KeyID)
+	if err != nil {
 		return "", err
-	} else {
-		if sshKey, ok := key.(*SSHKey); !ok {
-			return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
-		} else {
-			Key2 := sshKey.PublicKey.Key
-			return fmt.Sprintf("%s %s %s",
-				Key2.Type(),
-				base64.StdEncoding.EncodeToString(Key2.Marshal()),
-				sshKey.Comments.StringArray()[0]), nil
-		}
 	}
+
+	sshKey, ok := key.(*SSHKey)
+	if !ok {
+		return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
+	}
+
+	pub := sshKey.PublicKey.Key
+	if pub == nil {
+		return "", errors.New(fmt.Sprint("Key ", key, " has no public key material"))
+	}
+
+	line := fmt.Sprintf("%s %s",
+		pub.Type(),
+		base64.StdEncoding.EncodeToString(pub.Marshal()))
+
+	// The trailing comment is optional in authorized_keys.
+	if comments := sshKey.Comments.StringArray(); len(comments) > 0 {
+		line = line + " " + comments[0]
+	}
+
+	return line, nil
 }

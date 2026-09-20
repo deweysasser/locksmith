@@ -44,20 +44,34 @@ func (p *PublicKey) UnmarshalJSON(bytes []byte) error {
 		return e
 	}
 
-	if "UNKNOWN" == temp["Type"].(string) {
+	// Repository files are hand-mergeable JSON, so a malformed public key block
+	// is an error to report rather than a reason to take the process down.
+	keyType, ok := temp["Type"].(string)
+	if !ok {
+		return errors.New("public key has no Type field")
+	}
+
+	if "UNKNOWN" == keyType {
 		return nil
 	}
 
-	if bKey, e := base64.StdEncoding.DecodeString(temp["Data"].(string)); e == nil {
-		if k, e2 := ssh.ParsePublicKey(bKey); e2 == nil {
-			p.Key = k
-			return nil
-		} else {
-			return e2
-		}
-	} else {
+	encoded, ok := temp["Data"].(string)
+	if !ok {
+		return errors.New("public key has no Data field")
+	}
+
+	bKey, e := base64.StdEncoding.DecodeString(encoded)
+	if e != nil {
 		return e
 	}
+
+	k, e := ssh.ParsePublicKey(bKey)
+	if e != nil {
+		return e
+	}
+
+	p.Key = k
+	return nil
 }
 
 /** An SSH Key, public and (optionally) private
@@ -126,8 +140,10 @@ func mergeIDArrays(a []ID, b []ID) []ID {
 		}
 	}
 
-	ra := make([]ID, len(r))
-	for k, _ := range r {
+	// Length, not capacity, would leave len(r) empty IDs in front of the real
+	// ones.
+	ra := make([]ID, 0, len(r))
+	for k := range r {
 		if k != "" {
 			ra = append(ra, k)
 		}
@@ -151,7 +167,14 @@ func NewSshKey(pub ssh.PublicKey, t time.Time) *SSHKey {
 }
 
 func (key *SSHKey) Id() ID {
-	return key.Identifiers()[0]
+	// A record with neither public key material nor a recorded fingerprint has
+	// no identifiers at all.  That should not be fatal to whatever is listing
+	// the library.
+	ids := key.Identifiers()
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
 }
 
 func (key *SSHKey) Identifiers() []ID {

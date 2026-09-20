@@ -44,11 +44,13 @@ The system pipelines data from **connections** → **fetch** → **library stora
 
 1. **Register every new serializable type in `lib/mainlib.go` `init()`** via `AddType(reflect.TypeOf(...))`. Deserialization reads the `Type` string field from the JSON and looks it up in `TypeMap`; a missing registration *panics* (`library.deserialize`). Every `data.*` and `connection.*` type persisted to disk needs an entry here, and every struct so persisted must include a `Type string` field whose value matches the registered name.
 
-2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit those three files — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). The `connectionLibrary.go` rule additionally adds a `connection` import, in a position gofmt
+2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit `accountLibrary.go` or `connectionLibrary.go` — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). **`changeLibrary.go` is the exception**: its rule is `test -f $@ && touch $@ || sed …`, which deliberately preserves the file once it exists, and it has diverged from what `sed` would produce (it handles both `data.Change` and `*data.Change`, which the key version has no need to). Edit it in place; regenerating it from scratch would undo that. The `connectionLibrary.go` rule additionally adds a `connection` import, in a position gofmt
 disagrees with — which is why every rule ends in `gofmt -w $@`. Keep that line on any rule you
 add, or regeneration will leave the tree unformatted.
 
-3. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
+3. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
+
+4. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
 struct field, not something the library fills in — `data.Change{Type: "Change", …}`,
 `connection.FileConnection{Type: "FileConnection", …}`. A new persisted type needs the field,
 a matching `AddType` registration, and the right literal at every place it is constructed.
@@ -110,6 +112,20 @@ you broke.
 ### Data at rest
 
 `~/.x-locksmith/` (the leading `x-` is intentional; storage format is still considered unstable per README). Objects are individual JSON files, safe to commit to git. Private keys and AWS secret-key material are never written — only public keys, fingerprints, and access-key IDs.
+
+### Tests
+
+`go test ./...` is clean, as is `go test -race ./...`. Tests that touch the
+filesystem use `t.TempDir()`; the older tests in `lib/` share a `test-output/`
+directory instead and are therefore order-dependent, so prefer `t.TempDir()` for
+anything new. Tests that would otherwise print through `output/` call a local
+`silence` helper — note that `output.Error` ignores the level and always prints,
+per *Known rough edges*.
+
+The `data` and `lib` packages are the ones worth keeping well covered: they hold
+the merge, identity and persistence rules that everything else relies on.
+Coverage of `connection/` and the `Cmd*` entry points is necessarily thin, since
+they are the parts that talk to SSH and AWS.
 
 ### Test fixtures
 

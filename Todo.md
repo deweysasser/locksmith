@@ -1,5 +1,13 @@
 TODO
 
+## Current
+- [ ] Implement support for Ed25519 keys
+- [ ] Load keys from a named user/account in github
+- [ ] load keys form a named user/account in digital ocean
+- [ ] connect to digital ocean droplets to survey keys in a similar way as we do for AWS
+
+## Old
+
 * add 'version' command
 * add some kind of 'info' command that shows repo location, SSH, etc.
   Perhaps mirror "go env"
@@ -60,9 +68,6 @@ TODO
 * Do something with key aging
 
 * Rotate SSH key in AWS
-
-* import SSH keys from gitlab
-* replace SSH keys in gitlab
 
 * import SSH keys from github
 * replace SSH keys in github
