@@ -11,6 +11,86 @@ TODO
 
 ### PR
 
+- [ ] **`add` should not create a change that would do nothing.**
+
+      `CmdAdd` walks every account matching the filter and records a binding
+      for each named key without ever consulting `account.Bindings()`. Adding
+      a key to a host that already has it therefore produces a change, and
+      `apply` opens an SSH connection to carry it out.
+
+      Three things follow, in increasing order of how much they matter:
+
+      1. A wasted handshake per account. The remote command is
+         `grep -qF <blob> ... || printf ...`, so it is idempotent on the host
+         and nothing is appended twice -- the work is real, the effect is nil.
+      2. Repeated `add` invocations append to `ManualAdd` unconditionally, so
+         the change file grows each time. `Change.Additions()` deduplicates on
+         read, so this does not double-apply, but the stored object is wrong.
+      3. **The history log claims work that never happened.** `recordApplied`
+         writes an `apply.add` event for every binding in `Additions()`
+         regardless of whether the remote `grep` short-circuited. So the one
+         record of what locksmith did to someone else's machine says a key was
+         added when it was already there. For a log whose whole purpose is to
+         be the record of outside effects, that is the part worth fixing.
+
+      Fix: have `add` skip a binding the account already holds at that
+      location, and say so rather than silently doing nothing. Fixing (3)
+      properly needs `Update` to report what it actually changed rather than
+      just returning nil, which is the same shape as the `apply` cannot report
+      failure item.
+
+- [ ] **`apply` should run against hosts in parallel, bounded by real limits.**
+
+      Today `apply` is entirely serial -- no goroutines in `command/apply.go`
+      or anywhere in the SSH change path -- and each non-empty half of `Update`
+      opens its own connection. `NewSshCmd` is a full handshake plus a
+      `Run("true")` round trip to clear the banner, so a sudo host with 30
+      accounts pays 60 handshakes one after another, about 30 seconds for a
+      single machine. At 2000 hosts it is roughly 17 minutes, essentially all
+      of it waiting on a socket.
+
+      The tool is almost pure network latency against independent endpoints.
+      There is no CPU or disk bottleneck to saturate, so serial execution
+      across N hosts is the worst available shape for the workload.
+
+      Three separate axes, which should not be collapsed into one knob:
+
+      * **Across connections -- go wide.** One worker per connection, bounded
+        by `--parallel`. This is the entire win at fleet scale.
+      * **Within a connection -- one `SshCmd`, reused, in order.** All of a
+        host's accounts share a single connection: one handshake per host
+        rather than two per account. This is also what keeps a single box from
+        being hammered, and it is what `fetchSudo` already does internally
+        with `ParallelSSHCount`. `apply` never learned it.
+      * **Provider APIs -- pace, do not pool.** GitHub, DO and AWS need
+        request pacing and backoff against a published rate limit. A worker
+        count is the wrong instrument for a rate limit.
+
+      **On deriving the bound from the system.** Measured on a dev box
+      (2026-09-20): `RLIMIT_NOFILE` soft and hard both 1048576 -- Go raises the
+      soft limit to the hard limit at startup -- at 4 fds per connection
+      (3 pipes plus a pidfd), giving a ceiling of about 262,000. `RLIMIT_NPROC`
+      is 115,181. An ssh process is ~7.8MB RSS, so 20GB of available memory
+      binds first, at ~2,600. All three are orders of magnitude above anything
+      useful; local network, NAT table and DNS would give out long before.
+
+      So introspection is a **clamp, not a sizing decision**. Default
+      `--parallel` to something sane (~50) and clamp it to
+      `(RLIMIT_NOFILE - reserve) / fds-per-connection`, measuring
+      fds-per-connection at runtime rather than hardcoding 4, since macOS has
+      no pidfd and costs 3. On a normal Linux box the clamp never engages; it
+      exists for macOS, whose soft limit is 256 by default, and for containers
+      and CI runners that are capped hard. Say so when the clamp actually
+      lowers the value, so a surprising slowdown is explicable.
+
+      **Prerequisite:** `apply` currently returns nil whatever happens, so it
+      cannot report failure at all. Going parallel without fixing that loses
+      errors faster. Collect per-host errors, keep one unreachable host from
+      sinking the run or hiding the others, and exit non-zero if any host
+      failed.
+
+### PR
+
 - [ ] Implment a method to avoid over-fetching from github -- that will likely require maintaining a state file in the data directory.  assume that the state file will NOT be checked in.
 - [ ] When creating the data directory for the first time, create a .gitignore to avoid the rate limit record file above
 
@@ -36,7 +116,7 @@ TODO
 - [ ] Change the command protocol.
   - instead of "connect", it should accept "connection" or "conn" or "c" with subcommands add, list|ls, del|delete|rm|remove
   - take out "list"
-  - implement "keys|key|k" command with subcommands "add", "list|ls", "del|delete|rm|remove" , "expire", "add-id"
+  - implement "keys|key|k" command with subcommands "add", "list|ls", "del|delete|rm|remove" , "expire", "add-id", "add-comment", (maybe "add" should be a 3rd level subcommand?)
   - "add" should mark a key to be added to a system
   - "del|delete|rm|remove" should mark a key to be removed from a system
   - "replace <old> <new>" should mark things to replace the old key with the new key on all systems or any system discovered in the future
