@@ -16,10 +16,26 @@ install: test
 install-all: test
 	for os in ${OSES}; do GOOS=$$os go install $(THISPACKAGE); done
 
-package: install-all dist 
-	zip -j dist/windows_amd64.zip ${GOPATH}/bin/locksmith.exe
-	zip -j dist/darwin_amd64.zip ${GOPATH}/bin/darwin_amd64/locksmith
-	zip -j dist/linux_amd64.zip ${GOPATH}/bin/linux_amd64/locksmith
+# Platforms to ship binaries for.  darwin/arm64 matters: every Mac since 2020
+# is arm64, and an amd64-only darwin build is the wrong artifact for most of
+# them.
+PLATFORMS=darwin/amd64 darwin/arm64 windows/amd64 linux/amd64
+
+# package builds straight to dist/ with an explicit -o rather than running
+# `go install` and guessing where the binary landed.  The old recipe guessed
+# wrong three ways: it read ${GOPATH} from the environment, which is normally
+# unset, so every path collapsed to /bin/...; it looked for the windows binary
+# in bin/ when a cross build puts it in bin/windows_amd64/; and it looked for
+# the linux one in bin/linux_amd64/ when a *native* build has no such
+# subdirectory.  An explicit -o depends on none of that.
+package: test dist
+	for p in $(PLATFORMS); do \
+		os=$${p%/*}; arch=$${p#*/}; ext=""; \
+		if [ "$$os" = windows ]; then ext=".exe"; fi; \
+		echo "building $$os/$$arch"; \
+		GOOS=$$os GOARCH=$$arch go build -o dist/$${os}_$${arch}/locksmith$$ext . || exit 1; \
+		( cd dist/$${os}_$${arch} && zip -q -j ../$${os}_$${arch}.zip locksmith$$ext ) || exit 1; \
+	done
 
 dist:
 	mkdir -p $@

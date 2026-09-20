@@ -10,3 +10,5 @@ data/locksmith-test-aws-generated.json
 *.swo
 .*.swp
 .*.swo
+dist/
+.release/
