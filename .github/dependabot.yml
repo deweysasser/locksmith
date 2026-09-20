@@ -1,0 +1,43 @@
+# Dependabot configuration.
+#
+# Having this file at all is what enables *version* updates; without it only
+# security updates run. Editing it also counts as the interaction that
+# un-pauses Dependabot, which GitHub suspends once a repository's Dependabot
+# pull requests have sat untouched for 90 days.
+version: 2
+
+updates:
+  # Go module dependencies, from go.mod at the repository root.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request a week for routine bumps rather than one per module.
+      go-modules:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      # Security fixes travel together too. There are currently 13 open alerts,
+      # and 13 separate pull requests would help nobody.
+      go-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # The golang base image in the Dockerfile.
+  #
+  # Note that the Dockerfile's image tag and the `go` directive in go.mod are
+  # meant to stay in step (see CLAUDE.md). Dependabot bumps them independently,
+  # so a Docker update here may need a matching go.mod change before it merges.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    groups:
+      docker:
+        applies-to: version-updates
+        patterns:
+          - "*"
