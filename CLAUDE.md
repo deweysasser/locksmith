@@ -23,7 +23,7 @@ one pass, so any finding either one reports is something the current change intr
 
 `make release` is a multi-step target that stashes work, checks out `main`, bumps `version.go`, commits, tags, and requires interactive `vi` for the changelog — do not invoke it casually; read `Makefile` first.
 
-The module targets Go 1.26 (`go.mod`) and the `Dockerfile` uses `golang:1.26.0`; keep those in sync when bumping.
+The module targets Go 1.27 (`go.mod` says `go 1.27.1`) and the `Dockerfile` uses `golang:1.27.1`; keep those in sync when bumping.
 
 `github.com/aws/aws-sdk-go` (v1) is marked deprecated upstream in favor of `aws-sdk-go-v2`. The codebase still uses v1 throughout `connection/awsconnection.go` and `data/aws.go`; migrating to v2 is a non-trivial refactor, not a routine dep bump.
 
