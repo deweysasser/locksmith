@@ -43,7 +43,7 @@ func CmdFetch(c *cli.Context) error {
 	fAccounts.Wait()
 	libWG.Wait()
 
-	output.Normalf("Fetched from %d connections", connCount)
+	output.Normalf("Fetched from %d connections\n", connCount)
 
 	return nil
 }

@@ -212,9 +212,14 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 					output.Debugf("Fetching account %s on thread %d\n", account, i)
 					accountName := buildAccountName(account, c.Connection)
 					output.Debug("Retrieving keys for", accountName)
-					keys := c.retrieveKeysFor(ssh, account, "sudo")
+					keys, err := c.retrieveKeysFor(ssh, account, "sudo")
 					acct := data.NewSSHAccount(account.User, accountName, c.Id(), nil)
-					acct.MarkObserved(data.AUTHORIZED_KEYS, data.UnspecifiedLocation)
+					if err == nil {
+						// Only a successful read may claim completeness.  A
+						// failed one yields no keys too, and claiming on that
+						// would wipe the account's recorded bindings.
+						acct.MarkObserved(data.AUTHORIZED_KEYS, data.UnspecifiedLocation)
+					}
 					output.Debug("Discovered", len(keys), "keys for account", accountName)
 					for _, k := range keys {
 						acct.AddBinding(k, data.AUTHORIZED_KEYS)
@@ -264,7 +269,10 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 				// account ID of "user@host@user".
 				acct := data.NewSSHAccount(iam, c.Connection, c.Id(), nil)
 
-				keys := c.RetrieveKeys(ssh)
+				keys, err := c.RetrieveKeys(ssh)
+				if err == nil {
+					acct.MarkObserved(data.AUTHORIZED_KEYS, data.UnspecifiedLocation)
+				}
 				//a.SetKeys(keys)
 				for _, k := range keys {
 					acct.AddBinding(k, data.AUTHORIZED_KEYS)
@@ -281,18 +289,29 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 	return cKeys, cAccounts
 }
 
-func (c *SSHHostConnection) retrieveKeysFor(cmd *SshCmd, account remoteAccount, prefix string) []data.Key {
+func (c *SSHHostConnection) retrieveKeysFor(cmd *SshCmd, account remoteAccount, prefix string) ([]data.Key, error) {
 	return c.retrieveKeysFrom(cmd, fmt.Sprintf("%s/.ssh/authorized_keys", account.Home), prefix)
 }
 
-func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) []data.Key {
+func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) ([]data.Key, error) {
 	return remote.retrieveKeysFrom(cmd, ".ssh/authorized_keys", "")
 }
 
-func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) []data.Key {
+// retrieveKeysFrom reads one authorized_keys file.
+//
+// The error return is load-bearing, not decoration: "the file was empty" and
+// "the read failed" both produce no keys, and the caller uses the difference to
+// decide whether it may claim to have observed the account's keys completely.
+// Conflating them lets a transient sudo or permission failure delete every
+// binding recorded for that account.
+//
+// A non-zero exit is deliberately treated as "do not claim", including the case
+// where the file simply does not exist.  That errs towards keeping a stale
+// binding rather than dropping a real one.
+func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) ([]data.Key, error) {
 	if err := checkPrefix(prefix); err != nil {
 		output.Error(err)
-		return []data.Key{}
+		return nil, err
 	}
 
 	// file is assembled from a home directory read out of the remote host's own
@@ -303,25 +322,21 @@ func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, pref
 	delay := time.Duration(rand.Int31() % 500)
 	time.Sleep(delay * time.Millisecond)
 
-	if out, err := cmd.Run(remoteCmd); err == nil {
-		output.Debug("Parsing Returned Keys")
-		lines := strings.Split(string(out), "\n")
-
-		keys := make([]data.Key, 0)
-
-		for _, line := range lines {
-			key := parseAuthorizedKey(line, time.Now())
-			if key != nil {
-				keys = append(keys, key)
-			}
-		}
-		return keys
-	} else {
-		output.Debug("No keys to retrieve for", file)
+	out, err := cmd.Run(remoteCmd)
+	if err != nil {
+		output.Verbose("Could not read", file, "on", remote.Connection, ":", err)
+		return nil, err
 	}
 
-	output.Debug("returning keys")
-	return []data.Key{}
+	output.Debug("Parsing Returned Keys")
+	keys := make([]data.Key, 0)
+	for _, line := range strings.Split(string(out), "\n") {
+		if key := parseAuthorizedKey(line, time.Now()); key != nil {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys, nil
 }
 
 func parseAuthorizedKey(line string, t time.Time) data.Key {

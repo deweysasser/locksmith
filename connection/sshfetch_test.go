@@ -105,7 +105,10 @@ func TestRetrieveKeys(t *testing.T) {
 
 	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com"}
 
-	keys := c.RetrieveKeys(cmd)
+	keys, err := c.RetrieveKeys(cmd)
+	if err != nil {
+		t.Fatalf("RetrieveKeys: %v", err)
+	}
 
 	if len(keys) != 2 {
 		t.Fatalf("got %d keys, want 2 -- blank and comment lines must be skipped: %v", len(keys), keys)
@@ -143,7 +146,10 @@ func TestRetrieveKeysForAccount(t *testing.T) {
 
 	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
 
-	keys := c.retrieveKeysFor(cmd, remoteAccount{User: "alice", Home: home}, "sudo")
+	keys, err := c.retrieveKeysFor(cmd, remoteAccount{User: "alice", Home: home}, "sudo")
+	if err != nil {
+		t.Fatalf("retrieveKeysFor: %v", err)
+	}
 
 	if len(keys) != 1 {
 		t.Fatalf("got %d keys, want 1: %v", len(keys), keys)
@@ -163,7 +169,11 @@ func TestRetrieveKeysMissingFile(t *testing.T) {
 
 	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com"}
 
-	if keys := c.RetrieveKeys(cmd); len(keys) != 0 {
+	keys, err := c.RetrieveKeys(cmd)
+	if err == nil {
+		t.Error("reading a missing authorized_keys should report an error, not an empty result: that difference is what stops a failed read from clearing the account")
+	}
+	if len(keys) != 0 {
 		t.Errorf("got %d keys for a host with no authorized_keys, want 0", len(keys))
 	}
 }
@@ -274,5 +284,51 @@ func TestSSHHostConnectionFetchNonSudoNoKeys(t *testing.T) {
 	}
 	for b := range accounts[0].Bindings() {
 		t.Errorf("account should carry no bindings, got %v", b)
+	}
+}
+
+// A failed read yields no keys, exactly as an empty file does. If the fetch
+// claimed completeness on that basis, a transient sudo or permission failure
+// would delete every binding recorded for the account. The claim must depend on
+// the read having actually succeeded.
+func TestSSHFetchDoesNotClaimAuthorityWhenTheReadFails(t *testing.T) {
+	sshtestQuiet(t)
+	// cat fails for every account, as an unreadable home or a refused sudo
+	// would.
+	sshtestUseSandbox(t, sshtestPasswdPrologue+`
+cat() { case "$*" in *authorized_keys*) return 1;; *) command cat "$@";; esac; }`)
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "ubuntu@host.example.com", Sudo: true}
+
+	_, accounts := fetchAll(c)
+
+	if len(accounts) == 0 {
+		t.Fatal("expected the surveyed accounts to be reported")
+	}
+	for _, a := range accounts {
+		if claimed := sshtestObserved(a); len(claimed) != 0 {
+			t.Errorf("account %s claimed authority over %v after a failed read", a.Id(), claimed)
+		}
+	}
+}
+
+// The companion: a successful read of a genuinely empty file must claim, or an
+// emptied authorized_keys could never clear anything.
+func TestSSHFetchClaimsAuthorityOnAnEmptyFile(t *testing.T) {
+	sshtestQuiet(t)
+	sshtestUseSandbox(t, sshtestPasswdPrologue+`
+cat() { case "$*" in *authorized_keys*) return 0;; *) command cat "$@";; esac; }`)
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "ubuntu@host.example.com", Sudo: true}
+
+	_, accounts := fetchAll(c)
+
+	if len(accounts) == 0 {
+		t.Fatal("expected the surveyed accounts to be reported")
+	}
+	for _, a := range accounts {
+		if claimed := sshtestObserved(a); len(claimed) == 0 {
+			t.Errorf("account %s claimed nothing after successfully reading an empty file", a.Id())
+		}
 	}
 }
