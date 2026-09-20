@@ -2,7 +2,7 @@ package output
 
 import (
 	"fmt"
-	"sync"
+	"sync/atomic"
 )
 
 type OutputLevel int
@@ -15,24 +15,22 @@ const (
 	DebugLevel
 )
 
-var errorWG sync.WaitGroup = sync.WaitGroup{}
-var errorCount int
-var errorChannel chan bool = make(chan bool)
+// errorCount counts genuine errors, and only those: main uses it to decide the
+// process exit status.
+//
+// This was a channel fed by a counting goroutine, which had two faults.  The
+// guard was `l >= ErrorLevel` and ErrorLevel is iota, i.e. 0, so *every*
+// leveled call incremented it -- including Debug calls the level gate
+// suppressed -- and locksmith therefore exited 1 on every invocation, which
+// makes it unusable from a script, a cron job or a CI step.  And ErrorCount()
+// closed the channel, so calling it twice, or emitting any output afterwards,
+// panicked.  An atomic has neither problem and is less code.
+var errorCount atomic.Int64
 
-func init() {
-	errorWG.Add(1)
-	go func() {
-		defer errorWG.Done()
-		for range errorChannel {
-			errorCount++
-		}
-	}()
-}
-
+// ErrorCount returns the number of errors reported so far.  It is safe to call
+// more than once.
 func ErrorCount() int {
-	close(errorChannel)
-	errorWG.Wait()
-	return errorCount
+	return int(errorCount.Load())
 }
 
 var Level OutputLevel = NormalLevel
@@ -42,8 +40,8 @@ func IsLevel(l OutputLevel) bool {
 }
 
 func output(l OutputLevel, s ...interface{}) {
-	if l >= ErrorLevel {
-		errorChannel <- true
+	if l == ErrorLevel {
+		errorCount.Add(1)
 	}
 	if Level >= l {
 		fmt.Println(s...)
@@ -51,8 +49,8 @@ func output(l OutputLevel, s ...interface{}) {
 }
 
 func outputf(l OutputLevel, fs string, s ...interface{}) {
-	if l >= ErrorLevel {
-		errorChannel <- true
+	if l == ErrorLevel {
+		errorCount.Add(1)
 	}
 	if Level >= l {
 		fmt.Printf(fs, s...)

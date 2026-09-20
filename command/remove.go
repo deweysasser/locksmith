@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"github.com/deweysasser/locksmith/connection"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/lib"
@@ -11,6 +12,14 @@ import (
 func CmdRemove(c *cli.Context) error {
 
 	outputLevel(c)
+
+	// An empty filter matches everything, so a bare `locksmith remove` would
+	// delete every connection, account, key and change in the repository.
+	if len(c.Args()) < 1 {
+		output.Error("Must specify at least one filter; `remove` with no filter would remove everything")
+		return errors.New("refusing to remove every object")
+	}
+
 	ml := lib.MainLibrary{Path: datadir(c)}
 
 	filter := buildFilterFromContext(c)

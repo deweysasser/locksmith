@@ -67,11 +67,6 @@ func (a *AWSConnection) Fetch() (keys <-chan data.Key, accounts <-chan data.Acco
 			usermap := a.fetchAccounts(iamClient, cAccounts, cKeys)
 			a.fetchAccessKeys(iamClient, cAccounts, cKeys, usermap)
 		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			a.fetchAccountInfo(stsClient, iamClient, cAccounts)
-		}()
 
 		dro, err := e.DescribeRegions(&ec2.DescribeRegionsInput{})
 		if err != nil {

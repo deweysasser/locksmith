@@ -58,9 +58,21 @@ func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyB
 }
 
 func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	if err := checkPrefix(prefix); err != nil {
+		return err
+	}
+	// path lands after a "~", where it cannot be quoted without defeating
+	// tilde expansion, so it has to be vetted instead.
+	if err := checkRemoteName("username", path); err != nil {
+		return err
+	}
+
 	if cmd, err := NewSshCmd(c.Connection); err != nil {
 		return err
 	} else {
+		// Without this the ssh child is never reaped and its three pipes stay
+		// open for the life of the process; apply runs this once per account.
+		defer cmd.Close()
 		for _, add := range bindings {
 			if key, err := keylib.Fetch(add.KeyID); err == nil {
 				if sshKey, ok := key.(*data.SSHKey); ok {
@@ -86,14 +98,26 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 }
 
 func (c *SSHHostConnection) addKey(prefix string, path string, addBindings []data.KeyBindingImpl, keylib data.Fetcher) error {
+	if err := checkPrefix(prefix); err != nil {
+		return err
+	}
+	if err := checkRemoteName("username", path); err != nil {
+		return err
+	}
+
 	if cmd, err := NewSshCmd(c.Connection); err != nil {
 		return err
 	} else {
+		defer cmd.Close()
 		for _, add := range addBindings {
 			if line, err := add.GetSshLine(keylib); err != nil {
 				return errors.New(fmt.Sprint("Error generating SSH line: ", err))
 			} else {
-				addLine := fmt.Sprintf("echo '%s' | %s tee -a ~%s/.ssh/authorized_keys", line, prefix, path)
+				// The line ends with the key's comment, which is free text
+				// taken from a surveyed host or a third-party API -- squarely
+				// outside the trust boundary.  It must be escaped, not merely
+				// wrapped in quotes.
+				addLine := fmt.Sprintf("echo %s | %s tee -a ~%s/.ssh/authorized_keys", shellQuote(line), prefix, path)
 				if _, err := cmd.Run(addLine); err != nil {
 					return errors.New(fmt.Sprintf("Failed to run '%s': %s", addLine, err))
 				}
@@ -212,19 +236,26 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 	cAccounts := make(chan data.Account)
 
 	go func() {
+		// Closing here rather than in the success branch: leaving these open on
+		// a connection failure wedges the fan-in, and `fetch` hangs forever
+		// with no output and no error.
+		defer close(cKeys)
+		defer close(cAccounts)
+
 		if ssh, err := NewSshCmd(c.Connection); err != nil {
 			output.Error(fmt.Sprintf("Failed to open SSH connection to %s: %s", c.Connection, err))
 		} else {
 			defer ssh.Close()
-			defer close(cKeys)
-			defer close(cAccounts)
 
 			if iam, err := ssh.Run("whoami"); err != nil {
 				output.Error(fmt.Sprint("Failed to get username: ", err))
 			} else {
 				output.Debugf("Retrieving from %s\n", c.Connection)
 
-				acct := data.NewSSHAccount(c.Connection, iam, c.Id(), nil)
+				// (username, name): `iam` is the remote whoami, c.Connection
+				// is the "[user@]host" we dialled.  Swapping these produced an
+				// account ID of "user@host@user".
+				acct := data.NewSSHAccount(iam, c.Connection, c.Id(), nil)
 
 				keys := c.RetrieveKeys(ssh)
 				//a.SetKeys(keys)
@@ -253,7 +284,15 @@ func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) []data.Key {
 }
 
 func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) []data.Key {
-	remoteCmd := fmt.Sprintf("%s cat %s", prefix, file)
+	if err := checkPrefix(prefix); err != nil {
+		output.Error(err)
+		return []data.Key{}
+	}
+
+	// file is assembled from a home directory read out of the remote host's own
+	// passwd file, and this command may run under sudo -- so a local user on a
+	// surveyed host could otherwise escalate through locksmith.
+	remoteCmd := fmt.Sprintf("%s cat %s", prefix, shellQuote(file))
 
 	delay := time.Duration(rand.Int31() % 500)
 	time.Sleep(delay * time.Millisecond)

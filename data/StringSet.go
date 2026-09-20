@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 )
 
@@ -92,6 +93,11 @@ func (s *StringSet) StringArray() []string {
 	for v := range s.Values() {
 		s2 = append(s2, v)
 	}
+	// Sorted because this feeds MarshalJSON, and Names/Comments are re-merged
+	// and rewritten on every fetch.  Map order would rewrite every stored key
+	// with no semantic change, which defeats the documented promise that the
+	// repository is safe to keep in git -- the same reason mergeBindings sorts.
+	sort.Strings(s2)
 	return s2
 }
 

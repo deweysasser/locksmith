@@ -1,6 +1,8 @@
 package connection
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -265,3 +267,96 @@ func TestUpdateFailsWhenSshCannotStart(t *testing.T) {
 		t.Error("Update should fail when the ssh command cannot be started")
 	}
 }
+
+// A key comment is free text read out of an authorized_keys file on a surveyed
+// host, or out of a third-party API. It used to be pasted between single quotes
+// into a command that apply then ran on a remote host, often under sudo, so a
+// comment carrying a quote and a semicolon meant arbitrary command execution
+// wherever that key was later placed. This drives the real Update path with
+// such a comment and asserts nothing but the intended write happened.
+func TestUpdateNeutralisesAMaliciousKeyComment(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	marker := filepath.Join(t.TempDir(), "pwned")
+	payload := `x'; touch ` + marker + `; echo '`
+
+	path := sshtestWriteAuthorizedKeys(t, home, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	key := sshtestNewKey(t, authorizedKey+" "+payload)
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("the key comment escaped quoting and executed: %s exists", marker)
+	}
+
+	// The key should still have been added, comment and all -- escaping must
+	// neutralise the payload, not silently drop the key.
+	got := sshtestReadFile(t, path)
+	if !strings.Contains(got, payload) {
+		t.Errorf("the key line was not written verbatim; authorized_keys is:\n%s", got)
+	}
+}
+
+// The same payload by way of a removal, which builds a different command.
+func TestDeleteNeutralisesAMaliciousKeyComment(t *testing.T) {
+	sshtestQuiet(t)
+	home := sshtestUseSandbox(t, "")
+
+	marker := filepath.Join(t.TempDir(), "pwned")
+	payload := `x'; touch ` + marker + `; echo '`
+
+	key := sshtestNewKey(t, authorizedKey+" "+payload)
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	line, err := binding.GetSshLine(lib)
+	if err != nil {
+		t.Fatalf("GetSshLine: %v", err)
+	}
+	path := sshtestWriteAuthorizedKeys(t, home, line, sshtestGenerateKeyLine(t, "bob@example.com"))
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, nil, []data.KeyBindingImpl{binding}, lib); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatalf("the key comment escaped quoting and executed: %s exists", marker)
+	}
+	if got := sshtestReadFile(t, path); strings.Contains(got, payload) {
+		t.Errorf("the key was not removed; authorized_keys is:\n%s", got)
+	}
+}
+
+// A username reaches the command after a "~", where it cannot be quoted, so it
+// is vetted instead. Update must refuse rather than build the command.
+func TestUpdateRefusesAMaliciousUsername(t *testing.T) {
+	sshtestQuiet(t)
+	sshtestUseSandbox(t, "")
+
+	key := sshtestNewKey(t, authorizedKey+" alice@example.com")
+	lib := sshtestFetcher{key.Id(): key}
+	binding := data.KeyBindingImpl{KeyID: key.Id(), Location: data.AUTHORIZED_KEYS}
+
+	c := &SSHHostConnection{Type: "SSHHostConnection", Connection: "host.example.com", Sudo: true}
+	acct := data.NewSSHAccount("alice; touch /tmp/pwned", "alice@host.example.com", c.Id(), nil)
+
+	if err := c.Update(acct, []data.KeyBindingImpl{binding}, nil, lib); err == nil {
+		t.Error("Update accepted a username containing shell metacharacters")
+	}
+}
+
+// SSHHostConnection is the one Changer in the tree; apply degrades to a warning
+// for every host if it ever stops satisfying the interface.
+var _ Changer = (*SSHHostConnection)(nil)
