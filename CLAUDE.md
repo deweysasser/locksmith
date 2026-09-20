@@ -35,7 +35,7 @@ The system pipelines data from **connections** → **fetch** → **library stora
 
 - **root (`main`)** — CLI wiring only. `main.go`, `commands.go`, `version.go`. Subcommand dispatch uses `github.com/urfave/cli` v1. Adding a subcommand means adding a `cli.Command` to `Commands` in `commands.go` and an `Action` handler in `command/`.
 - **`command/`** — one file per subcommand (`fetch.go`, `list.go`, `connect.go`, `apply.go`, …). Shared helpers live in `command/common.go`: `datadir()` resolves the repo path (flag → `$LOCKSMITH_REPO` → `$HOME/.x-locksmith` → `$USERPROFILE/locksmith`), `buildFilterFromContext()` produces the substring-match filter used by every command, and `outputLevel()` maps flags to `output.Level`.
-- **`connection/`** — three connection kinds implement `connection.Connection` (`Fetch() (<-chan data.Key, <-chan data.Account)`): `FileConnection`, `SSHHostConnection`, `AWSConnection`. SSH and (partially) AWS additionally implement `connection.Changer` so `apply` can mutate remote state. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
+- **`connection/`** — five connection kinds implement `connection.Connection` (`Fetch() (<-chan data.Key, <-chan data.Account)`): `FileConnection`, `SSHHostConnection`, `AWSConnection`, `GitHubConnection`, `DOConnection`. Only SSH and (partially) AWS implement `connection.Changer`; GitHub and Digital Ocean are **deliberately read-only** — GitHub permits key writes only against the authenticated user's own account, never another user's, and the Digital Ocean work was done under an explicit read-only constraint. `apply` skips a non-`Changer` connection with a warning. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
 - **`data/`** — domain types and the `Key`, `Account`, `Ider`, `Identiferser`, `Fetcher` interfaces. `FanInKey`/`FanInAccount` multiplex per-connection channels into a single stream for ingestion. `KeyBindingImpl` ties a key to an account at a `BindingLocation` (`AUTHORIZED_KEYS`, `CREDENTIALS`, `INSTANCE ROOT`, `FILE`).
 - **`lib/`** — persistence. `library` (lowercase, `library.go`) is the generic store: one JSON file per object under `Path`, in-memory cache keyed by every ID returned by `Identifiers()`, type-dispatched deserialization via a `Type` field in the JSON and a global `TypeMap`. `MainLibrary` (`mainlib.go`) composes four typed wrappers — `KeyLibrary`, `AccountLibrary`, `ConnectionLibrary`, `ChangeLibrary` — stored under `keys/`, `accounts/`, `connections/`, `changes/` subdirs of the repo path.
 - **`output/`** — leveled logger (`Error`/`Warn`/`Normal`/`Verbose`/`Debug`). Prefer these helpers over `fmt.Print*` so level gating works. `main.go` exits 1 when `output.ErrorCount()` is non-zero — but see *Known rough edges*: that counter does not currently count what its name says.
@@ -50,7 +50,15 @@ add, or regeneration will leave the tree unformatted.
 
 3. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
 
-4. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
+4. **Key-algorithm dispatch goes through `data.IsPublicKeyAlgorithm`, never a substring test.**
+`NewKey` used to decide "this is a public key" with `strings.Contains(content, "ssh-")`, which
+catches `ssh-rsa`/`ssh-dss`/`ssh-ed25519` by spelling alone and silently dropped every
+`ecdsa-sha2-*` and `sk-*` key. The algorithm list in `data/keytypes.go` is built from
+`x/crypto/ssh`'s own `KeyAlgo*` constants so it tracks the library. Note the shape check scans
+*every* field on a line, not just the first two, because an option value may contain quoted
+whitespace (`command="/bin/ps -ef"` splits into two fields on its own).
+
+5. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
 struct field, not something the library fills in — `data.Change{Type: "Change", …}`,
 `connection.FileConnection{Type: "FileConnection", …}`. A new persisted type needs the field,
 a matching `AddType` registration, and the right literal at every place it is constructed.
@@ -60,10 +68,14 @@ a matching `AddType` registration, and the right literal at every place it is co
 The interesting flow spans four files and is not obvious from any one of them.
 
 1. **`connect`** (`command/connect.go`) — `NewConnection()` picks the connection type from the
-   argument's shape: an existing filesystem path → `FileConnection`; an `aws:` prefix →
-   `AWSConnection` (remainder is the profile name); anything else → `SSHHostConnection`, with sudo
-   turned on automatically for `ubuntu@`/`root@`/`ec2-user@` targets unless `--no-sudo`. The
-   connection is persisted; nothing is contacted yet.
+   argument's shape: an existing filesystem path → `FileConnection`; `aws:PROFILE` →
+   `AWSConnection`; `gh:USERNAME` → `GitHubConnection`; `do:NAME` → `DOConnection` (credential
+   comes from `$DIGITALOCEAN_ACCESS_TOKEN`, the name is only a label); anything else →
+   `SSHHostConnection`, with sudo turned on automatically for `ubuntu@`/`root@`/`ec2-user@`
+   targets unless `--no-sudo`. The connection is persisted; nothing is contacted yet.
+
+   Adding a connection kind means touching two shared places, which is where parallel work
+   collides: the `switch` in `NewConnection()` and the `AddType` block in `lib/mainlib.go`.
 2. **`fetch`** — runs every stored connection's `Fetch()`, fans the key and account channels in
    (`data.FanInKey`/`FanInAccount`), and merges results into the key and account libraries.
 3. **`expire`** (`command/expire.go`) — sets `Deprecated` on every key matching the filter. This

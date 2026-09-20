@@ -1,10 +1,13 @@
 TODO
 
 ## Current
-- [ ] Implement support for Ed25519 keys
-- [ ] Load keys from a named user/account in github
-- [ ] load keys form a named user/account in digital ocean
-- [ ] connect to digital ocean droplets to survey keys in a similar way as we do for AWS
+- [x] Implement support for Ed25519 keys
+      (already worked; the real bug was that `ecdsa-sha2-*` and `sk-*` keys were
+      silently dropped by the `"ssh-"` substring dispatch -- now fixed)
+- [x] Load keys from a named user/account in github  (`gh:USERNAME`, read-only)
+- [x] load keys form a named user/account in digital ocean  (`do:NAME`, read-only)
+- [x] connect to digital ocean droplets to survey keys in a similar way as we do for AWS
+      (same `do:` connection; note DO does not report which keys a droplet was built with)
 
 ## Old
 
