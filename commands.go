@@ -114,9 +114,13 @@ var Commands = []cli.Command{
 	},
 	{
 		Name:   "apply",
-		Usage:  "Apply pending chnages",
+		Usage:  "Apply pending changes",
 		Action: command.CmdApply,
-		Flags:  outputFlags,
+		Flags: append(outputFlags,
+			cli.BoolFlag{
+				Name:  "dry-run, n",
+				Usage: "print the commands that would run on each host, and run none of them",
+			}),
 	},
 }
 

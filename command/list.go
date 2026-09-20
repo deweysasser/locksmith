@@ -46,7 +46,7 @@ func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, policies lib.Po
 		if p, found := effectivePolicy(policies, i); found {
 			s = fmt.Sprintf("%s [%s]", s, p.Disposition)
 		}
-		if filter(s) {
+		if filter(rendered{text: s, object: i}) {
 			output.Normal(s)
 			if output.IsLevel(output.VerboseLevel) {
 				accts := keyToAccounts[i.(data.Ider).Id()]
@@ -70,7 +70,7 @@ func printKeys(keys lib.KeyLibrary, accounts lib.AccountLibrary, policies lib.Po
 func printAccounts(accounts lib.AccountLibrary, filter Filter, ml *lib.MainLibrary) {
 	for i := range accounts.List() {
 		s := accountString(i, "")
-		if filter(s) {
+		if filter(rendered{text: s, object: i}) {
 			output.Normal(s)
 			if output.IsLevel(output.VerboseLevel) {
 				outputKeysFor(i.(data.Account), ml.Keys())
@@ -83,7 +83,7 @@ func printConnections(connections lib.ConnectionLibrary, filter Filter) {
 	for i := range connections.List() {
 
 		s := connectionString(i, "")
-		if filter(s) {
+		if filter(rendered{text: s, object: i}) {
 			output.Normal(s)
 			if output.IsLevel(output.VerboseLevel) {
 			}

@@ -347,3 +347,20 @@ func SSHLoadJson(s []byte) Key {
 
 	return key
 }
+
+// SearchTerms lets a user find a key by pasting the key material itself, which
+// is what they have in front of them in an authorized_keys file or in the
+// output of `ssh-keygen -y`.  It is not an identifier -- identifiers are
+// fingerprints -- and it appears in no rendered form.
+func (key *SSHKey) SearchTerms() []string {
+	if key.PublicKey.Key == nil {
+		return nil
+	}
+
+	blob := base64.StdEncoding.EncodeToString(key.PublicKey.Key.Marshal())
+
+	// Both the bare blob and the whole line, because people paste both: the
+	// blob when they have picked it out of a field, the full "type blob" when
+	// they have copied a line wholesale.
+	return []string{blob, key.PublicKey.Key.Type() + " " + blob}
+}
