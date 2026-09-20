@@ -6,3 +6,7 @@ test-output
 \#*
 data/temp
 data/locksmith-test-aws-generated.json
+*.swp
+*.swo
+.*.swp
+.*.swo

@@ -8,6 +8,235 @@ TODO
 - [x] load keys form a named user/account in digital ocean  (`do:NAME`, read-only)
 - [x] connect to digital ocean droplets to survey keys in a similar way as we do for AWS
       (same `do:` connection; note DO does not report which keys a droplet was built with)
+- [ ] Upgrade to latest AWS API library version
+- [ ] Support ingesting keys from 1password, either by specific ID or all of a 1password account.  Keys in 1password should NEVER be deleted.  If they are deprecated or expired a line should be added to the key's "note" field about that.
+- [ ] Support reading AWS credentials from 1password
+- [ ] Change the command protocol.
+  - instead of "connect", it should accept "connection" or "conn" or "c" with subcommands add, list|ls, del|delete|rm|remove
+  - take out "list"
+  - implement "keys|key|k" command with subcommands "add", "list|ls", "del|delete|rm|remove" , "expire", "add-id"
+  - "add" should mark a key to be added to a system
+  - "del|delete|rm|remove" should mark a key to be removed from a system
+  - "replace <old> <new>" should mark things to replace the old key with the new key on all systems or any system discovered in the future
+
+- [ ] Pace requests against provider rate limits.  This is *not* a concurrency
+      problem and a worker pool is the wrong tool: a cap bounds calls in flight,
+      while a rate limit is calls over time.  Ten concurrent GitHub requests is
+      fine if you make ten and fatal if you make 600 in an hour.  Every provider
+      already tells us the budget, so read it rather than guess a number:
+  - github: 60 requests/hour **per IP** when unauthenticated, which is the one
+    that bites immediately -- twenty connected users is a third of the hourly
+    budget in a single fetch.  `githubForbiddenError` already parses
+    `X-RateLimit-Remaining` and `X-RateLimit-Reset`, but only to explain the
+    failure after the budget is gone.  Use the same headers to pace beforehand.
+  - digital ocean: 5000/hour, 250/minute burst.  `godo` parses `Rate` off every
+    response and we discard it; cheapest of the three to fix.
+  - aws: nothing to do.  The v1 SDK's default retryer already backs off on
+    throttling errors, and hand-rolled pacing would fight it.
+  - state belongs per provider, not global, because the limit is per token and
+    per IP rather than per process.
+
+- [ ] Bound SSH fan-out across hosts.  Unrelated to the item above despite
+      looking similar: SSH has no API budget, so this is about local resources
+      and about not hammering a shared bastion.  Each SSHHostConnection forks
+      ParallelSSHCount+1 = 6 ssh processes, so ~170 hosts in flight exhausts a
+      default 1024 fd limit.  ParallelSSHCount already bounds work *within* a
+      host; what is missing is a cap *across* them.  Needs its own flag, and
+      needs care with the fan-in lifecycle, which requires every Add before
+      Wait -- that is why it was not done alongside the context work.
+
+- [ ] Resolve AWS credentials the way the AWS CLI does.  `awsconnection.go`
+      builds them with `credentials.NewSharedCredentials`, which reads
+      **only** `~/.aws/credentials` and ignores `~/.aws/config` entirely, so
+      config-file profiles, SSO, assume-role and `credential_process` cannot be
+      used at all.  Replace it with
+      `session.NewSessionWithOptions{Profile, SharedConfigState: SharedConfigEnable}`
+      in both the main and per-region paths; the region then comes from the
+      profile instead of the hardcoded `us-east-1`.  Note this changes
+      behaviour for anyone relying on that override.  The service-interface
+      stub tests are unaffected.
+      Also improve the error: `SharedCredsLoad: failed to get profile` gives no
+      hint that the config file was never consulted.  Say which files were
+      searched and for what profile name.
+
+- [ ] Support `aws login` credentials (CLI v2).  Separate from the item above
+      and not fixed by it -- verified by testing.  `aws login` acquires console
+      credentials into its **own** cache (overridable via
+      `AWS_LOGIN_CACHE_DIRECTORY`) and writes a profile like:
+
+          [nemon]
+          login_session = arn:aws:iam::ACCOUNT:user/NAME
+          region = us-east-1
+
+      `login_session` is not a credential source any SDK understands, so
+      aws-sdk-go v1 and v2 both fail with NoCredentialProviders.  Options, in
+      increasing order of effort: rely on the default credential chain and have
+      the operator export credentials into the environment; or teach locksmith
+      to read the login cache directly, which needs its format pinned down
+      first.
+      Worth deciding whether this is locksmith's job at all, or whether the
+      answer is simply "use a profile the SDK can resolve".
+
+## Open from the 2026-09 review
+
+Found by the six standard reviewers and not yet done.  Several dissolve into
+the command-protocol redesign above, so check that first rather than fixing
+them into a shape that is about to change.
+
+### Correctness
+
+- [ ] Separate desired state from observed state.  Intent is stored *on the
+      observed object* -- `expire` sets `Deprecated` on the key record itself --
+      so it cannot be revoked, there is no `unexpire`, and `Merge` only ever ORs
+      the flag on.  Proposal: a policy object per key
+      (`{KeyID, Disposition: Remove|Replace|Require, Replacement, Scope}`), with
+      `plan` becoming a pure function of (policy, inventory).  That gives
+      `unexpire` for free (delete a file), unifies `add` with `expire`, and
+      gets "remember global key additions so they apply to servers added later"
+      as a side effect.  Note the convergence half of this is already done:
+      bindings now drop when a fetch asserts it observed a location in full.
+
+- [ ] `plan` is an accumulator, not a diff.  It never deletes a change that is
+      no longer warranted, so stale changes persist in `changes/`, in `list`,
+      and in every subsequent `apply`.  It should regenerate the directory
+      wholesale.
+
+- [ ] `plan` silently destroys a change created by `add`.  Both write a Change
+      keyed by account ID, so they collide on the same file and `plan` wins with
+      no warning -- and `plan` is exactly what a user runs next to inspect what
+      they just asked for.
+
+- [ ] `plan` emits changes that can never be applied.  Only SSH implements
+      `connection.Changer`; file, AWS, GitHub and DO do not.  Capability is
+      discovered at the last moment by a type assertion inside `apply`, so
+      changes accumulate for accounts nothing can act on, are never deleted (that
+      happens only on a successful Update), and re-warn on every run.  Give
+      `Connection` a capability query and have `plan` either skip those accounts
+      or mark the change advisory.
+
+- [ ] `Earliest` means different things depending on source.  A file connection
+      records the file's mtime; GitHub and AWS record when locksmith first saw
+      the key, because neither API offers a creation date.  So a five-year-old
+      GitHub key reads as new and sorts as newer than a local file key -- which
+      is actively misleading if you hunt stale keys by age.  Separate "first
+      seen" from "created", and show whichever is known.
+
+### Robustness
+
+- [ ] `SshCmd` has no timeout, never drains stderr, and its framing is forgeable.
+      `Run` blocks in `ReadLine` with no deadline (there is a standing TODO), so
+      a host that accepts the connection and goes quiet hangs the run -- the
+      fetch context does not reach inside it.  The unread stderr pipe blocks the
+      writer once the 64KiB kernel buffer fills, and a failing remote command
+      reports `Non-zero exit: 1` while discarding the message that would explain
+      it.  The boundary is a fixed string, so a line of that shape inside an
+      `authorized_keys` file desynchronises the session for its whole life: an
+      unprivileged user on a surveyed host can hide their own keys and
+      misattribute the next user's.  Use a per-command nonce, match the whole
+      line, drain stderr into a bounded buffer, and add a deadline.
+
+- [ ] `apply` cannot report failure.  `CmdApply` returns nil unconditionally;
+      every per-host failure is logged and skipped.  For a tool whose job is
+      revocation, a cron or CI wrapper cannot tell "revoked everywhere" from
+      "revoked nowhere" without scraping stdout.  Accumulate failures and return
+      an error.
+
+- [ ] `apply` has no test at all, because its logic lives inline in `CmdApply`
+      and needs a `*cli.Context` and a real repo.  Extract `applyChanges(...)`
+      the way `calculateChanges` already is, and test the three invariants
+      CLAUDE.md calls load-bearing: the change is deleted only on success, a
+      non-Changer connection leaves it pending, and add precedes remove.
+
+- [ ] Persistence errors are discarded across `command/`.  `Store`, `DeleteObject`
+      and `Flush` drop their returned error in roughly fifteen places
+      (`plan.go`, `add.go`, `connect.go`, `expire.go`, `apply.go`, `addid.go`).
+      A read-only repo or a full disk means `plan` prints a plan it did not save
+      and exits 0.  The sharpest is `apply.go`: a failed `DeleteObject` means a
+      change that *was* applied stays pending and is applied again next run.
+      `fetch.go` already checks -- the habit exists, it is just not applied.
+
+- [ ] Panics reachable from repository content.  `library.deserialize` panics on
+      valid JSON with a missing or unknown `Type`, and `command/fetch.go` panics
+      on an object that is not a Connection or Account.  The README invites
+      teams to hand-merge this repository in git, so a bad merge or a version
+      skew takes the tool down for everyone -- including for the `apply` that was
+      meant to revoke someone's access.  Malformed JSON is already skipped
+      silently, which is exactly backwards: the recoverable case is fatal and
+      the data-loss case is quiet.  Report and skip; warn on the skip.
+
+- [ ] `lib.sanitize` is not injective.  `\W+ -> _` maps `alice@a.b.com` and
+      `alice@a-b.com` to one filename, and the second `Store` silently
+      overwrites the first.  Within a run the cache keeps them apart, so the loss
+      only appears on the *next* run.  Appending a short hash of the raw ID fixes
+      it but changes the on-disk format; verifying the stored ID on read has no
+      migration cost and at least turns silent corruption into an error.
+
+### Structure
+
+- [ ] `DOAccount` and `DODropletAccount` live in `connection/`, while every other
+      account type lives in `data/`.  The cost is already visible:
+      `doMergeBindings` and `doBindingChannel` reimplement `data.mergeBindings`
+      and `accountImpl.Bindings`, so a fix to binding merge has to be made twice
+      by someone who knows both exist.  Moving them keeps the persisted `Type`
+      strings, or existing repositories stop deserializing.
+
+- [ ] `data/` depends on the AWS SDK in its public API -- `NewIAMAccount`,
+      `NewIAMAccountFromKey` and `NewAWSInstanceAccount` take `*iam.User`,
+      `*iam.AccessKeyMetadata` and `*ec2.Instance`.  So the core domain package
+      links `aws-sdk-go`, and the eventual v2 migration churns `data/` as well as
+      `connection/`.  The DO code shows the alternative and gets it right: plain
+      values in, `godo` never mentioned in `data/`.
+
+- [ ] `output` writes everything to stdout, including errors and warnings, so
+      `locksmith list | grep` swallows the error text and any consumer gets it
+      interleaved with data.  Errors and warnings belong on stderr.  While there:
+      `SilentLevel` is the level at which *warnings* print and should be called
+      `WarnLevel`; `OutputLevel` stutters; `IsLevel(l)` reads as "is the level"
+      but means "is enabled"; and the `Errorf(fmt string, ...)` parameter shadows
+      the imported `fmt` package.
+
+### Tests
+
+- [ ] Assertions that cannot fail.  `lib/library_test.go:verifyMultiIDs` compares
+      a `[]data.ID` against a `*multiID` -- never equal, and the sense is inverted
+      besides, so the multi-identifier cache test only checks that Fetch returns
+      no error.  `lib/keyLibrary_test.go:Test_keyLibrary_Basic` runs its body only
+      when Fetch *fails*.  `command/common_test.go:TestKeyAndAccountFilter_Wrap`
+      checks a func value is non-nil.  Three tests in `command/list_test.go` call
+      the printers with output silenced and assert nothing.
+
+- [ ] The older `lib/` tests share a `test-output/` directory rather than
+      `t.TempDir()`, so they are order-dependent and cannot run with `-shuffle`.
+      `data/ssh_test.go` also writes two files into the package directory that
+      nothing reads, one of them with mode `666` decimal.
+
+- [ ] `connection/testdata/fakessh-sandbox` rewrites every `~user/` to one
+      directory, so "wrote to the wrong user's authorized_keys" is undetectable --
+      and the sudo path exists precisely to edit other users' files.
+
+- [ ] Two functions named `SkipTestSSHPrivateKeyParse` and `skipTestAWSIds` never
+      run, and were the only assertions for private-key fingerprints and the AWS
+      PKCS8 ID.  Either restore or delete them.
+
+- [ ] Helper sprawl now that the parallel branches have landed: five near-identical
+      output silencers that disagree on level, two stdout capturers, four channel
+      collectors, three ID-to-sorted-string converters.  The distinct prefixes did
+      their job and can retire into one shared helper file.
+
+### Dead code
+
+- [ ] `getAWSID` and `asHex` in `data/ssh.go` compute the AWS-format fingerprint
+      that `add-id` exists to supply by hand, but the call site is commented out
+      next to a TODO saying the API changed.  Either finish the feature or delete
+      the stub and keep `add-id` as the documented answer.  Note an Ed25519
+      branch would need `MarshalPKCS8PrivateKey`, which is a different hash input
+      than the RSA/ECDSA branches use.
+
+- [ ] Unreferenced: `publicKey`, `getId`, `LoadJsonFile`, `LoadTypeFromJSON`,
+      `data.Read` (test-only), `mergeIDArrays`, `lib.keyid`, `lib.keyReadError`,
+      `lib.IdStringer`, the whole `connection/remote.go`, `connection/test-utils.go`
+      (a bare package clause), `data.KeyBinding`, and `library.Flush`, which is a
+      no-op that `add-id` defers as though it mattered.
 
 ## Old
 
