@@ -1,6 +1,56 @@
 TODO
 
 ## Current
+
+- [ ] **Modernize the release process.** Notes taken while cutting 0.12, which
+      is the first release since 2018 and the first to exercise this machinery
+      in years.
+
+      What is actually broken:
+
+      * **The changelog cannot be scripted, and silently discards itself.**
+        `.release/changelog` regenerates a raw `git log` into a `.tmp`, opens
+        `vi` on it, then moves it into place. A hand-written changelog put at
+        that path is overwritten the moment make decides the target is out of
+        date -- which it does, because `.release/version` is rewritten by an
+        earlier step and the changelog depends on it. Cutting 0.12 required
+        checking `make -n` first and then marking the file current to stop make
+        clobbering it. It should take a changelog file as input, and the
+        editor should be `$EDITOR`, not hardcoded `vi`.
+      * **`make package` produced nothing for years.** Fixed in c74233b: it
+        zipped from `${GOPATH}` read out of the environment, where it is
+        normally unset, and two of the three paths were wrong besides. Since
+        `release` runs `package` *after* committing the version bump, a release
+        would have died leaving a bumped, untagged tree. That it went unnoticed
+        says the artifacts were not being checked.
+      * **Nothing uploads the artifacts.** `commit-release` pushes commits and
+        tags and stops. The four zips sit in `dist/`, so a tag can be published
+        with no downloadable binary -- which is the state 0.12 is in right now,
+        while 0.5 through 0.11 all have GitHub releases.
+      * **`abort-release` is subtly wrong.** It runs `git tag -d $(cat
+        .release/version)`, i.e. `0.12` rather than `release/0.12`, so the tag
+        it is meant to remove survives. It also `git reset --hard`s, which is a
+        lot of trust to place in a recovery path that has a bug in its first
+        line.
+      * **The branch/stash/merge dance is a no-op when releasing from main**,
+        which is the documented way to release. It stashes nothing, checks out
+        the branch it is on, and merges that branch into itself.
+      * **Version bumping only ever increments the minor.** `0.11 -> 0.12`,
+        with no way to cut a patch or a major, and the next version is derived
+        from `git tag | sort -V` rather than from `version.go`.
+      * **Releases are cut from a laptop**, signed with a local key, with no CI
+        involvement and no reproducibility.
+
+      Worth considering wholesale replacement rather than repair --
+      goreleaser plus a tag-triggered GitHub Actions workflow covers
+      cross-compilation, archives, checksums, changelog generation and upload,
+      and would delete most of this Makefile. If the machinery stays, the
+      minimum is: changelog as an input file, artifacts uploaded, and
+      `abort-release` fixed and tested.
+
+- [ ] Attach the 0.12 archives to a GitHub release, or re-cut once the above
+      is sorted. The tag is pushed and signed; only the binaries are missing.
+
 - [x] Implement support for Ed25519 keys
       (already worked; the real bug was that `ecdsa-sha2-*` and `sk-*` keys were
       silently dropped by the `"ssh-"` substring dispatch -- now fixed)
