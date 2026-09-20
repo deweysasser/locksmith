@@ -206,8 +206,12 @@ func TestSSHHostConnectionFetchSudo(t *testing.T) {
 		t.Errorf("got %d keys, want 2: %v", len(keys), keys)
 	}
 	// carol has no keys, so no account is reported for her.
-	if len(accounts) != 2 {
-		t.Fatalf("got %d accounts, want 2: %v", len(accounts), accounts)
+	// Three, not two: carol has no authorized_keys, and a keyless account must
+	// still be reported so that bindings previously recorded for it can be
+	// cleared.  command.ingestAccounts is what declines to store a *new* empty
+	// account.
+	if len(accounts) != 3 {
+		t.Fatalf("got %d accounts, want 3: %v", len(accounts), accounts)
 	}
 
 	names := make(map[string]bool)
@@ -259,7 +263,16 @@ func TestSSHHostConnectionFetchNonSudoNoKeys(t *testing.T) {
 
 	keys, accounts := fetchAll(c)
 
-	if len(keys) != 0 || len(accounts) != 0 {
-		t.Errorf("got %d keys and %d accounts, want none", len(keys), len(accounts))
+	if len(keys) != 0 {
+		t.Errorf("got %d keys, want none", len(keys))
+	}
+	// The account IS reported despite having no keys.  That is the whole point:
+	// an emptied authorized_keys has to be observable, or bindings recorded for
+	// the account could never be cleared.
+	if len(accounts) != 1 {
+		t.Fatalf("got %d accounts, want the surveyed account reported: %v", len(accounts), accounts)
+	}
+	for b := range accounts[0].Bindings() {
+		t.Errorf("account should carry no bindings, got %v", b)
 	}
 }

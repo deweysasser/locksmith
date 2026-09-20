@@ -17,6 +17,25 @@ type accountImpl struct {
 	Type       string
 	Connection ID
 	Keys       []KeyBindingImpl
+
+	// Observed names the binding locations this object is a *complete*
+	// observation of.  A fetch that read a host's authorized_keys file sets
+	// AUTHORIZED_KEYS here even when it found no keys at all, which is what
+	// lets Merge tell "I looked and there was nothing" apart from "I did not
+	// look".  Without it every merge is a union, bindings only ever
+	// accumulate, and a key removed from a host is reported as still present
+	// forever.
+	//
+	// Not persisted: it describes the observation, not the stored record.
+	Observed []BindingLocation `json:"-"`
+}
+
+// MarkObserved records that this object is a complete observation of the given
+// binding locations.  A connection must only claim a location it genuinely
+// enumerated in full: claiming one it merely sampled silently deletes real
+// bindings on the next merge.
+func (a *accountImpl) MarkObserved(locations ...BindingLocation) {
+	a.Observed = append(a.Observed, locations...)
 }
 
 type SSHAccount struct {
@@ -66,9 +85,9 @@ func (a *AWSIamAccount) Identifiers() []ID {
 func NewIAMAccount(md *iam.User, conn ID) *AWSIamAccount {
 	return &AWSIamAccount{
 		accountImpl{
-			"AWSIamAccount",
-			conn,
-			[]KeyBindingImpl{},
+			Type:       "AWSIamAccount",
+			Connection: conn,
+			Keys:       []KeyBindingImpl{},
 		},
 		ARN(*md.Arn),
 		*md.UserName,
@@ -100,9 +119,9 @@ func (a *AWSIamAccount) Merge(other Account) {
 func NewAWSInstanceAccount(instance *ec2.Instance, connID ID, keys []KeyBindingImpl) *AWSInstanceAccount {
 	acct := &AWSInstanceAccount{
 		accountImpl{
-			"AWSInstanceAccount",
-			connID,
-			keys},
+			Type:       "AWSInstanceAccount",
+			Connection: connID,
+			Keys:       keys},
 		*instance.InstanceId,
 		"",
 		*instance.PublicDnsName}
@@ -138,17 +157,19 @@ func NewSSHAccount(username string, name string, connID ID, keys []KeyBindingImp
 		host = name[(i + 1):]
 	}
 
-	return &SSHAccount{accountImpl{"SSHAccount", connID, keys}, username, host}
+	return &SSHAccount{accountImpl{Type: "SSHAccount", Connection: connID, Keys: keys}, username, host}
 }
 
 func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBindingImpl, aliases ...string) *AWSAccount {
 	sAliases := StringSet{}
 	sAliases.AddArray(aliases)
-	return &AWSAccount{accountImpl{"AWSAccount", connID, keys}, arn, sAliases}
+	return &AWSAccount{accountImpl{Type: "AWSAccount", Connection: connID, Keys: keys}, arn, sAliases}
 }
 
 func (a *accountImpl) Merge(account accountImpl) {
-	a.Keys = mergeBindings(a.Keys, account.Keys)
+	// The incoming object is the fresh observation, so its Observed list is
+	// the one that carries authority.
+	a.Keys = mergeBindings(a.Keys, account.Keys, account.Observed)
 }
 
 func (a *AWSIamAccount) String() string {
@@ -213,23 +234,41 @@ func (a *accountImpl) Bindings() <-chan KeyBindingImpl {
 //	return fmt.Sprintf("%s", a.Name)
 //}
 
-func (a *accountImpl) AddBinding(k Key) {
-	a.Keys = append(a.Keys, KeyBindingImpl{KeyID: k.Id() /* AccountID: a.Id() */})
+func (a *accountImpl) AddBinding(k Key, location BindingLocation) {
+	a.Keys = append(a.Keys, KeyBindingImpl{KeyID: k.Id(), Location: location})
 }
 
 //func (a *accountImpl) Id() ID {
 //	return ID(a.Type + "_" + a.Name)
 //}
 
-// mergeBindings merges 2 arrays of keybindings resulting in an array of unique keyBindings
-// The implementation is a bit of a hack right now
-func mergeBindings(b1 []KeyBindingImpl, b2 []KeyBindingImpl) []KeyBindingImpl {
+// mergeBindings combines the bindings already recorded for an account with
+// those just observed, returning a unique, stably ordered set.
+//
+// authoritative names the locations the observation enumerated in full.  A
+// recorded binding at such a location that the observation did not see is
+// dropped: it is no longer on the system.  Locations absent from the list are
+// left alone, because one account legitimately carries bindings from several
+// sources -- authorized_keys from an SSH fetch, instance credentials from AWS --
+// and a fetch that surveyed one must not discard the others.
+//
+// Note this drops *bindings*, never keys.  The key record is a permanent
+// catalog entry; a binding is a claim about one system at one point in time.
+func mergeBindings(existing []KeyBindingImpl, observed []KeyBindingImpl, authoritative []BindingLocation) []KeyBindingImpl {
+	claimed := make(map[BindingLocation]bool, len(authoritative))
+	for _, l := range authoritative {
+		claimed[l] = true
+	}
+
 	s := StringSet{}
-	for _, k := range b1 {
+	for _, k := range existing {
+		if claimed[k.Location] {
+			continue
+		}
 		s.Add(toJson(&k))
 	}
 
-	for _, k := range b2 {
+	for _, k := range observed {
 		s.Add(toJson(&k))
 	}
 

@@ -150,7 +150,11 @@ func (c *GitHubConnection) fetch(keys chan<- data.Key, accounts chan<- data.Acco
 		})
 	}
 
-	accounts <- data.NewSSHAccount(c.User, c.User+"@github.com", c.Id(), bindings)
+	account := data.NewSSHAccount(c.User, c.User+"@github.com", c.Id(), bindings)
+	// The endpoint returns the user's complete published key set, so a key
+	// recorded here and no longer listed has genuinely been removed.
+	account.MarkObserved(data.AUTHORIZED_KEYS)
+	accounts <- account
 }
 
 // keyName labels a key with both the login and GitHub's numeric key id.  Both

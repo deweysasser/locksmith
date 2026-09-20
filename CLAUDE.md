@@ -54,9 +54,35 @@ from the cache as a value -- is now the `coercion[T]` argument each constructor
 supplies (`asInterface` for the interface element types, `asChange` for
 `data.Change`). Adding a library kind means one constructor, not a new file.
 
-3. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
+3. **Ingestion never deletes a key; it deletes bindings.** A key record in
+`keys/` is a permanent catalog entry -- it keeps its names, comments and
+first-seen date even when nothing references it any more, and "this key exists
+and is bound nowhere" is a meaningful answer rather than an artifact. Only
+`locksmith remove` deletes keys, and only when the user names a filter. (The
+`klib.Delete` in `command/fetch.go` is not a deletion: it is the rename that
+happens when a fingerprint-only key later gains real public key material and so
+changes primary ID.)
 
-4. **Key-algorithm dispatch goes through `data.IsPublicKeyAlgorithm`, never a substring test.**
+4. **A connection may only claim authority over a binding location it
+enumerated in full.** `accountImpl.Observed`, set via `MarkObserved`, tells
+`mergeBindings` which locations the observation is *complete* for; bindings
+recorded at those locations and not seen this time are dropped. Claiming a
+location that was merely sampled silently deletes real inventory. Today SSH
+claims `AUTHORIZED_KEYS` (it reads the whole file) and GitHub claims it (the
+endpoint returns the user's whole key set). AWS deliberately claims nothing:
+`fetchKeyPairs` emits one `AWSAccount` **per region**, all merging onto the same
+ARN, so each is complete for its region and partial for the account -- claiming
+there would delete 29 regions' worth of bindings. DO droplet accounts likewise
+claim nothing, because DO never reports droplet-to-key linkage at all.
+
+   The corollary is that connections must report an account **even when it has
+no keys**, or an emptied `authorized_keys` could never clear what was recorded.
+`command.ingestAccounts` is what declines to store a *new* keyless account, so
+the inventory does not fill with system accounts that will never hold a key.
+
+5. **`data.Change.Id()` must stay on a value receiver.** Changes are stored, listed and deleted *by value*, and a pointer-receiver method is not in the method set of the value type — so `library.Id()` would stop seeing a `Change` as a `data.Ider` and silently fall back to hashing the JSON. That keys changes by content instead of by account, and re-running `plan` after anything changes then leaves a stale change file beside the new one instead of replacing it. `lib.TestChangeLibraryKeepsOneChangePerAccount` and `command.TestCalculateChangesReplacesAStalePlan` both fail if this is changed back.
+
+6. **Key-algorithm dispatch goes through `data.IsPublicKeyAlgorithm`, never a substring test.**
 `NewKey` used to decide "this is a public key" with `strings.Contains(content, "ssh-")`, which
 catches `ssh-rsa`/`ssh-dss`/`ssh-ed25519` by spelling alone and silently dropped every
 `ecdsa-sha2-*` and `sk-*` key. The algorithm list in `data/keytypes.go` is built from
@@ -64,7 +90,7 @@ catches `ssh-rsa`/`ssh-dss`/`ssh-ed25519` by spelling alone and silently dropped
 *every* field on a line, not just the first two, because an option value may contain quoted
 whitespace (`command="/bin/ps -ef"` splits into two fields on its own).
 
-5. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
+7. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
 struct field, not something the library fills in — `data.Change{Type: "Change", …}`,
 `connection.FileConnection{Type: "FileConnection", …}`. A new persisted type needs the field,
 a matching `AddType` registration, and the right literal at every place it is constructed.

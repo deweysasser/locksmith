@@ -137,6 +137,8 @@ func TestIngestAccountsStoresAndMerges(t *testing.T) {
 	c <- data.NewSSHAccount("root", "host.example.com", "conn1", []data.KeyBindingImpl{
 		{KeyID: "key2", Location: data.AUTHORIZED_KEYS},
 	})
+	// A previously unknown account with no keys is not worth a record: a host
+	// has dozens of system accounts that will never hold one.
 	c <- data.NewSSHAccount("root", "other.example.com", "conn1", nil)
 	close(c)
 	wg.Wait()
@@ -145,8 +147,8 @@ func TestIngestAccountsStoresAndMerges(t *testing.T) {
 	for range alib.List() {
 		n++
 	}
-	if n != 2 {
-		t.Fatalf("stored %d accounts, want 2", n)
+	if n != 1 {
+		t.Fatalf("stored %d accounts, want 1 (the keyless new account is not recorded)", n)
 	}
 
 	got, err := alib.Fetch("root@host.example.com")
@@ -204,4 +206,105 @@ func silence(t *testing.T) {
 	saved := output.Level
 	output.Level = output.SilentLevel
 	t.Cleanup(func() { output.Level = saved })
+}
+
+// The other half of the rule: an account we already know about IS reported and
+// merged even when it now has no keys, because that is the only way bindings
+// recorded for it can ever be cleared.  Without this a key removed from a host
+// is reported as still present forever.
+func TestIngestAccountsClearsBindingsWhenAKeyIsRemoved(t *testing.T) {
+	silence(t)
+
+	ml := lib.MainLibrary{Path: t.TempDir()}
+	alib := ml.Accounts()
+
+	fetch := func(keys ...data.ID) {
+		var bindings []data.KeyBindingImpl
+		for _, k := range keys {
+			bindings = append(bindings, data.KeyBindingImpl{KeyID: k, Location: data.AUTHORIZED_KEYS})
+		}
+		acct := data.NewSSHAccount("root", "host.example.com", "conn1", bindings)
+		acct.MarkObserved(data.AUTHORIZED_KEYS)
+
+		c := make(chan data.Account)
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go ingestAccounts(alib, c, &wg)
+		c <- acct
+		close(c)
+		wg.Wait()
+	}
+
+	bound := func() []data.ID {
+		acct, err := alib.Fetch("root@host.example.com")
+		if err != nil {
+			t.Fatalf("Fetch: %v", err)
+		}
+		var got []data.ID
+		for b := range acct.Bindings() {
+			got = append(got, b.KeyID)
+		}
+		return got
+	}
+
+	fetch("keyA", "keyB")
+	if got := bound(); len(got) != 2 {
+		t.Fatalf("after the first fetch the account has %v, want both keys", got)
+	}
+
+	// keyB has been removed from the host.
+	fetch("keyA")
+	got := bound()
+	if len(got) != 1 || got[0] != "keyA" {
+		t.Fatalf("after keyB was removed the account still records %v, want only keyA", got)
+	}
+
+	// And authorized_keys emptied entirely.
+	fetch()
+	if got := bound(); len(got) != 0 {
+		t.Errorf("after authorized_keys was emptied the account still records %v", got)
+	}
+}
+
+// A connection that did not claim authority must not have its bindings dropped:
+// one account legitimately carries bindings from several sources.
+func TestIngestAccountsKeepsBindingsFromUnclaimedLocations(t *testing.T) {
+	silence(t)
+
+	ml := lib.MainLibrary{Path: t.TempDir()}
+	alib := ml.Accounts()
+
+	send := func(acct data.Account) {
+		c := make(chan data.Account)
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go ingestAccounts(alib, c, &wg)
+		c <- acct
+		close(c)
+		wg.Wait()
+	}
+
+	initial := data.NewSSHAccount("root", "host.example.com", "conn1", []data.KeyBindingImpl{
+		{KeyID: "authorized", Location: data.AUTHORIZED_KEYS},
+		{KeyID: "instance", Location: data.INSTANCE_ROOT_CREDENTIALS},
+	})
+	send(initial)
+
+	// A fetch that surveyed only authorized_keys, and found nothing there.
+	empty := data.NewSSHAccount("root", "host.example.com", "conn1", nil)
+	empty.MarkObserved(data.AUTHORIZED_KEYS)
+	send(empty)
+
+	acct, err := alib.Fetch("root@host.example.com")
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	var got []data.ID
+	for b := range acct.Bindings() {
+		got = append(got, b.KeyID)
+	}
+
+	if len(got) != 1 || got[0] != "instance" {
+		t.Errorf("bindings = %v, want only the instance binding kept", got)
+	}
 }

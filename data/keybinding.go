@@ -15,6 +15,13 @@ type Fetcher interface {
 type BindingLocation string
 
 const (
+	// UnspecifiedLocation is the zero value.  Bindings written before
+	// locksmith recorded a location carry it, and it is claimed alongside
+	// AUTHORIZED_KEYS by the SSH fetch so that those older records converge on
+	// the first fetch after an upgrade rather than sitting beside the new ones
+	// forever.
+	UnspecifiedLocation BindingLocation = ""
+
 	FILE                      BindingLocation = "FILE"
 	AUTHORIZED_KEYS           BindingLocation = "AUTHORIZED_KEYS"
 	AWS_CREDENTIALS           BindingLocation = "CREDENTIALS"

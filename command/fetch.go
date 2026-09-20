@@ -75,14 +75,32 @@ func ingestAccounts(alib lib.AccountLibrary, accounts chan data.Account, wg *syn
 			} else {
 				panic(fmt.Sprint("type for", id, " was not Account"))
 			}
-		} else {
+		} else if accountHasBindings(k) {
 			if e := alib.Store(k); e != nil {
 				output.Error(e)
 			}
+		} else {
+			// A previously unknown account with no keys is not worth a record:
+			// a Linux host has dozens of system accounts that will never hold
+			// one.  Connections still report them, because an account we
+			// *already* know about has to be reported even when empty -- that
+			// is the only way bindings recorded for it can ever be cleared.
+			output.Debug("Ignoring new account with no keys:", k.Id())
+			delete(idmap, id)
 		}
 	}
 
 	output.Normalf("Discovered %d accounts in %d references\n", len(idmap), i)
+}
+
+// accountHasBindings reports whether the account carries at least one key
+// binding.  Bindings() hands back a channel, so this drains it; that is only
+// acceptable because it runs on the cold path, for accounts not already known.
+func accountHasBindings(a data.Account) bool {
+	for range a.Bindings() {
+		return true
+	}
+	return false
 }
 
 func ingestKeys(klib lib.KeyLibrary, keys chan data.Key, wg *sync.WaitGroup) {

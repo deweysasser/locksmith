@@ -214,16 +214,16 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 					output.Debug("Retrieving keys for", accountName)
 					keys := c.retrieveKeysFor(ssh, account, "sudo")
 					acct := data.NewSSHAccount(account.User, accountName, c.Id(), nil)
+					acct.MarkObserved(data.AUTHORIZED_KEYS, data.UnspecifiedLocation)
 					output.Debug("Discovered", len(keys), "keys for account", accountName)
 					for _, k := range keys {
-						acct.AddBinding(k)
+						acct.AddBinding(k, data.AUTHORIZED_KEYS)
 						cKeys <- k
 					}
-					// Bindings() hands back a channel, so len() on it is
-					// always 0: count the keys we just bound instead.
-					if len(keys) > 0 {
-						cAccounts <- acct
-					}
+					// Emitted even with no keys: an account whose
+					// authorized_keys is now empty still has to be reported, or
+					// the bindings recorded for it can never be cleared.
+					cAccounts <- acct
 				}
 			}
 		}(i)
@@ -267,15 +267,14 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 				keys := c.RetrieveKeys(ssh)
 				//a.SetKeys(keys)
 				for _, k := range keys {
-					acct.AddBinding(k)
+					acct.AddBinding(k, data.AUTHORIZED_KEYS)
 					cKeys <- k
 				}
 
-				// Bindings() hands back a channel, so len() on it is always
-				// 0: count the keys we just bound instead.
-				if len(keys) > 0 {
-					cAccounts <- acct
-				}
+				// Emitted even with no keys, for the same reason as the sudo
+				// path: an emptied authorized_keys must be able to clear the
+				// bindings recorded for the account.
+				cAccounts <- acct
 			}
 		}
 	}()
