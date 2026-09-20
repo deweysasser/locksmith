@@ -20,6 +20,7 @@ func init() {
 	AddType(reflect.TypeOf(connection.SSHHostConnection{}))
 	AddType(reflect.TypeOf(connection.FileConnection{}))
 	AddType(reflect.TypeOf(connection.AWSConnection{}))
+	AddType(reflect.TypeOf(connection.GitHubConnection{}))
 	AddType(reflect.TypeOf(data.SSHAccount{}))
 	AddType(reflect.TypeOf(data.AWSAccount{}))
 	AddType(reflect.TypeOf(data.AWSInstanceAccount{}))
