@@ -1,6 +1,11 @@
 package command
 
 import (
+	"encoding/json"
+	"github.com/deweysasser/locksmith/history"
+	"os"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -22,7 +27,7 @@ func runIngestKeys(t *testing.T, keys ...data.Key) lib.KeyLibrary {
 	c := make(chan data.Key)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go ingestKeys(klib, c, &wg)
+	go ingestKeys(klib, c, &wg, nil)
 
 	for _, k := range keys {
 		c <- k
@@ -98,7 +103,7 @@ func TestIngestKeysKeepsDeprecation(t *testing.T) {
 	c := make(chan data.Key)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go ingestKeys(klib, c, &wg)
+	go ingestKeys(klib, c, &wg, nil)
 	c <- data.NewAwsKey("AKIA1", time.Time{}, true, "rediscovered")
 	close(c)
 	wg.Wait()
@@ -129,7 +134,7 @@ func TestIngestAccountsStoresAndMerges(t *testing.T) {
 	c := make(chan data.Account)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go ingestAccounts(alib, c, &wg)
+	go ingestAccounts(alib, c, &wg, nil)
 
 	c <- data.NewSSHAccount("root", "host.example.com", "conn1", []data.KeyBindingImpl{
 		{KeyID: "key1", Location: data.AUTHORIZED_KEYS},
@@ -229,7 +234,7 @@ func TestIngestAccountsClearsBindingsWhenAKeyIsRemoved(t *testing.T) {
 		c := make(chan data.Account)
 		wg := sync.WaitGroup{}
 		wg.Add(1)
-		go ingestAccounts(alib, c, &wg)
+		go ingestAccounts(alib, c, &wg, nil)
 		c <- acct
 		close(c)
 		wg.Wait()
@@ -278,7 +283,7 @@ func TestIngestAccountsKeepsBindingsFromUnclaimedLocations(t *testing.T) {
 		c := make(chan data.Account)
 		wg := sync.WaitGroup{}
 		wg.Add(1)
-		go ingestAccounts(alib, c, &wg)
+		go ingestAccounts(alib, c, &wg, nil)
 		c <- acct
 		close(c)
 		wg.Wait()
@@ -306,5 +311,114 @@ func TestIngestAccountsKeepsBindingsFromUnclaimedLocations(t *testing.T) {
 
 	if len(got) != 1 || got[0] != "instance" {
 		t.Errorf("bindings = %v, want only the instance binding kept", got)
+	}
+}
+
+// The history log is the only record of what changed, so it has to be written
+// by the real ingestion path, not just by the history package's own tests.
+func TestIngestRecordsTransitionsToHistory(t *testing.T) {
+	silence(t)
+
+	repo := t.TempDir()
+	ml := lib.MainLibrary{Path: repo}
+	alib := ml.Accounts()
+
+	fetch := func(log *history.Log, keys ...data.ID) {
+		var bindings []data.KeyBindingImpl
+		for _, k := range keys {
+			bindings = append(bindings, data.KeyBindingImpl{KeyID: k, Location: data.AUTHORIZED_KEYS})
+		}
+		acct := data.NewSSHAccount("root", "host.example.com", "conn1", bindings)
+		acct.MarkObserved(data.AUTHORIZED_KEYS)
+
+		c := make(chan data.Account)
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go ingestAccounts(alib, c, &wg, log)
+		c <- acct
+		close(c)
+		wg.Wait()
+	}
+
+	events := func(log *history.Log) []string {
+		if log.Path() == "" {
+			return nil
+		}
+		body, err := os.ReadFile(log.Path())
+		if err != nil {
+			t.Fatalf("reading history: %v", err)
+		}
+		var got []string
+		for _, line := range strings.Split(strings.TrimSpace(string(body)), "\n") {
+			if line == "" {
+				continue
+			}
+			var e history.Event
+			if err := json.Unmarshal([]byte(line), &e); err != nil {
+				t.Fatalf("history line %q: %v", line, err)
+			}
+			got = append(got, e.Event+" "+string(e.Key))
+		}
+		sort.Strings(got)
+		return got
+	}
+
+	first := history.Open(repo, "fetch")
+	fetch(first, "keyA", "keyB")
+	first.Close()
+	if got := events(first); len(got) != 2 || got[0] != "binding.added keyA" || got[1] != "binding.added keyB" {
+		t.Errorf("first fetch recorded %v, want both bindings added", got)
+	}
+
+	// Nothing changed: the log must stay empty, and leave no file at all.
+	steady := history.Open(repo, "fetch")
+	fetch(steady, "keyA", "keyB")
+	steady.Close()
+	if got := events(steady); len(got) != 0 {
+		t.Errorf("an unchanged fetch recorded %v, want nothing", got)
+	}
+	if steady.Path() != "" {
+		t.Error("an unchanged fetch left a history file behind")
+	}
+
+	// keyB removed from the host.
+	removal := history.Open(repo, "fetch")
+	fetch(removal, "keyA")
+	removal.Close()
+	if got := events(removal); len(got) != 1 || got[0] != "binding.removed keyB" {
+		t.Errorf("removal recorded %v, want binding.removed keyB", got)
+	}
+}
+
+// A key seen for the first time is recorded; seeing it again is not.
+func TestIngestKeysRecordsDiscoveryOnce(t *testing.T) {
+	silence(t)
+
+	repo := t.TempDir()
+	ml := lib.MainLibrary{Path: repo}
+	klib := ml.Keys()
+
+	send := func(log *history.Log) {
+		c := make(chan data.Key)
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go ingestKeys(klib, c, &wg, log)
+		c <- data.NewAwsKey("AKIAEXAMPLE", time.Time{}, true, "prod")
+		close(c)
+		wg.Wait()
+	}
+
+	first := history.Open(repo, "fetch")
+	send(first)
+	first.Close()
+	if first.Path() == "" {
+		t.Fatal("discovering a key recorded nothing")
+	}
+
+	again := history.Open(repo, "fetch")
+	send(again)
+	again.Close()
+	if again.Path() != "" {
+		t.Error("re-seeing a known key recorded a discovery")
 	}
 }

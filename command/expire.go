@@ -3,6 +3,7 @@ package command
 import (
 	"errors"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/history"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
@@ -20,6 +21,9 @@ func CmdExpire(c *cli.Context) error {
 	}
 
 	ml := lib.MainLibrary{Path: datadir(c)}
+
+	log := history.Open(datadir(c), "expire")
+	defer log.Close()
 
 	filter := buildFilterFromContext(c)
 
@@ -41,6 +45,10 @@ func CmdExpire(c *cli.Context) error {
 	}()
 
 	for k := range keys {
+		names := k.GetNames()
+		log.Record(history.Event{
+			Event: history.KeyExpired, Key: k.Id(), KeyName: names.Join(", "),
+		})
 		library.Store(k)
 	}
 

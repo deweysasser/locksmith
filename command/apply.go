@@ -2,6 +2,8 @@ package command
 
 import (
 	"github.com/deweysasser/locksmith/connection"
+	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/history"
 	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
@@ -11,6 +13,12 @@ func CmdApply(c *cli.Context) error {
 
 	outputLevel(c)
 	ml := lib.MainLibrary{Path: datadir(c)}
+
+	// The most important entries in the history: everything else records what
+	// locksmith learned, these record what it changed on someone else's
+	// machine.
+	log := history.Open(datadir(c), "apply")
+	defer log.Close()
 	filter := buildFilterFromContext(c)
 	accounts := ml.Accounts()
 	keys := ml.Keys()
@@ -29,6 +37,7 @@ func CmdApply(c *cli.Context) error {
 								output.Error("Failed to add keys:", err)
 								continue
 							} else {
+								recordApplied(log, change)
 								ml.Changes().DeleteObject(change)
 							}
 						} else {
@@ -47,4 +56,22 @@ func CmdApply(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+// recordApplied writes one event per binding actually changed on the remote
+// host.  It runs only after Update reported success, so the log records work
+// done rather than work attempted.
+func recordApplied(log *history.Log, change data.Change) {
+	for _, b := range change.Add {
+		log.Record(history.Event{
+			Event: history.AppliedAdd, Key: b.KeyID,
+			Account: change.Account, Location: b.Location,
+		})
+	}
+	for _, b := range change.Remove {
+		log.Record(history.Event{
+			Event: history.AppliedRemove, Key: b.KeyID,
+			Account: change.Account, Location: b.Location,
+		})
+	}
 }
