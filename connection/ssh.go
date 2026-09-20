@@ -1,15 +1,15 @@
 package connection
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
 	"math/rand"
 	"strings"
-	"time"
-	"errors"
-	"encoding/base64"
 	"sync"
+	"time"
 )
 
 type SSHHostConnection struct {
@@ -55,7 +55,6 @@ func (c *SSHHostConnection) Update(account data.Account, addBindings []data.KeyB
 	} else {
 		return errors.New("Account is not SSHAccount")
 	}
-	return nil
 }
 
 func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.KeyBindingImpl, keylib data.Fetcher) error {
@@ -71,7 +70,7 @@ func (c *SSHHostConnection) delKey(prefix string, path string, bindings []data.K
 						return errors.New(fmt.Sprintf("Failed to run '%s': %s", removeLine, err))
 					}
 				} else {
-					return errors.New(fmt.Sprint("Key " , add.KeyID, " is not an SSH key"))
+					return errors.New(fmt.Sprint("Key ", add.KeyID, " is not an SSH key"))
 				}
 			} else {
 				return errors.New(fmt.Sprint("Error looking up key ", add.KeyID))
@@ -139,7 +138,7 @@ func buildAccountName(account remoteAccount, connection string) string {
 }
 
 // 5 threads seems to be the optimum between connection overhead and command serilaization on a single threaded Ubuntu VM with ~30 users
-var ParallelSSHCount  int = 5
+var ParallelSSHCount int = 5
 
 func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan data.Account) {
 	cKeys := make(chan data.Key)
@@ -163,7 +162,7 @@ func (c *SSHHostConnection) fetchSudo() (keys <-chan data.Key, accounts <-chan d
 
 	wg.Add(ParallelSSHCount)
 
-	for i:=0; i<ParallelSSHCount; i++ {
+	for i := 0; i < ParallelSSHCount; i++ {
 		go func(i int) {
 			defer wg.Done()
 
@@ -205,7 +204,6 @@ func (c *SSHHostConnection) fetchNonSudo() (keys <-chan data.Key, accounts <-cha
 	cKeys := make(chan data.Key)
 	cAccounts := make(chan data.Account)
 
-
 	go func() {
 		if ssh, err := NewSshCmd(c.Connection); err != nil {
 			output.Error(fmt.Sprintf("Failed to open SSH connection to %s: %s", c.Connection, err))
@@ -242,10 +240,10 @@ func (c *SSHHostConnection) retrieveKeysFor(cmd *SshCmd, account remoteAccount, 
 }
 
 func (remote *SSHHostConnection) RetrieveKeys(cmd *SshCmd) []data.Key {
-	return remote.retrieveKeysFrom(cmd,".ssh/authorized_keys", "")
+	return remote.retrieveKeysFrom(cmd, ".ssh/authorized_keys", "")
 }
 
-func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd,  file string, prefix string) []data.Key {
+func (remote *SSHHostConnection) retrieveKeysFrom(cmd *SshCmd, file string, prefix string) []data.Key {
 	remoteCmd := fmt.Sprintf("%s cat %s", prefix, file)
 
 	delay := time.Duration(rand.Int31() % 500)

@@ -92,7 +92,7 @@ var Commands = []cli.Command{
 		Name:   "add",
 		Usage:  "Add a key or keys to an account or accounts",
 		Action: command.CmdAdd,
-		Flags:   append(outputFlags,
+		Flags: append(outputFlags,
 			cli.StringFlag{
 				Name:  "key, k",
 				Usage: "key or keys to add",

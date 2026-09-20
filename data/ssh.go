@@ -172,7 +172,7 @@ func (key *SSHKey) Identifiers() []ID {
 			//			}
 			//		}
 			//	}
-			}
+		}
 		key.haveIdsBeenAdded = true
 	}
 

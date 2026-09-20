@@ -4,3 +4,5 @@
 test-output
 *.bak
 \#*
+data/temp
+data/locksmith-test-aws-generated.json

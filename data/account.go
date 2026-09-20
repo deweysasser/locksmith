@@ -25,14 +25,14 @@ type SSHAccount struct {
 
 type AWSAccount struct {
 	accountImpl
-	Arn AWSAccountID
+	Arn     AWSAccountID
 	Aliases StringSet
 }
 
 type AWSIamAccount struct {
 	accountImpl
 	Arn        ARN
-	Username string
+	Username   string
 	CreateDate time.Time
 }
 
@@ -43,7 +43,7 @@ type AWSInstanceAccount struct {
 
 type Account interface {
 	Ider
-	Bindings() <- chan KeyBindingImpl
+	Bindings() <-chan KeyBindingImpl
 	Merge(a Account)
 	ConnectionID() ID
 }
@@ -134,7 +134,7 @@ func (a *AWSInstanceAccount) String() string {
 func NewSSHAccount(username string, name string, connID ID, keys []KeyBindingImpl) *SSHAccount {
 	host := name
 	if i := strings.Index(name, "@"); i > -1 {
-		host =  name[(i+1):]
+		host = name[(i + 1):]
 	}
 
 	return &SSHAccount{accountImpl{"SSHAccount", connID, keys}, username, host}
@@ -143,7 +143,7 @@ func NewSSHAccount(username string, name string, connID ID, keys []KeyBindingImp
 func NewAWSAccount(arn AWSAccountID, connID ID, keys []KeyBindingImpl, aliases ...string) *AWSAccount {
 	sAliases := StringSet{}
 	sAliases.AddArray(aliases)
-	return &AWSAccount{accountImpl{"AWSAccount", connID, keys}, arn,sAliases}
+	return &AWSAccount{accountImpl{"AWSAccount", connID, keys}, arn, sAliases}
 }
 
 func (a *accountImpl) Merge(account accountImpl) {
@@ -195,7 +195,7 @@ func (a *AWSAccount) String() string {
 	}
 }
 
-func (a *accountImpl) Bindings() <- chan KeyBindingImpl {
+func (a *accountImpl) Bindings() <-chan KeyBindingImpl {
 	c := make(chan KeyBindingImpl)
 
 	go func() {

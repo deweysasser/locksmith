@@ -1,16 +1,14 @@
 package data
 
 import (
-	"fmt"
-	"errors"
 	"encoding/base64"
+	"errors"
+	"fmt"
 )
-
 
 type Fetcher interface {
 	Fetch(id ID) (Key, error)
 }
-
 
 /** Where a Key is bound on an account
  */
@@ -51,11 +49,11 @@ func (k *KeyBindingImpl) Describe(keylib Fetcher) (s string, key interface{}) {
 	return
 }
 
-func (k *KeyBindingImpl) GetSshLine(keylib Fetcher) (string, error){
+func (k *KeyBindingImpl) GetSshLine(keylib Fetcher) (string, error) {
 	if key, err := keylib.Fetch(k.KeyID); err != nil {
 		return "", err
 	} else {
-		if sshKey, ok := key.(*SSHKey) ; !ok{
+		if sshKey, ok := key.(*SSHKey); !ok {
 			return "", errors.New(fmt.Sprint("Key ", key, " is not an SSH key"))
 		} else {
 			Key2 := sshKey.PublicKey.Key

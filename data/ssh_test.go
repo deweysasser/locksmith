@@ -245,7 +245,7 @@ func skipTestAWSIds(t *testing.T) {
 		block, _ := pem.Decode(bytes)
 		fmt.Println("PEM decode bytes in", block.Type, "are", block.Bytes)
 		data := make(map[string]interface{})
-		if _, err := asn1.Unmarshal(block.Bytes, data); err == nil {
+		if _, err := asn1.Unmarshal(block.Bytes, &data); err == nil {
 			fmt.Println("ASN structure is ", data)
 		}
 		if pk, err := ssh.ParseRawPrivateKey(bytes); err == nil {

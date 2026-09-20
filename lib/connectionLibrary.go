@@ -5,8 +5,8 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/connection"
+	"github.com/deweysasser/locksmith/data"
 	"github.com/deweysasser/locksmith/output"
 )
 

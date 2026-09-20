@@ -7,6 +7,7 @@ accountLibrary.go: keyLibrary.go
 	-e 's/keyLibrary/accountLibrary/g' \
 	-e 's/go:generate.*/GENERATED FILE/' \
 	$< > $@
+	gofmt -w $@
 
 changeLibrary.go: keyLibrary.go
 	test -f $@ && touch $@ || sed \
@@ -14,6 +15,7 @@ changeLibrary.go: keyLibrary.go
 	-e 's/keyLibrary/changeLibrary/g' \
 	-e 's/go:generate.*/GENERATED FILE/' \
 	$< > $@
+	gofmt -w $@
 
 connectionLibrary.go: keyLibrary.go
 	sed \
@@ -24,4 +26,5 @@ connectionLibrary.go: keyLibrary.go
 	-e 's/KeyLibrary/ConnectionLibrary/g' \
 	-e 's/go:generate.*/GENERATED FILE/' \
 	$< > $@
+	gofmt -w $@
 

@@ -67,7 +67,9 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 		return l.deserializer(id, bytes)
 	default:
 		o := make(map[string]interface{})
-		e := json.Unmarshal(bytes, &o)
+		if e := json.Unmarshal(bytes, &o); e != nil {
+			return nil, e
+		}
 		if t, ok := o["Type"]; ok {
 			if strT, ok := t.(string); ok { // it's a string
 				if p, ok := TypeMap[strT]; ok { // it's in the type map
@@ -83,7 +85,6 @@ func (l *library) deserialize(id string, bytes []byte) (interface{}, error) {
 		} else {
 			panic(fmt.Sprint("Object for ID '", id, "' has no type"))
 		}
-		return o, e
 	}
 }
 

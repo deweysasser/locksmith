@@ -64,7 +64,6 @@ func formatAge(duration time.Duration) string {
 	default:
 		return fmt.Sprintf("%dy%02dw", hours/YEAR, (hours%YEAR)/WEEK)
 	}
-	return ""
 }
 
 func (key *keyImpl) GetNames() StringSet {

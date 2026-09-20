@@ -35,7 +35,7 @@ release: .release .release/branch .release/merge .release/version .release/chang
 .release/branch: .release/version
 	git symbolic-ref --short HEAD > $@
 	git stash save "Stash for release $$(cat .release/version)"
-	git checkout master
+	git checkout main
 	git log -n 1 --pretty=format:"%H" > .release/previous-commit
 
 .release/changelog: .release .release/version

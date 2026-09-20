@@ -1,29 +1,28 @@
 package connection
 
 import (
-	"os/exec"
-	"fmt"
-	"io"
-	"github.com/deweysasser/locksmith/output"
 	"bufio"
-	"strings"
 	"errors"
+	"fmt"
+	"github.com/deweysasser/locksmith/output"
+	"io"
 	"os"
+	"os/exec"
+	"strings"
 )
 
 type SshCmd struct {
-	cmd *exec.Cmd
-	stdin io.WriteCloser
+	cmd            *exec.Cmd
+	stdin          io.WriteCloser
 	stdout, stderr *bufio.Reader
 }
 
-func NewSshCmd(host string) (*SshCmd, error){
+func NewSshCmd(host string) (*SshCmd, error) {
 	scmd := &SshCmd{}
 
 	output.Debug(fmt.Sprintf("Running SSH cmd: ssh %s", host))
 
 	scmd.cmd = exec.Command(get_ssh_command(), host)
-
 
 	var err error
 	if scmd.stdin, err = scmd.cmd.StdinPipe(); err != nil {
@@ -41,7 +40,6 @@ func NewSshCmd(host string) (*SshCmd, error){
 	} else {
 		scmd.stderr = bufio.NewReader(stderr)
 	}
-
 
 	if err := scmd.cmd.Start(); err != nil {
 		return nil, err
@@ -89,7 +87,6 @@ func (s *SshCmd) Run(cmd string) (string, error) {
 				} else {
 					return strings.Join(result, "\n"), nil
 				}
-				output.Debug("unreachable")
 			}
 			result = append(result, string(bytes))
 		} else {

@@ -18,7 +18,10 @@ make package      # build zip artifacts under dist/
 
 Run a single test: `go test ./data -run TestStringSet` (replace package and test name).
 
-`make release` is a multi-step target that stashes work, checks out `master`, bumps `version.go`, commits, tags, and requires interactive `vi` for the changelog — do not invoke it casually; read `Makefile` first.
+`go vet ./...` and `gofmt -l .` are both clean — keep them that way. Both were brought to zero in
+one pass, so any finding either one reports is something the current change introduced.
+
+`make release` is a multi-step target that stashes work, checks out `main`, bumps `version.go`, commits, tags, and requires interactive `vi` for the changelog — do not invoke it casually; read `Makefile` first.
 
 The module targets Go 1.26 (`go.mod`) and the `Dockerfile` uses `golang:1.26.0`; keep those in sync when bumping.
 
@@ -35,18 +38,82 @@ The system pipelines data from **connections** → **fetch** → **library stora
 - **`connection/`** — three connection kinds implement `connection.Connection` (`Fetch() (<-chan data.Key, <-chan data.Account)`): `FileConnection`, `SSHHostConnection`, `AWSConnection`. SSH and (partially) AWS additionally implement `connection.Changer` so `apply` can mutate remote state. `SSHHostConnection.fetchSudo()` fans out work across `ParallelSSHCount` (default 5) goroutines per host.
 - **`data/`** — domain types and the `Key`, `Account`, `Ider`, `Identiferser`, `Fetcher` interfaces. `FanInKey`/`FanInAccount` multiplex per-connection channels into a single stream for ingestion. `KeyBindingImpl` ties a key to an account at a `BindingLocation` (`AUTHORIZED_KEYS`, `CREDENTIALS`, `INSTANCE ROOT`, `FILE`).
 - **`lib/`** — persistence. `library` (lowercase, `library.go`) is the generic store: one JSON file per object under `Path`, in-memory cache keyed by every ID returned by `Identifiers()`, type-dispatched deserialization via a `Type` field in the JSON and a global `TypeMap`. `MainLibrary` (`mainlib.go`) composes four typed wrappers — `KeyLibrary`, `AccountLibrary`, `ConnectionLibrary`, `ChangeLibrary` — stored under `keys/`, `accounts/`, `connections/`, `changes/` subdirs of the repo path.
-- **`output/`** — leveled logger (`Error`/`Warn`/`Normal`/`Verbose`/`Debug`). Any `Error*` call increments a counter; if non-zero at exit, `main.go` exits 1. Prefer these helpers over `fmt.Print*` for user-visible output so debug/verbose gating and the error-count behavior both work.
+- **`output/`** — leveled logger (`Error`/`Warn`/`Normal`/`Verbose`/`Debug`). Prefer these helpers over `fmt.Print*` so level gating works. `main.go` exits 1 when `output.ErrorCount()` is non-zero — but see *Known rough edges*: that counter does not currently count what its name says.
 
-### Two non-obvious invariants
+### Non-obvious invariants
 
 1. **Register every new serializable type in `lib/mainlib.go` `init()`** via `AddType(reflect.TypeOf(...))`. Deserialization reads the `Type` string field from the JSON and looks it up in `TypeMap`; a missing registration *panics* (`library.deserialize`). Every `data.*` and `connection.*` type persisted to disk needs an entry here, and every struct so persisted must include a `Type string` field whose value matches the registered name.
 
-2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit those three files — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). The `connectionLibrary.go` rule additionally adds a `connection` import.
+2. **`lib/{account,change,connection}Library.go` are generated from `keyLibrary.go`** by `lib/Makefile` using `sed` substitutions (there is a `//go:generate make` directive in `keyLibrary.go`). Do not hand-edit those three files — change `keyLibrary.go` and re-run `make -C lib` (or `go generate ./lib/...`). The `connectionLibrary.go` rule additionally adds a `connection` import, in a position gofmt
+disagrees with — which is why every rule ends in `gofmt -w $@`. Keep that line on any rule you
+add, or regeneration will leave the tree unformatted.
+
+3. **The persisted `Type` field is set by hand at every construction site.** It is an ordinary
+struct field, not something the library fills in — `data.Change{Type: "Change", …}`,
+`connection.FileConnection{Type: "FileConnection", …}`. A new persisted type needs the field,
+a matching `AddType` registration, and the right literal at every place it is constructed.
+
+### Key lifecycle: connect → fetch → expire → plan → apply
+
+The interesting flow spans four files and is not obvious from any one of them.
+
+1. **`connect`** (`command/connect.go`) — `NewConnection()` picks the connection type from the
+   argument's shape: an existing filesystem path → `FileConnection`; an `aws:` prefix →
+   `AWSConnection` (remainder is the profile name); anything else → `SSHHostConnection`, with sudo
+   turned on automatically for `ubuntu@`/`root@`/`ec2-user@` targets unless `--no-sudo`. The
+   connection is persisted; nothing is contacted yet.
+2. **`fetch`** — runs every stored connection's `Fetch()`, fans the key and account channels in
+   (`data.FanInKey`/`FanInAccount`), and merges results into the key and account libraries.
+3. **`expire`** (`command/expire.go`) — sets `Deprecated` on every key matching the filter. This
+   only marks the key in the local repo; it touches no remote system. A key may also carry a
+   `Replacement` ID (see `keyImpl` in `data/keys.go`) meaning "wherever this key is bound, bind that
+   one instead".
+4. **`plan`** (`command/plan.go`) — `calculateChanges()` walks every account's bindings, looks each
+   bound key up in the key library, and materializes a `data.Change` per account: deprecated keys
+   become `Remove` entries, keys with a `Replacement` become `Add` entries. Changes are persisted to
+   `changes/`, so `plan` is cumulative across runs, not a fresh computation each time.
+5. **`apply`** (`command/apply.go`) — for each stored change, resolves account →
+   `account.ConnectionID()` → connection, type-asserts it to `connection.Changer`, and calls
+   `Update()`. A connection that isn't a `Changer` is skipped with a warning. The change is deleted
+   from the library only on success, so a failed apply stays pending. `SSHHostConnection.Update()`
+   adds keys before removing any, and aborts the removal if the addition failed — don't reorder
+   that.
+
+**`add`** is the exception: it writes `Change` objects straight to the change library, bypassing
+`plan` entirely. `plan` will not regenerate them, and `apply` consumes them like any other change.
 
 ### Filtering model
 
 Every non-trivial command accepts positional args that become substring filters. `buildFilter` (in `command/common.go`) returns a predicate that stringifies each candidate object via `fmt.Sprintf("%s", i)` and accepts the object if *any* arg is a substring — filters combine as **union**, not intersection. The filter is applied against the same representation the object would render in `list` *without* `-v`, so verbose-only fields are not filterable.
 
+### Known rough edges
+
+These are real, verified, and *not* fixed. Don't rediscover them; don't mistake them for something
+you broke.
+
+- **`locksmith` exits 1 on every invocation.** `output.output()` gates the counter increment on
+  `if l >= ErrorLevel`, and `ErrorLevel` is `iota` = 0 — so every leveled call increments it,
+  including `Debug` calls suppressed by the level gate. `datadir()` calls `output.Debug` before any
+  subcommand does its work, so the count is non-zero before anything happens and `main.go` exits 1.
+  Fixing it means gating on the message level actually being `ErrorLevel`.
+- **`output.ErrorCount()` closes `errorChannel`.** Calling it twice, or any output call after it,
+  panics on send-to-closed-channel. It is safe only as the last thing `main` does.
+- **`--silent` is unreachable.** `outputLevel()` checks `c.Bool("silent")` and
+  `c.GlobalBool("verbose")`, but `commands.go` registers neither: `GlobalFlags` is only
+  `debug`/`repo`, and `verbose` exists solely as a per-command flag. `SilentLevel` cannot be
+  selected from the CLI.
+- **`version.go` says 0.11; the newest tag is `release/0.9`.** The `make release` bookkeeping and
+  the tags have drifted apart.
+- **`README.md` describes a `master`/`development`/`prototype` branch layout.** The default branch
+  is `main`; `origin/master` does not exist.
+
 ### Data at rest
 
 `~/.x-locksmith/` (the leading `x-` is intentional; storage format is still considered unstable per README). Objects are individual JSON files, safe to commit to git. Private keys and AWS secret-key material are never written — only public keys, fingerprints, and access-key IDs.
+
+### Test fixtures
+
+`data/test-data/` holds real-format SSH private keys (`rsa`, `dss`, `constrained`), a `*.pem`, and
+an AWS-style `credentials` file. They are throwaway fixtures generated for the test suite, not live
+secrets — a security pass will flag them, and that flag is a false positive. Tests read them by
+relative path, so they run from the package directory.

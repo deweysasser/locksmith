@@ -2,12 +2,12 @@ package command
 
 import (
 	"fmt"
+	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
 	"github.com/urfave/cli"
 	"os"
 	"strings"
-	"github.com/deweysasser/locksmith/lib"
-	"github.com/deweysasser/locksmith/data"
 )
 
 // Return the locksmith data directory
@@ -22,7 +22,7 @@ func datadir(c *cli.Context) string {
 	}
 
 	var r string
-	if	home := os.Getenv("HOME"); home != "" {
+	if home := os.Getenv("HOME"); home != "" {
 		r = home + "/.x-locksmith"
 	} else {
 		if profile := os.Getenv("USERPROFILE"); profile != "" {
@@ -73,7 +73,6 @@ func keyFilter(filter Filter) lib.KeyPredicate {
 		return filter(key)
 	}
 }
-
 
 func outputLevel(c *cli.Context) {
 	switch {

@@ -1,10 +1,10 @@
 package command
 
 import (
-	"github.com/urfave/cli"
-	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/data"
+	"github.com/deweysasser/locksmith/lib"
 	"github.com/deweysasser/locksmith/output"
+	"github.com/urfave/cli"
 )
 
 func CmdAdd(c *cli.Context) error {
@@ -30,20 +30,23 @@ func CmdAdd(c *cli.Context) error {
 
 	output.Debug("Keys to add:", keys)
 
-
 	for account := range ml.Accounts().ListMatching(accountFilter(buildFilterFromContext(c))) {
 		var bindings []data.KeyBindingImpl
 		for _, k := range keys {
 			output.Verbose("Adding", k, "to account", account)
 
 			bindings = append(bindings, data.KeyBindingImpl{
-				k,
-				data.AUTHORIZED_KEYS,
-				"",
+				KeyID:    k,
+				Location: data.AUTHORIZED_KEYS,
 			})
 		}
 
-		changes.Store(data.Change{"Change", account.Id(), bindings, make([]data.KeyBindingImpl, 0)})
+		changes.Store(data.Change{
+			Type:    "Change",
+			Account: account.Id(),
+			Add:     bindings,
+			Remove:  make([]data.KeyBindingImpl, 0),
+		})
 	}
 
 	return nil

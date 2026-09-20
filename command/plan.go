@@ -83,7 +83,12 @@ func calculateChanges(accountLib lib.AccountLibrary, keylib lib.KeyLibrary, chan
 				}
 			}
 			if len(additions) > 0 || len(removals) > 0 {
-				changelib.Store(data.Change{"Change", account.Id(), additions, removals})
+				changelib.Store(data.Change{
+					Type:    "Change",
+					Account: account.Id(),
+					Add:     additions,
+					Remove:  removals,
+				})
 			}
 		} else {
 			output.Error("Account list was not an account")

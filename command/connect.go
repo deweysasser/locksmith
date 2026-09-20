@@ -28,9 +28,9 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 
 	switch {
 	case info != nil:
-		return &connection.FileConnection{"FileConnection", a}
+		return &connection.FileConnection{Type: "FileConnection", Path: a}
 	case strings.HasPrefix(a, "aws:"):
-		return &connection.AWSConnection{"AWSConnection", a[4:]}
+		return &connection.AWSConnection{Type: "AWSConnection", Profile: a[4:]}
 	default:
 		sudo := !c.Bool("no-sudo") &&
 			(c.Bool("sudo") ||
@@ -39,9 +39,9 @@ func NewConnection(a string, c *cli.Context) connection.Connection {
 				strings.HasPrefix(a, "ec2-user@"))
 
 		return &connection.SSHHostConnection{
-			"SSHHostConnection",
-			a,
-			sudo,
+			Type:       "SSHHostConnection",
+			Connection: a,
+			Sudo:       sudo,
 		}
 	}
 }
