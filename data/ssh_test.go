@@ -104,7 +104,7 @@ func TestSSHPublicKeyParse(t *testing.T) {
 		assertStringsEquals(t, "ssh-rsa", rsa.KeyType())
 		assertStringsEquals(t, "SHA256:mbhMXOdSermDODXkg5fBUQN9yst7W9Fkn9yurscQSOQ", string(rsa.Id()))
 		assertStringsEquals(t, "ca:c1:67:18:a3:79:a5:46:03:8b:3e:a1:67:4b:8e:39", string(rsa.Identifiers()[1]))
-		assertTrue(t, "correct comment", rsa.Comments.Contains("dewey@FlynnRyder"))
+		assertTrue(t, "correct comment", rsa.Comments.Contains("test-key@locksmith-test"))
 		assertStringsEquals(t, "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5\n", rsa.PublicKeyString())
 	})
 
@@ -115,7 +115,7 @@ func TestSSHPublicKeyParse(t *testing.T) {
 		}
 		dss := key.(*SSHKey)
 		assertStringsEquals(t, "ssh-dss", dss.KeyType())
-		assertTrue(t, "correct comment", dss.Comments.Contains("dewey@FlynnRyder"))
+		assertTrue(t, "correct comment", dss.Comments.Contains("test-key@locksmith-test"))
 		assertStringsEquals(t, "ssh-dss AAAAB3NzaC1kc3MAAACBAMZhAjMPsL/oo9RZiD7jfWBOVGoLqwdwtjuTkaKVFmBVBh+c2nMi11zVzRz1JqbXR15QNyaDc2EumZTC2WTyas4uSXTh2F6Ohto+a2QnCN3rjsiBsXHnr6hbBN+Qs8uJ/+ssGDpsWKIpWOL3+Q6QmHQZg+df4XtBlMyehCWr7jCdAAAAFQCrynAE+Z6tGteawaHWa8ReOpYkrQAAAIB3cd1Ls/1ox/gNNMqTbuAvWQIgIda7Uw+OHU55EyeryPR9e2GH6rsHWCwd47cyurOukqF+e5FH/dnj7K/Kt4BFXPeR0YU4KaiAZIEl8I7Kcdazxz3vWgK3sTKRy10ABqEZL9oUazMfX43IaiPeiU6nwgrMHokTwKLkZH+iBwN8JQAAAIEAo+h6Lop9my2BxrHKSmhQfya3rl0N35ZDk/8kExLW1xkpQmzARrCMrw3YNuRCNgrh5Ds7EdyG0HyjWnnSnPBXqCxFfDTtaGeieLquocEK3M5DGckgI4IEa9pvL3fVZ/cHT3YxC369PF/vX9l7TPHF6Au8lnEFEzNyZLQvsfrqxgg=\n", dss.PublicKeyString())
 	})
 }
@@ -167,7 +167,7 @@ func TestSSHJSon(t *testing.T) {
     "Data": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDEhoo9i/AwdwWx2xFcQjZkQxlNlex1p7pyOn7qitncnc/+bEHSARGoflqMMFgoBMrsKcQUZXt+LpBvlwGbTqATfat5SwKJbQi2EcoRr8j0e1gsG357zv0i/GuemdTctyk2Hdxq+MkuSlSMlswoAPLfGhFBUiBNLIrb5wwK8MNJjpRkqONxtDQHYpeZ7J+PdSVAQYJ6aNxrA5zRd732CHDyMkHIvnmb+vFa7rPYYwLyzborMrTEQXc1IpqNOzkF33AXAmqsjwNabmReRyerVGZ5cyLJEhn0Yjkixa1lt4RcioV8y4OnLXeHOB7DP1HEko3Ox8Tc16r+b2v70+YBc2c5"
   },
   "Comments": [
-    "dewey@FlynnRyder"
+    "test-key@locksmith-test"
   ]
 }`
 
@@ -193,7 +193,7 @@ func TestSSHJSon(t *testing.T) {
 	assertStringsEquals(t, string(key.ReplacementID()), string(newkey.ReplacementID()))
 	assertTrue(t, "Correct Name", newkey.(*SSHKey).Names.Contains("test name"))
 
-	assertTrue(t, "Correct comment", newkey.(*SSHKey).Comments.Contains("dewey@FlynnRyder"))
+	assertTrue(t, "Correct comment", newkey.(*SSHKey).Comments.Contains("test-key@locksmith-test"))
 
 	sJson2, err := json.MarshalIndent(newkey, "", "  ")
 	checke(t, err)

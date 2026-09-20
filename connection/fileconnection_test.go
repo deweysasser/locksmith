@@ -185,7 +185,7 @@ func TestFileConnectionFetchCredentials(t *testing.T) {
 	}
 	sort.Strings(ids)
 
-	want := []string{"AKIAIQ5R76RH47DYH3OA", "AKIAIUNPBKF3ZP6MFSPQ"}
+	want := []string{"AKIAI44QH8DHBEXAMPLE", "AKIAIOSFODNN7EXAMPLE"}
 	if len(ids) != len(want) {
 		t.Fatalf("got %d keys %v, want %d %v", len(ids), ids, len(want), want)
 	}
