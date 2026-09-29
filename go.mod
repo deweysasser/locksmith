@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/deweysasser/pkcs8 v0.0.0-20170412071016-7e063b703ad9
-	github.com/digitalocean/godo v1.210.0
+	github.com/digitalocean/godo v1.215.0
 	github.com/urfave/cli v1.22.17
 	golang.org/x/crypto v0.57.0
 )
