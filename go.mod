@@ -5,9 +5,9 @@ go 1.27.1
 require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/deweysasser/pkcs8 v0.0.0-20170412071016-7e063b703ad9
-	github.com/digitalocean/godo v1.210.0
+	github.com/digitalocean/godo v1.224.0
 	github.com/urfave/cli v1.22.17
-	golang.org/x/crypto v0.57.0
+	golang.org/x/crypto v0.58.0
 )
 
 require (
@@ -18,6 +18,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 )
